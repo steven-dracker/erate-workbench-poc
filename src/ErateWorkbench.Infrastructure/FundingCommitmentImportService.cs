@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ErateWorkbench.Domain;
 using ErateWorkbench.Infrastructure.Csv;
 using Microsoft.Extensions.Logging;
@@ -22,16 +23,19 @@ public class FundingCommitmentImportService(
     ILogger<FundingCommitmentImportService> logger)
 {
     private const string DatasetName = "funding-request-commitments";
+    private const int BatchSize = 2000;
+    private const int LogEveryNBatches = 10;
 
     /// <summary>
     /// Downloads and imports the USAC E-Rate Funding Request Commitments dataset.
     /// The default URL targets the full dataset export. Override for testing or alternate years.
     /// </summary>
     public async Task<FundingImportResult> RunAsync(
-        string datasetUrl = "https://datahub.usac.org/api/views/i5j4-3rvr/rows.csv?accessType=DOWNLOAD",
+        string datasetUrl = "https://datahub.usac.org/api/views/avi8-svp9/rows.csv?accessType=DOWNLOAD",
         CancellationToken cancellationToken = default)
     {
         var started = DateTime.UtcNow;
+        var sw = Stopwatch.StartNew();
 
         var job = new ImportJob
         {
@@ -47,24 +51,35 @@ public class FundingCommitmentImportService(
         int totalInserted = 0;
         int totalUpdated = 0;
         int totalFailed = 0;
+        int batchNumber = 0;
 
         try
         {
             await using var stream = await csvClient.DownloadStreamAsync(datasetUrl, cancellationToken);
 
-            var batch = new List<FundingCommitment>(500);
+            var batch = new List<FundingCommitment>(BatchSize);
 
             foreach (var record in parser.Parse(stream))
             {
                 batch.Add(record);
 
-                if (batch.Count >= 500)
+                if (batch.Count >= BatchSize)
                 {
                     var (ins, upd, err) = await SaveBatchAsync(batch, cancellationToken);
                     totalInserted += ins;
                     totalUpdated += upd;
                     totalFailed += err;
+                    batchNumber++;
                     batch.Clear();
+
+                    if (batchNumber % LogEveryNBatches == 0)
+                    {
+                        logger.LogInformation(
+                            "Funding import job {JobId}: {Rows:N0} rows processed " +
+                            "(+{Inserted:N0} inserted, ~{Updated:N0} updated) — {Elapsed}",
+                            job.Id, (totalInserted + totalUpdated + totalFailed),
+                            totalInserted, totalUpdated, sw.Elapsed.ToString(@"m\:ss"));
+                    }
                 }
             }
 

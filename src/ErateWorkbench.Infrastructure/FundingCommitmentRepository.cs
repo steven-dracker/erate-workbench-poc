@@ -10,6 +10,18 @@ public class FundingCommitmentRepository(AppDbContext db)
     /// Deduplicates within the batch (last occurrence wins) before hitting the database.
     /// Returns the number of records inserted and updated in this batch.
     /// </summary>
+    /// <summary>
+    /// Upserts a batch of funding commitments keyed on <see cref="FundingCommitment.RawSourceKey"/>.
+    /// Deduplicates within the batch (last occurrence wins) before hitting the database.
+    /// Returns the number of records inserted and updated in this batch.
+    ///
+    /// Performance notes:
+    /// - AutoDetectChangesEnabled is disabled for the duration of the batch to avoid O(n²) change
+    ///   tracker scans on every Add call. DetectChanges is called once before SaveChangesAsync.
+    /// - New records are collected and inserted via AddRange (single EF operation) rather than
+    ///   one Add per record.
+    /// - One SaveChangesAsync per batch — no per-row round trips.
+    /// </summary>
     public async Task<(int Inserted, int Updated)> UpsertBatchAsync(
         IEnumerable<FundingCommitment> incoming,
         CancellationToken cancellationToken = default)
@@ -27,33 +39,49 @@ public class FundingCommitmentRepository(AppDbContext db)
 
         int inserted = 0;
         int updated = 0;
+        var toInsert = new List<FundingCommitment>(deduplicated.Count);
 
-        foreach (var record in deduplicated)
+        // Disable auto-detect so EF doesn't scan all tracked entities on every Add call.
+        db.ChangeTracker.AutoDetectChangesEnabled = false;
+        try
         {
-            if (existing.TryGetValue(record.RawSourceKey, out var current))
+            foreach (var record in deduplicated)
             {
-                current.ApplicantEntityNumber = record.ApplicantEntityNumber;
-                current.ApplicantName = record.ApplicantName;
-                current.ApplicationNumber = record.ApplicationNumber;
-                current.FundingYear = record.FundingYear;
-                current.ServiceProviderName = record.ServiceProviderName;
-                current.ServiceProviderSpin = record.ServiceProviderSpin;
-                current.CategoryOfService = record.CategoryOfService;
-                current.TypeOfService = record.TypeOfService;
-                current.CommitmentStatus = record.CommitmentStatus;
-                current.CommittedAmount = record.CommittedAmount;
-                current.TotalEligibleAmount = record.TotalEligibleAmount;
-                current.UpdatedAtUtc = DateTime.UtcNow;
-                updated++;
+                if (existing.TryGetValue(record.RawSourceKey, out var current))
+                {
+                    current.ApplicantEntityNumber = record.ApplicantEntityNumber;
+                    current.ApplicantName = record.ApplicantName;
+                    current.ApplicationNumber = record.ApplicationNumber;
+                    current.FundingYear = record.FundingYear;
+                    current.ServiceProviderName = record.ServiceProviderName;
+                    current.ServiceProviderSpin = record.ServiceProviderSpin;
+                    current.CategoryOfService = record.CategoryOfService;
+                    current.TypeOfService = record.TypeOfService;
+                    current.CommitmentStatus = record.CommitmentStatus;
+                    current.CommittedAmount = record.CommittedAmount;
+                    current.TotalEligibleAmount = record.TotalEligibleAmount;
+                    current.UpdatedAtUtc = DateTime.UtcNow;
+                    updated++;
+                }
+                else
+                {
+                    toInsert.Add(record);
+                    inserted++;
+                }
             }
-            else
-            {
-                db.FundingCommitments.Add(record);
-                inserted++;
-            }
+
+            if (toInsert.Count > 0)
+                db.FundingCommitments.AddRange(toInsert);
+
+            // Required when AutoDetectChangesEnabled = false: scan mutations before save.
+            db.ChangeTracker.DetectChanges();
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        finally
+        {
+            db.ChangeTracker.AutoDetectChangesEnabled = true;
         }
 
-        await db.SaveChangesAsync(cancellationToken);
         return (inserted, updated);
     }
 
