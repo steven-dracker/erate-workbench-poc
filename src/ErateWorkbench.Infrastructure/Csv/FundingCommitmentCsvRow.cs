@@ -3,11 +3,11 @@ using CsvHelper.Configuration.Attributes;
 namespace ErateWorkbench.Infrastructure.Csv;
 
 /// <summary>
-/// Maps to the Socrata CSV export of the USAC E-Rate Funding Request Commitments dataset.
-/// Dataset: https://datahub.usac.org/d/i5j4-3rvr
-/// Download: https://datahub.usac.org/api/views/i5j4-3rvr/rows.csv?accessType=DOWNLOAD
+/// Maps to the display-header CSV export of the USAC E-Rate Recipient Details and Commitments dataset.
+/// Dataset: https://datahub.usac.org/d/avi8-svp9
+/// Download: https://datahub.usac.org/api/views/avi8-svp9/rows.csv?accessType=DOWNLOAD
 ///
-/// Column names match the Socrata display-name headers in the CSV export.
+/// Column names match the display-label headers returned by the Socrata CSV export for avi8-svp9.
 /// If a column is absent from a particular export, CsvHelper silently leaves the property null
 /// (MissingFieldFound = null in parser config).
 /// </summary>
@@ -22,7 +22,7 @@ public class FundingCommitmentCsvRow
     [Name("Applicant Name")]
     public string? ApplicantName { get; set; }
 
-    [Name("Applicant Entity Number")]
+    [Name("Recipient Billed Entity Number")]
     public string? ApplicantEntityNumber { get; set; }
 
     [Name("Application Number")]
@@ -34,19 +34,19 @@ public class FundingCommitmentCsvRow
     [Name("Service Provider Name")]
     public string? ServiceProviderName { get; set; }
 
-    [Name("SPIN")]
+    [Name("Service Provider Number")]
     public string? Spin { get; set; }
 
     [Name("Category of Service")]
     public string? CategoryOfService { get; set; }
 
-    [Name("Type of Service")]
+    [Name("Service Type")]
     public string? TypeOfService { get; set; }
 
-    [Name("Commitment Status")]
+    [Name("FRN Status")]
     public string? CommitmentStatus { get; set; }
 
-    [Name("Committed Amount")]
+    [Name("Committed Funded")]
     public decimal? CommittedAmount { get; set; }
 
     [Name("Total Eligible Pre-Discount Amount")]
