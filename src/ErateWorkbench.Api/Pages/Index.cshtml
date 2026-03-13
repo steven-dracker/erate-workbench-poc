@@ -1,0 +1,62 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home";
+    ViewData["ActivePage"] = "Home";
+}
+
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="text-muted small mb-1">Total Entities</div>
+                <div class="fs-3 fw-bold">@Model.TotalEntities.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card h-100" style="border-color:#198754">
+            <div class="card-body">
+                <div class="text-muted small mb-1">Active Entities</div>
+                <div class="fs-3 fw-bold">@Model.ActiveEntities.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card h-100" style="border-color:#6f42c1">
+            <div class="card-body">
+                <div class="text-muted small mb-1">States / Territories</div>
+                <div class="fs-3 fw-bold">@Model.StateCount</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card h-100" style="border-color:#fd7e14">
+            <div class="card-body">
+                <div class="text-muted small mb-1">Last Import</div>
+                <div class="fs-5 fw-bold">@(Model.LastImport?.ToString("MMM d, yyyy") ?? "—")</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">School &amp; Library Search</h5>
+                <p class="card-text text-muted">Search @Model.TotalEntities.ToString("N0") E-Rate eligible entities by name, state, type, or status.</p>
+                <a asp-page="/Search" class="btn btn-primary">Open Search</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">Analytics</h5>
+                <p class="card-text text-muted">Committed funding by year and category, top-funded entities, entity distribution, and discount rate trends across states.</p>
+                <a asp-page="/Analytics" class="btn btn-outline-primary">View Analytics</a>
+            </div>
+        </div>
+    </div>
+</div>

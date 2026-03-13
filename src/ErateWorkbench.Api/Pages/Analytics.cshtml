@@ -1,0 +1,323 @@
+@page
+@model AnalyticsModel
+@{
+    ViewData["Title"] = "Analytics";
+    ViewData["ActivePage"] = "Analytics";
+}
+
+<div class="d-flex align-items-baseline gap-3 mb-4">
+    <h4 class="mb-0">Analytics</h4>
+    <span class="text-muted small">Aggregated views across all imported E-Rate datasets</span>
+</div>
+
+<!-- Import pipeline health -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="text-muted small">Total Import Jobs</div>
+                <div class="fs-4 fw-bold">@Model.Summary.TotalJobs</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100" style="border-left:4px solid #198754">
+            <div class="card-body">
+                <div class="text-muted small">Succeeded</div>
+                <div class="fs-4 fw-bold text-success">@Model.Summary.SucceededJobs</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100" style="border-left:4px solid #dc3545">
+            <div class="card-body">
+                <div class="text-muted small">Failed</div>
+                <div class="fs-4 fw-bold text-danger">@Model.Summary.FailedJobs</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100" style="border-left:4px solid #fd7e14">
+            <div class="card-body">
+                <div class="text-muted small">Last Import Records</div>
+                <div class="fs-4 fw-bold">@(Model.Summary.LastImportRecordsProcessed?.ToString("N0") ?? "—")</div>
+                @if (Model.Summary.LastImportStartedAt.HasValue)
+                {
+                    <div class="text-muted" style="font-size:.75rem">@Model.Summary.LastImportStartedAt.Value.ToString("MMM d, yyyy")</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section: Committed Funding -->
+<h6 class="text-uppercase text-muted fw-semibold mb-3" style="letter-spacing:.05em">Committed Funding</h6>
+
+<div class="row g-4 mb-4">
+    <!-- Funding by Year (bar) -->
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">
+                Committed Funding by Year
+                <span class="text-muted fw-normal small">(from USAC Funding Commitments dataset)</span>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="fundingByYearChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category 1 vs Category 2 (doughnut) -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Category 1 vs Category 2</div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <div class="chart-container" style="height:280px;width:100%">
+                    <canvas id="fundingByCategoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Funded Entities (horizontal bar) -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header fw-semibold">
+                Top 10 Entities by Committed Funding
+                <span class="text-muted fw-normal small">(joined to entity directory on Billing Entity Number)</span>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height:320px">
+                    <canvas id="topEntitiesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section: Entity Directory -->
+<h6 class="text-uppercase text-muted fw-semibold mb-3" style="letter-spacing:.05em">Entity Directory</h6>
+
+<div class="row g-4 mb-4">
+    <!-- Entities by Type (doughnut) -->
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Eligible Entities by Type</div>
+            <div class="card-body d-flex align-items-center justify-content-center">
+                <div class="chart-container" style="height:280px;width:100%">
+                    <canvas id="typeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Entities by State (top 15, horizontal bar) -->
+    <div class="col-md-8">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Eligible Entities by State <span class="text-muted fw-normal small">(top 15)</span></div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="stateChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Average Discount Rates by State (grouped bar) -->
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header fw-semibold">
+                Average E-Rate Discount Rates by State
+                <span class="text-muted fw-normal small">(top 20 by Category 1 rate, entities with reported rates only)</span>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="height:320px">
+                    <canvas id="discountChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+const byState       = @Html.Raw(Model.EntitiesByStateJson);
+const byType        = @Html.Raw(Model.EntitiesByTypeJson);
+const discount      = @Html.Raw(Model.TopDiscountStatesJson);
+const fundingByYear = @Html.Raw(Model.FundingByYearJson);
+const fundingByCat  = @Html.Raw(Model.FundingByCategoryJson);
+const topEntities   = @Html.Raw(Model.TopFundedEntitiesJson);
+
+function fmtDollars(v) {
+    if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
+    if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
+    if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
+    return '$' + v.toLocaleString();
+}
+
+// Committed Funding by Year — vertical bar
+new Chart(document.getElementById('fundingByYearChart'), {
+    type: 'bar',
+    data: {
+        labels: fundingByYear.map(d => d.year),
+        datasets: [{
+            label: 'Total Committed',
+            data: fundingByYear.map(d => Number(d.total)),
+            backgroundColor: 'rgba(13,110,253,0.75)',
+            borderRadius: 4,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ' ' + fmtDollars(ctx.parsed.y) } }
+        },
+        scales: {
+            y: { ticks: { callback: v => fmtDollars(v) } }
+        }
+    }
+});
+
+// Category 1 vs Category 2 — doughnut
+new Chart(document.getElementById('fundingByCategoryChart'), {
+    type: 'doughnut',
+    data: {
+        labels: fundingByCat.map(d => d.category),
+        datasets: [{
+            data: fundingByCat.map(d => Number(d.total)),
+            backgroundColor: ['#0d6efd', '#198754'],
+            hoverOffset: 8,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom', labels: { font: { size: 11 } } },
+            tooltip: { callbacks: { label: ctx => ' ' + fmtDollars(ctx.parsed) } }
+        }
+    }
+});
+
+// Top Funded Entities — horizontal bar
+new Chart(document.getElementById('topEntitiesChart'), {
+    type: 'bar',
+    data: {
+        labels: topEntities.map(d => d.name + (d.state !== '—' ? ' (' + d.state + ')' : '')),
+        datasets: [{
+            label: 'Total Committed',
+            data: topEntities.map(d => Number(d.total)),
+            backgroundColor: 'rgba(111,66,193,0.75)',
+            borderRadius: 3,
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ' ' + fmtDollars(ctx.parsed.x) } }
+        },
+        scales: {
+            x: { ticks: { callback: v => fmtDollars(v) } }
+        }
+    }
+});
+
+// Eligible Entities by State — horizontal bar
+new Chart(document.getElementById('stateChart'), {
+    type: 'bar',
+    data: {
+        labels: byState.map(d => d.state),
+        datasets: [{
+            label: 'Entities',
+            data: byState.map(d => d.count),
+            backgroundColor: 'rgba(13,110,253,0.75)',
+            borderRadius: 3,
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { ticks: { callback: v => v.toLocaleString() } }
+        }
+    }
+});
+
+// Eligible Entities by Type — doughnut
+const typeColors = ['#0d6efd','#6c757d','#198754','#ffc107','#dc3545','#0dcaf0','#6f42c1'];
+new Chart(document.getElementById('typeChart'), {
+    type: 'doughnut',
+    data: {
+        labels: byType.map(d => d.type),
+        datasets: [{
+            data: byType.map(d => d.count),
+            backgroundColor: typeColors,
+            hoverOffset: 8,
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom', labels: { font: { size: 11 } } },
+            tooltip: {
+                callbacks: {
+                    label: ctx => ` ${ctx.label}: ${ctx.parsed.toLocaleString()}`
+                }
+            }
+        }
+    }
+});
+
+// Average Discount Rates by State — grouped bar
+new Chart(document.getElementById('discountChart'), {
+    type: 'bar',
+    data: {
+        labels: discount.map(d => d.state),
+        datasets: [
+            {
+                label: 'Avg Category 1 Rate',
+                data: discount.map(d => d.avgCat1),
+                backgroundColor: 'rgba(13,110,253,0.8)',
+                borderRadius: 3,
+            },
+            {
+                label: 'Avg Category 2 Rate',
+                data: discount.map(d => d.avgCat2),
+                backgroundColor: 'rgba(25,135,84,0.75)',
+                borderRadius: 3,
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            tooltip: {
+                callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y}%` }
+            }
+        },
+        scales: {
+            y: {
+                min: 0, max: 100,
+                ticks: { callback: v => v + '%' }
+            }
+        }
+    }
+});
+</script>
+}

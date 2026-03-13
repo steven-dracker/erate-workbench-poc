@@ -1,0 +1,72 @@
+using ErateWorkbench.Domain;
+using Microsoft.EntityFrameworkCore;
+
+namespace ErateWorkbench.Infrastructure;
+
+public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+{
+    public DbSet<Applicant> Applicants => Set<Applicant>();
+    public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
+    public DbSet<EpcEntity> EpcEntities => Set<EpcEntity>();
+    public DbSet<FundingCommitment> FundingCommitments => Set<FundingCommitment>();
+    public DbSet<ServiceProvider> ServiceProviders => Set<ServiceProvider>();
+    public DbSet<Form471Application> Form471Applications => Set<Form471Application>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Applicant>(e =>
+        {
+            e.HasIndex(a => new { a.Ben, a.FundingYear }).IsUnique();
+            e.Property(a => a.Ben).HasMaxLength(20);
+            e.Property(a => a.Name).HasMaxLength(255);
+            e.Property(a => a.State).HasMaxLength(2);
+            e.Property(a => a.Zip).HasMaxLength(10);
+        });
+
+        modelBuilder.Entity<ImportJob>(e =>
+        {
+            e.Property(j => j.DatasetName).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<EpcEntity>(e =>
+        {
+            e.HasIndex(en => en.EntityNumber).IsUnique();
+            e.Property(en => en.EntityNumber).HasMaxLength(20);
+            e.Property(en => en.EntityName).HasMaxLength(255);
+            e.Property(en => en.PhysicalState).HasMaxLength(2);
+            e.Property(en => en.PhysicalZip).HasMaxLength(10);
+            e.Property(en => en.Status).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<FundingCommitment>(e =>
+        {
+            e.HasIndex(c => c.RawSourceKey).IsUnique();
+            e.Property(c => c.RawSourceKey).HasMaxLength(100);
+            e.Property(c => c.FundingRequestNumber).HasMaxLength(50);
+            e.Property(c => c.ApplicantEntityNumber).HasMaxLength(20);
+            e.Property(c => c.CommitmentStatus).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<ServiceProvider>(e =>
+        {
+            e.HasIndex(sp => sp.Spin).IsUnique();
+            e.Property(sp => sp.Spin).HasMaxLength(15);
+            e.Property(sp => sp.RawSourceKey).HasMaxLength(15);
+            e.Property(sp => sp.ProviderName).HasMaxLength(255);
+            e.Property(sp => sp.Status).HasMaxLength(50);
+            e.Property(sp => sp.State).HasMaxLength(2);
+            e.Property(sp => sp.Zip).HasMaxLength(10);
+        });
+
+        modelBuilder.Entity<Form471Application>(e =>
+        {
+            e.HasIndex(a => a.RawSourceKey).IsUnique();
+            e.Property(a => a.RawSourceKey).HasMaxLength(60);
+            e.Property(a => a.ApplicationNumber).HasMaxLength(20);
+            e.Property(a => a.ApplicantEntityNumber).HasMaxLength(20);
+            e.Property(a => a.ApplicantState).HasMaxLength(2);
+            e.Property(a => a.CategoryOfService).HasMaxLength(50);
+            e.Property(a => a.ApplicationStatus).HasMaxLength(100);
+        });
+    }
+}

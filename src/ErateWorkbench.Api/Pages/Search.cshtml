@@ -1,0 +1,125 @@
+@page
+@model SearchModel
+@{
+    ViewData["Title"] = "School & Library Search";
+    ViewData["ActivePage"] = "Search";
+
+    string PageUrl(int p)
+    {
+        var q = new Dictionary<string, string?> {
+            ["search"] = Model.Search,
+            ["state"] = Model.State,
+            ["entityType"] = Model.EntityType,
+            ["status"] = Model.Status,
+            ["pageNum"] = p.ToString(),
+        };
+        return QueryString.Create(q).ToUriComponent();
+    }
+}
+
+<h4 class="mb-3">School &amp; Library Search</h4>
+
+<form method="get" class="card mb-4">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <input type="text" name="search" value="@Model.Search" class="form-control"
+                       placeholder="Name search…" />
+            </div>
+            <div class="col-md-2">
+                <select name="state" class="form-select">
+                    <option value="">All States</option>
+                    @foreach (var s in Model.States)
+                    {
+                        <option value="@s" selected="@(s == Model.State)">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="entityType" class="form-select">
+                    <option value="">All Types</option>
+                    @foreach (var t in Enum.GetNames<EpcEntityType>())
+                    {
+                        <option value="@t" selected="@(t == Model.EntityType)">@t</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select">
+                    <option value="">All Statuses</option>
+                    <option value="Active" selected="@("Active" == Model.Status)">Active</option>
+                    <option value="Closed" selected="@("Closed" == Model.Status)">Closed</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-fill">Search</button>
+                <a asp-page="/Search" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+@if (Model.Items.Count > 0)
+{
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="pagination-info">
+            @Model.TotalCount.ToString("N0") results
+            — page @Model.CurrentPage of @Model.TotalPages
+        </span>
+        <div class="d-flex gap-1">
+            @if (Model.CurrentPage > 1)
+            {
+                <a href="@PageUrl(Model.CurrentPage - 1)" class="btn btn-sm btn-outline-secondary">← Prev</a>
+            }
+            @if (Model.CurrentPage < Model.TotalPages)
+            {
+                <a href="@PageUrl(Model.CurrentPage + 1)" class="btn btn-sm btn-outline-secondary">Next →</a>
+            }
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-sm table-hover bg-white">
+            <thead class="table-light">
+                <tr>
+                    <th>Entity ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>State</th>
+                    <th>City</th>
+                    <th>Status</th>
+                    <th>Cat 1 Discount</th>
+                    <th>Cat 2 Discount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var e in Model.Items)
+                {
+                    <tr>
+                        <td><code>@e.EntityNumber</code></td>
+                        <td>@e.EntityName</td>
+                        <td><span class="badge bg-secondary">@e.EntityType</span></td>
+                        <td>@e.PhysicalState</td>
+                        <td>@e.PhysicalCity</td>
+                        <td>
+                            @if (e.Status == "Active")
+                            {
+                                <span class="badge bg-success">Active</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-dark">@e.Status</span>
+                            }
+                        </td>
+                        <td>@(e.CategoryOneDiscountRate?.ToString("0.#") ?? "—")</td>
+                        <td>@(e.CategoryTwoDiscountRate?.ToString("0.#") ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else if (Request.Query.Count > 0)
+{
+    <div class="alert alert-info">No entities matched your search.</div>
+}
