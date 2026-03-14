@@ -100,8 +100,8 @@ app.MapPost("/import/funding-commitments", async (
     CancellationToken ct) =>
 {
     var result = await importService.RunAsync(
-        request?.DatasetUrl ?? "https://datahub.usac.org/api/views/i5j4-3rvr/rows.csv?accessType=DOWNLOAD",
-        ct);
+        baseUrl: request?.DatasetUrl ?? "https://datahub.usac.org/resource/avi8-svp9.csv",
+        cancellationToken: ct);
 
     var dto = new FundingImportResultDto(
         result.RecordsProcessed,

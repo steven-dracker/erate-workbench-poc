@@ -18,7 +18,7 @@ public class FundingCommitmentCsvParserTests
     public void Parse_MapsAllFieldsCorrectly()
     {
         const string csv = """
-            Funding Request Number,FRN Line Item Number,Applicant Name,Applicant Entity Number,Application Number,Funding Year,Service Provider Name,SPIN,Category of Service,Type of Service,Commitment Status,Committed Amount,Total Eligible Pre-Discount Amount
+            funding_request_number,form_471_line_item_number,organization_name,billed_entity_number,application_number,funding_year,spin_name,spin_number,chosen_category_of_service,form_471_service_type_name,form_471_frn_status_name,post_discount_extended_eligible_line_item_costs,pre_discount_extended_eligible_line_item_costs
             FRN1234567,1,Springfield Elementary,100001,APP-001,2024,Acme Telecom,143026296,Category 1,Internet Access,Funded,5000.00,6250.00
             """;
 
@@ -46,7 +46,7 @@ public class FundingCommitmentCsvParserTests
     public void Parse_WhenNoLineItemNumber_RawSourceKeyIsFrnOnly()
     {
         const string csv = """
-            Funding Request Number,FRN Line Item Number,Applicant Name,Funding Year
+            funding_request_number,form_471_line_item_number,organization_name,funding_year
             FRN9999999,,Some School,2024
             """;
 
@@ -61,7 +61,7 @@ public class FundingCommitmentCsvParserTests
     public void Parse_SkipsRowsWithBlankFundingRequestNumber()
     {
         const string csv = """
-            Funding Request Number,FRN Line Item Number,Funding Year
+            funding_request_number,form_471_line_item_number,funding_year
             FRN0000001,1,2024
             ,2,2024
                ,3,2024
@@ -78,7 +78,7 @@ public class FundingCommitmentCsvParserTests
     public void Parse_EmptyOptionalFields_AreStoredAsNull()
     {
         const string csv = """
-            Funding Request Number,FRN Line Item Number,Applicant Name,Funding Year,Service Provider Name,SPIN,Commitment Status,Committed Amount,Total Eligible Pre-Discount Amount
+            funding_request_number,form_471_line_item_number,organization_name,funding_year,spin_name,spin_number,form_471_frn_status_name,post_discount_extended_eligible_line_item_costs,pre_discount_extended_eligible_line_item_costs
             FRN0000001,1,,2024,,,,,
             """;
 
@@ -98,7 +98,7 @@ public class FundingCommitmentCsvParserTests
     public void Parse_IgnoresUnknownColumns_DoesNotThrow()
     {
         const string csv = """
-            Funding Request Number,FRN Line Item Number,Funding Year,Some Future Column
+            funding_request_number,form_471_line_item_number,funding_year,some_future_column
             FRN0000001,1,2024,some value
             """;
 

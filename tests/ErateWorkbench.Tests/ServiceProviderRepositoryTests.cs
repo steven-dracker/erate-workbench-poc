@@ -188,13 +188,11 @@ public class ServiceProviderRepositoryTests : IDisposable
 
         var results = await _repo.GetProvidersByApplicantStateAsync();
 
-        var il = results.SingleOrDefault(r => r.State == "IL");
-        Assert.NotNull(il);
+        var il = results.Single(r => r.State == "IL");
         Assert.Equal(2, il.ProviderCount);   // SPIN001 and SPIN002
         Assert.Equal(3, il.CommitmentCount); // FRN001, FRN002, FRN003
 
-        var ny = results.SingleOrDefault(r => r.State == "NY");
-        Assert.NotNull(ny);
+        var ny = results.Single(r => r.State == "NY");
         Assert.Equal(1, ny.ProviderCount);
         Assert.Equal(1, ny.CommitmentCount);
     }

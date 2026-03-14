@@ -1,11 +1,12 @@
 using CsvHelper;
 using CsvHelper.Configuration;
 using ErateWorkbench.Domain;
+using Microsoft.Extensions.Logging;
 using System.Globalization;
 
 namespace ErateWorkbench.Infrastructure.Csv;
 
-public class FundingCommitmentCsvParser
+public class FundingCommitmentCsvParser(ILogger<FundingCommitmentCsvParser>? logger = null)
 {
     public IEnumerable<FundingCommitment> Parse(Stream csvStream)
     {
@@ -18,22 +19,41 @@ public class FundingCommitmentCsvParser
         using var reader = new StreamReader(csvStream, leaveOpen: true);
         using var csv = new CsvReader(reader, config);
 
+        // DIAGNOSTIC: log actual CSV headers so we can verify column name mapping
+        csv.Read();
+        csv.ReadHeader();
+        var headers = csv.Context.Reader.HeaderRecord ?? Array.Empty<string>();
+        logger?.LogWarning("[DIAG] CSV headers ({Count}): {Headers}",
+            headers.Length, string.Join(" | ", headers));
+
+        int rawRowCount = 0;
+        int skippedCount = 0;
+
         foreach (var row in csv.GetRecords<FundingCommitmentCsvRow>())
         {
+            rawRowCount++;
+
+            // DIAGNOSTIC: log first 5 rows to confirm binding
+            if (rawRowCount <= 5)
+                logger?.LogWarning("[DIAG] Row {N}: FRN={FRN}, EntityNum={Entity}, CommittedAmt={Amt}",
+                    rawRowCount, row.FundingRequestNumber, row.ApplicantEntityNumber, row.CommittedAmount);
+
             if (string.IsNullOrWhiteSpace(row.FundingRequestNumber))
+            {
+                skippedCount++;
                 continue;
+            }
 
             var frn = row.FundingRequestNumber.Trim();
-            var rawKey = row.FrnLineItemNumber.HasValue
-                ? $"{frn}-{row.FrnLineItemNumber.Value}"
-                : frn;
+            var lineItemRaw = string.IsNullOrWhiteSpace(row.FrnLineItemNumber) ? null : row.FrnLineItemNumber.Trim();
+            var rawKey = lineItemRaw != null ? $"{frn}-{lineItemRaw}" : frn;
 
             var now = DateTime.UtcNow;
 
             yield return new FundingCommitment
             {
                 FundingRequestNumber = frn,
-                FrnLineItemNumber = row.FrnLineItemNumber,
+                FrnLineItemNumber = int.TryParse(lineItemRaw, out var li) ? li : null,
                 RawSourceKey = rawKey,
                 ApplicantEntityNumber = NullIfEmpty(row.ApplicantEntityNumber),
                 ApplicantName = NullIfEmpty(row.ApplicantName),
@@ -50,6 +70,9 @@ public class FundingCommitmentCsvParser
                 UpdatedAtUtc = now,
             };
         }
+
+        logger?.LogWarning("[DIAG] Parse complete: {Raw} raw rows, {Skipped} skipped (blank FRN), {Yielded} yielded",
+            rawRowCount, skippedCount, rawRowCount - skippedCount);
     }
 
     private static string? NullIfEmpty(string? value) =>
