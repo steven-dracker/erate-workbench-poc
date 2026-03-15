@@ -6,28 +6,20 @@ using Microsoft.Extensions.Logging;
 
 namespace ErateWorkbench.Infrastructure;
 
-public record FundingImportResult(
-    int RecordsProcessed,
-    int RecordsInserted,
-    int RecordsUpdated,
-    int RecordsFailed,
-    TimeSpan Duration,
-    string DatasetName,
-    ImportJobStatus Status,
-    string? ErrorMessage = null);
-
-public class FundingCommitmentImportService(
+public class EntityImportService(
     AppDbContext db,
     UsacCsvClient csvClient,
-    FundingCommitmentCsvParser parser,
-    FundingCommitmentRepository repo,
-    ILogger<FundingCommitmentImportService> logger)
+    EntityCsvParser parser,
+    EntityRepository repo,
+    ILogger<EntityImportService> logger)
 {
-    private const string DatasetName = "funding-request-commitments";
+    private const string DatasetName = "ros-entities";
+
+    // Source: ros_* columns are present in the funding commitments dataset (avi8-svp9).
+    // Paging through it extracts a deduplicated entity dimension keyed on EntityNumber.
     private const string DefaultBaseUrl = "https://datahub.usac.org/resource/avi8-svp9.csv";
     private const int DefaultPageSize = 10000;
-    private const int BatchSize = 5000;
-    private const int LogEveryNBatches = 10;
+    private const int BatchSize = 2000;
     private const int PageMaxAttempts = 4; // 1 initial + 3 retries
     private static readonly TimeSpan[] PageRetryDelays = [
         TimeSpan.FromSeconds(3),
@@ -36,9 +28,12 @@ public class FundingCommitmentImportService(
     ];
 
     /// <summary>
-    /// Pages through the USAC E-Rate Funding Request Commitments dataset via the Socrata resource API.
-    /// Requests pages of <paramref name="pageSize"/> rows until an empty page is returned.
-    /// Each page is parsed and upserted independently so progress is preserved across pages.
+    /// Pages through the USAC dataset via the Socrata resource API, extracts ROS entity
+    /// fields, and upserts into the Entities table keyed on EntityNumber.
+    ///
+    /// Because entity data repeats on every commitment row, this produces far fewer
+    /// Entities rows than commitment rows — the repository deduplicates within each batch
+    /// and the upsert handles cross-page duplicates.
     /// </summary>
     public async Task<FundingImportResult> RunAsync(
         string baseUrl = DefaultBaseUrl,
@@ -58,7 +53,7 @@ public class FundingCommitmentImportService(
         await db.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
-            "[import:{JobId}] Started — pageSize={PageSize} rows, source={BaseUrl}",
+            "[entity-import:{JobId}] Started — pageSize={PageSize}, source={BaseUrl}",
             job.Id, pageSize, baseUrl);
 
         int totalInserted = 0;
@@ -73,11 +68,11 @@ public class FundingCommitmentImportService(
             {
                 var pageUrl = $"{baseUrl}?$limit={pageSize}&$offset={offset}";
                 logger.LogInformation(
-                    "[import:{JobId}] Page {Page} — requesting rows {OffsetFrom:N0}–{OffsetTo:N0}",
+                    "[entity-import:{JobId}] Page {Page} — rows {OffsetFrom:N0}–{OffsetTo:N0}",
                     job.Id, pageNumber + 1, offset, offset + pageSize - 1);
 
-                var (pageRows, pageIns, pageUpd, pageErr, _) =
-                    await ProcessPageWithRetryAsync(pageUrl, offset, pageNumber + 1, job.Id, sw, cancellationToken);
+                var (pageRows, pageIns, pageUpd, pageErr) =
+                    await ProcessPageWithRetryAsync(pageUrl, offset, pageNumber + 1, job.Id, cancellationToken);
 
                 totalInserted += pageIns;
                 totalUpdated += pageUpd;
@@ -85,15 +80,14 @@ public class FundingCommitmentImportService(
 
                 int cumulative = totalInserted + totalUpdated + totalFailed;
                 logger.LogInformation(
-                    "[import:{JobId}] Page {Page} done — {PageRows:N0} rows this page | " +
-                    "{Cumulative:N0} total (+{Ins:N0} new, ~{Upd:N0} updated) | {Elapsed}",
+                    "[entity-import:{JobId}] Page {Page} done — {PageRows:N0} rows | " +
+                    "{Cumulative:N0} entities total (+{Ins:N0} new, ~{Upd:N0} updated) | {Elapsed}",
                     job.Id, pageNumber + 1, pageRows,
                     cumulative, totalInserted, totalUpdated, sw.Elapsed.ToString(@"m\:ss"));
 
                 pageNumber++;
                 offset += pageSize;
 
-                // Empty page means we've read all data.
                 if (pageRows == 0)
                     break;
             }
@@ -104,7 +98,7 @@ public class FundingCommitmentImportService(
             job.CompletedAt = DateTime.UtcNow;
 
             logger.LogInformation(
-                "[import:{JobId}] Complete — {Pages} pages | {Total:N0} processed | " +
+                "[entity-import:{JobId}] Complete — {Pages} pages | {Total:N0} entities | " +
                 "+{Inserted:N0} inserted, ~{Updated:N0} updated, {Failed} failed | {Elapsed}",
                 job.Id, pageNumber, job.RecordsProcessed,
                 totalInserted, totalUpdated, totalFailed, sw.Elapsed.ToString(@"h\:mm\:ss"));
@@ -123,7 +117,7 @@ public class FundingCommitmentImportService(
             await db.SaveChangesAsync(cancellationToken);
 
             logger.LogError(ex,
-                "[import:{JobId}] Failed after {Pages} pages — {Total:N0} rows saved before failure | {Elapsed}",
+                "[entity-import:{JobId}] Failed after {Pages} pages — {Total:N0} entities saved | {Elapsed}",
                 job.Id, pageNumber, totalInserted + totalUpdated, sw.Elapsed.ToString(@"h\:mm\:ss"));
 
             return new FundingImportResult(
@@ -132,67 +126,55 @@ public class FundingCommitmentImportService(
         }
     }
 
-    /// <summary>
-    /// Downloads and processes a single CSV page, retrying up to <see cref="PageMaxAttempts"/> times
-    /// on transient network errors (IOException, HttpRequestException, SocketException).
-    /// Partial DB writes from a failed attempt are safely re-upserted on retry (idempotent by RawSourceKey).
-    /// Returns (rowCount, inserted, updated, failed, batchCount) for this page.
-    /// </summary>
-    private async Task<(int pageRows, int inserted, int updated, int failed, int batches)>
+    private async Task<(int pageRows, int inserted, int updated, int failed)>
         ProcessPageWithRetryAsync(
             string pageUrl, int offset, int pageNumber, int jobId,
-            Stopwatch sw, CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
     {
         for (int attempt = 1; attempt <= PageMaxAttempts; attempt++)
         {
             try
             {
-                return await DownloadAndProcessPageAsync(pageUrl, offset, pageNumber, jobId, sw, cancellationToken);
+                return await DownloadAndProcessPageAsync(pageUrl, offset, cancellationToken);
             }
             catch (Exception ex) when (
                 !cancellationToken.IsCancellationRequested
                 && attempt < PageMaxAttempts
-                && IsTransientError(ex))
+                && FundingCommitmentImportService.IsTransientError(ex))
             {
                 var delay = PageRetryDelays[attempt - 1];
                 logger.LogWarning(
-                    "[import:{JobId}] Page {Page} (offset={Offset}) attempt {Attempt}/{Max} failed — {Error} — retrying in {Delay}s",
+                    "[entity-import:{JobId}] Page {Page} (offset={Offset}) attempt {Attempt}/{Max} failed — {Error} — retrying in {Delay}s",
                     jobId, pageNumber, offset, attempt, PageMaxAttempts, ex.Message, delay.TotalSeconds);
                 await Task.Delay(delay, cancellationToken);
             }
         }
 
-        // Final attempt — let any exception propagate to the outer job handler.
         logger.LogWarning(
-            "[import:{JobId}] Page {Page} (offset={Offset}) — final attempt {Max}/{Max}",
+            "[entity-import:{JobId}] Page {Page} (offset={Offset}) — final attempt {Max}/{Max}",
             jobId, pageNumber, offset, PageMaxAttempts, PageMaxAttempts);
-        return await DownloadAndProcessPageAsync(pageUrl, offset, pageNumber, jobId, sw, cancellationToken);
+        return await DownloadAndProcessPageAsync(pageUrl, offset, cancellationToken);
     }
 
-    private async Task<(int pageRows, int inserted, int updated, int failed, int batches)>
-        DownloadAndProcessPageAsync(
-            string pageUrl, int offset, int pageNumber, int jobId,
-            Stopwatch sw, CancellationToken cancellationToken)
+    private async Task<(int pageRows, int inserted, int updated, int failed)>
+        DownloadAndProcessPageAsync(string pageUrl, int offset, CancellationToken cancellationToken)
     {
         await using var stream = await csvClient.DownloadStreamAsync(pageUrl, cancellationToken);
 
-        // Detect non-CSV error payloads (e.g. Socrata JSON error response).
         int firstByte = stream.ReadByte();
         if (firstByte == '{' || firstByte == '[')
             throw new InvalidOperationException(
-                $"Page at offset {offset} returned non-CSV content (JSON/error payload). " +
-                "The Socrata resource endpoint may have returned an error response.");
+                $"Page at offset {offset} returned non-CSV content (JSON/error payload).");
 
         var pageStream = firstByte == -1
             ? Stream.Null
-            : new ConcatenatedStream((byte)firstByte, stream);
+            : new PrependByteStream((byte)firstByte, stream);
 
         int pageRows = 0;
         int inserted = 0;
         int updated = 0;
         int failed = 0;
-        int batches = 0;
-        var batch = new List<FundingCommitment>(BatchSize);
+        var batch = new List<Entity>(BatchSize);
 
         try
         {
@@ -205,7 +187,6 @@ public class FundingCommitmentImportService(
                 {
                     var (ins, upd, err) = await SaveBatchAsync(batch, cancellationToken);
                     inserted += ins; updated += upd; failed += err;
-                    batches++;
                     batch.Clear();
                 }
             }
@@ -218,19 +199,14 @@ public class FundingCommitmentImportService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            throw new IOException(
-                $"Stream error reading page at offset {offset}: {ex.Message}", ex);
+            throw new IOException($"Stream error reading entity page at offset {offset}: {ex.Message}", ex);
         }
 
-        return (pageRows, inserted, updated, failed, batches);
+        return (pageRows, inserted, updated, failed);
     }
 
-    internal static bool IsTransientError(Exception ex) =>
-        ex is IOException or HttpRequestException or SocketException ||
-        (ex.InnerException is IOException or HttpRequestException or SocketException);
-
     private async Task<(int inserted, int updated, int failed)> SaveBatchAsync(
-        List<FundingCommitment> batch,
+        List<Entity> batch,
         CancellationToken cancellationToken)
     {
         try
@@ -240,16 +216,17 @@ public class FundingCommitmentImportService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to save batch of {Count} funding commitments", batch.Count);
+            logger.LogWarning(ex, "[entity-import] Failed to save batch of {Count} entities", batch.Count);
             return (0, 0, batch.Count);
         }
     }
 
     /// <summary>
-    /// Minimal stream that prepends a single already-read byte before delegating to the inner stream.
-    /// Used to "unread" the first byte consumed for content-type sniffing.
+    /// Minimal stream that prepends a single already-read byte before the inner stream.
+    /// Mirrors the ConcatenatedStream in FundingCommitmentImportService — used to
+    /// "unread" the first byte consumed during JSON/CSV content-type detection.
     /// </summary>
-    private sealed class ConcatenatedStream(byte firstByte, Stream inner) : Stream
+    private sealed class PrependByteStream(byte firstByte, Stream inner) : Stream
     {
         private bool _firstRead = true;
 

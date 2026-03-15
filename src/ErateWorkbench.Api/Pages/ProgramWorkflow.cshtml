@@ -1,0 +1,265 @@
+@page
+@model ProgramWorkflowModel
+@{
+    ViewData["Title"] = "Program Workflow";
+    ViewData["ActivePage"] = "ProgramWorkflow";
+}
+
+<style>
+    /* Phase card: border-left width+color set together in inline style; no !important needed */
+    .phase-card .card-header {
+        background: #f8f9fa;
+        border-bottom: 1px solid rgba(0,0,0,.08);
+    }
+    .phase-danger .card-header {
+        background: #fff5f5;
+        border-bottom-color: #fecaca;
+    }
+    .step-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: .5rem;
+    }
+    .step-box {
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: .375rem;
+        padding: .625rem .75rem;
+        font-size: .8125rem;
+        display: flex;
+        flex-direction: column;
+        gap: .25rem;
+    }
+    .step-label {
+        font-size: .6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+    .step-name {
+        font-weight: 600;
+        line-height: 1.35;
+    }
+    .step-desc {
+        color: #6c757d;
+        font-size: .775rem;
+        line-height: 1.4;
+        flex-grow: 1;
+    }
+    .owner-badge {
+        display: inline-block;
+        font-size: .675rem;
+        font-weight: 600;
+        padding: .15em .5em;
+        border-radius: 999px;
+        color: #fff;
+        margin-top: auto;
+    }
+    .phase-footer {
+        background: #f8f9fa;
+        border-top: 1px solid rgba(0,0,0,.07);
+        font-size: .8125rem;
+        padding: .5rem .875rem;
+        color: #495057;
+    }
+    .phase-danger .phase-footer {
+        background: #fff5f5;
+    }
+    .notes-col {
+        width: 210px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+    }
+    .notes-card {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: .375rem;
+        padding: .625rem .75rem;
+        display: flex;
+        flex-direction: column;
+        gap: .375rem;
+        height: 100%;
+    }
+    .notes-label {
+        font-size: .6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: #92400e;
+    }
+    .notes-textarea {
+        flex-grow: 1;
+        min-height: 110px;
+        resize: vertical;
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        border-radius: .25rem;
+        font-size: .8rem;
+        color: #1c1917;
+        padding: .375rem .5rem;
+        line-height: 1.45;
+        width: 100%;
+    }
+    .notes-textarea:focus {
+        outline: none;
+        border-color: #f59e0b;
+        box-shadow: 0 0 0 2px rgba(245,158,11,.2);
+    }
+    .notes-saved {
+        font-size: .7rem;
+        color: #92400e;
+        opacity: 0;
+        text-align: right;
+        transition: opacity .3s;
+        min-height: 1rem;
+    }
+    @@media (max-width: 991px) {
+        .step-grid { grid-template-columns: repeat(2, 1fr); }
+        .notes-col { display: none; }
+    }
+</style>
+
+<div class="d-flex align-items-baseline gap-3 mb-4">
+    <h4 class="mb-0">E-Rate Program Workflow</h4>
+    <span class="text-muted small">Annual cycle reference — Form 470 → Form 471 → FCDL → Invoicing</span>
+</div>
+
+<div class="d-flex flex-column gap-4">
+@foreach (var phase in Model.Phases)
+{
+    <div class="d-flex gap-3 align-items-start">
+
+        <!-- Phase card -->
+        <div class="card phase-card flex-grow-1 @(phase.Danger ? "phase-danger" : "")"
+             style="border-left:5px solid @phase.AccentColor">
+
+            <div class="card-header d-flex align-items-center gap-3 py-2 px-3">
+                <span class="badge rounded-pill text-white fw-semibold"
+                      style="background:@phase.AccentColor; font-size:.75rem; min-width:1.6rem; text-align:center">@phase.Number</span>
+                <div class="flex-grow-1">
+                    <span class="fw-semibold @(phase.Danger ? "text-danger" : "")">@Html.Raw(phase.Title)</span>
+                    <span class="text-muted small ms-2">@Html.Raw(phase.Lead)</span>
+                </div>
+                <span class="badge fw-normal"
+                      style="background:#f1f3f5; border:1px solid #dee2e6; color:#495057; font-size:.75rem; white-space:nowrap">
+                    @phase.Timing
+                </span>
+            </div>
+
+            <div class="card-body py-3 px-3">
+                <div class="step-grid">
+                    @for (int i = 0; i < phase.Steps.Length; i++)
+                    {
+                        var step = phase.Steps[i];
+                        <div class="step-box">
+                            <div class="step-label" style="color:@phase.AccentColor">Step @(i + 1)</div>
+                            <div class="step-name">@Html.Raw(step.Name)</div>
+                            <div class="step-desc">@step.Description</div>
+                            <span class="owner-badge" style="background:@OwnerBadge.Color(step.Owner)">@step.Owner</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <div class="phase-footer">
+                @if (phase.Danger)
+                {
+                    <span class="text-danger">@phase.FooterNote</span>
+                }
+                else
+                {
+                    @phase.FooterNote
+                }
+            </div>
+
+        </div>
+
+        <!-- Notes -->
+        <div class="notes-col">
+            <div class="notes-card">
+                <div class="notes-label">Phase @phase.Number Notes</div>
+                <textarea class="notes-textarea"
+                          data-phase-key="p@(phase.Number)"
+                          placeholder="Add notes for this phase…"
+                          aria-label="Notes for phase @phase.Number"></textarea>
+                <div class="notes-saved">✓ Saved</div>
+            </div>
+        </div>
+
+    </div>
+}
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    const STORAGE_KEY = 'erate_workflow_notes';
+    const DEBOUNCE_MS = 600;
+
+    // Load persisted notes, returning an empty object if nothing is stored yet.
+    function load() {
+        try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+        catch { return {}; }
+    }
+
+    // Persist the full notes object.
+    function save(notes) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+    }
+
+    // Flash per-field and nav-level "Saved" indicators, then fade them out.
+    const navSaved = document.getElementById('workflow-nav-saved');
+    function flashSaved(textarea) {
+        const indicator = textarea.closest('.notes-card').querySelector('.notes-saved');
+        if (indicator) {
+            indicator.style.opacity = '1';
+            clearTimeout(indicator._fadeTimer);
+            indicator._fadeTimer = setTimeout(() => { indicator.style.opacity = '0'; }, 1800);
+        }
+        if (navSaved) {
+            navSaved.style.opacity = '1';
+            clearTimeout(navSaved._fadeTimer);
+            navSaved._fadeTimer = setTimeout(() => { navSaved.style.opacity = '0'; }, 1800);
+        }
+    }
+
+    // Restore saved values into each textarea on page load.
+    const saved = load();
+    document.querySelectorAll('.notes-textarea[data-phase-key]').forEach(function (ta) {
+        const key = ta.dataset.phaseKey;
+        if (saved[key]) ta.value = saved[key];
+    });
+
+    // Show nav controls (hidden by default on all other pages).
+    const navControls = document.getElementById('workflow-nav-controls');
+    if (navControls) navControls.classList.replace('d-none', 'd-flex');
+
+    // Wire the clear-all button.
+    const clearBtn = document.getElementById('workflow-clear-btn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+            if (!confirm('Clear all workflow notes? This cannot be undone.')) return;
+            localStorage.removeItem(STORAGE_KEY);
+            document.querySelectorAll('.notes-textarea[data-phase-key]').forEach(function (ta) {
+                ta.value = '';
+            });
+        });
+    }
+
+    // Wire up debounced autosave for every notes textarea.
+    document.querySelectorAll('.notes-textarea[data-phase-key]').forEach(function (ta) {
+        let timer;
+        ta.addEventListener('input', function () {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                const notes = load();           // re-read so concurrent edits don't clobber each other
+                notes[ta.dataset.phaseKey] = ta.value;
+                save(notes);
+                flashSaved(ta);
+            }, DEBOUNCE_MS);
+        });
+    });
+}());
+</script>
+}

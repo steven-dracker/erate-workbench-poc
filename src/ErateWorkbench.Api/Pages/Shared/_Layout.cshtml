@@ -42,7 +42,24 @@
                         <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "Analytics" ? "active" : "")"
                            asp-page="/Analytics">Analytics</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "ProgramWorkflow" ? "active" : "")"
+                           asp-page="/ProgramWorkflow">Program Workflow</a>
+                    </li>
                 </ul>
+                <div class="d-none align-items-center gap-2 me-3" id="workflow-nav-controls">
+                    <span id="workflow-nav-saved"
+                          class="navbar-text small"
+                          style="color:#86efac; opacity:0; transition:opacity .3s; white-space:nowrap">
+                        ✓ Saved
+                    </span>
+                    <button id="workflow-clear-btn"
+                            type="button"
+                            class="btn btn-sm btn-outline-secondary"
+                            style="font-size:.75rem; padding:.2rem .6rem; color:#adb5bd; border-color:#495057">
+                        Clear notes
+                    </button>
+                </div>
                 <span class="navbar-text text-secondary small">
                     <a href="/swagger" class="text-secondary" target="_blank">Swagger UI</a>
                 </span>

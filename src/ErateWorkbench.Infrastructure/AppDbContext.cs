@@ -8,6 +8,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Applicant> Applicants => Set<Applicant>();
     public DbSet<ImportJob> ImportJobs => Set<ImportJob>();
     public DbSet<EpcEntity> EpcEntities => Set<EpcEntity>();
+    public DbSet<Entity> Entities => Set<Entity>();
+    public DbSet<Disbursement> Disbursements => Set<Disbursement>();
     public DbSet<FundingCommitment> FundingCommitments => Set<FundingCommitment>();
     public DbSet<ServiceProvider> ServiceProviders => Set<ServiceProvider>();
     public DbSet<Form471Application> Form471Applications => Set<Form471Application>();
@@ -38,9 +40,44 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(en => en.Status).HasMaxLength(50);
         });
 
+        modelBuilder.Entity<Entity>(e =>
+        {
+            e.HasIndex(en => en.EntityNumber).IsUnique();
+            e.HasIndex(en => en.State);
+            e.HasIndex(en => en.EntityType);
+            e.Property(en => en.EntityNumber).HasMaxLength(20);
+            e.Property(en => en.EntityName).HasMaxLength(255);
+            e.Property(en => en.EntityType).HasMaxLength(50);
+            e.Property(en => en.UrbanRuralStatus).HasMaxLength(50);
+            e.Property(en => en.State).HasMaxLength(2);
+        });
+
+        modelBuilder.Entity<Disbursement>(e =>
+        {
+            e.HasIndex(d => d.RawSourceKey).IsUnique();
+            e.HasIndex(d => d.FundingRequestNumber);
+            e.HasIndex(d => d.FundingYear);
+            e.HasIndex(d => d.ApplicantEntityNumber);
+            e.HasIndex(d => d.ServiceProviderSpin);
+            e.Property(d => d.RawSourceKey).HasMaxLength(120);
+            e.Property(d => d.FundingRequestNumber).HasMaxLength(50);
+            e.Property(d => d.InvoiceId).HasMaxLength(30);
+            e.Property(d => d.ApplicationNumber).HasMaxLength(20);
+            e.Property(d => d.ApplicantEntityNumber).HasMaxLength(20);
+            e.Property(d => d.ServiceProviderSpin).HasMaxLength(15);
+            e.Property(d => d.InvoiceType).HasMaxLength(10);
+            e.Property(d => d.InvoiceLineStatus).HasMaxLength(100);
+            e.Property(d => d.CategoryOfService).HasMaxLength(50);
+        });
+
         modelBuilder.Entity<FundingCommitment>(e =>
         {
             e.HasIndex(c => c.RawSourceKey).IsUnique();
+            e.HasIndex(c => c.FundingYear);
+            e.HasIndex(c => c.CategoryOfService);
+            e.HasIndex(c => c.ServiceProviderName);
+            e.HasIndex(c => c.ApplicantEntityNumber);
+            e.HasIndex(c => c.CommitmentStatus);
             e.Property(c => c.RawSourceKey).HasMaxLength(100);
             e.Property(c => c.FundingRequestNumber).HasMaxLength(50);
             e.Property(c => c.ApplicantEntityNumber).HasMaxLength(20);

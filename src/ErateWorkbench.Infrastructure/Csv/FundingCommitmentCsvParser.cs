@@ -48,6 +48,12 @@ public class FundingCommitmentCsvParser(ILogger<FundingCommitmentCsvParser>? log
             var lineItemRaw = string.IsNullOrWhiteSpace(row.FrnLineItemNumber) ? null : row.FrnLineItemNumber.Trim();
             var rawKey = lineItemRaw != null ? $"{frn}-{lineItemRaw}" : frn;
 
+            var entityNumber = NullIfEmpty(row.ApplicantEntityNumber);
+            // Fallback chain: ros_entity_name → organization_name → "Entity {BEN}"
+            var applicantName = NullIfEmpty(row.RosEntityName)
+                ?? NullIfEmpty(row.OrganizationName)
+                ?? (entityNumber != null ? $"Entity {entityNumber}" : null);
+
             var now = DateTime.UtcNow;
 
             yield return new FundingCommitment
@@ -55,8 +61,8 @@ public class FundingCommitmentCsvParser(ILogger<FundingCommitmentCsvParser>? log
                 FundingRequestNumber = frn,
                 FrnLineItemNumber = int.TryParse(lineItemRaw, out var li) ? li : null,
                 RawSourceKey = rawKey,
-                ApplicantEntityNumber = NullIfEmpty(row.ApplicantEntityNumber),
-                ApplicantName = NullIfEmpty(row.ApplicantName),
+                ApplicantEntityNumber = entityNumber,
+                ApplicantName = applicantName,
                 ApplicationNumber = NullIfEmpty(row.ApplicationNumber),
                 FundingYear = row.FundingYear,
                 ServiceProviderName = NullIfEmpty(row.ServiceProviderName),
