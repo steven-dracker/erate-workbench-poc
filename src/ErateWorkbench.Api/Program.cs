@@ -45,6 +45,7 @@ builder.Services.AddScoped<DisbursementCsvParser>();
 builder.Services.AddScoped<DisbursementRepository>();
 builder.Services.AddScoped<DisbursementImportService>();
 builder.Services.AddScoped<AnalyticsRepository>();
+builder.Services.AddScoped<RiskInsightsRepository>();
 
 var app = builder.Build();
 

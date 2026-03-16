@@ -59,6 +59,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(d => d.FundingYear);
             e.HasIndex(d => d.ApplicantEntityNumber);
             e.HasIndex(d => d.ServiceProviderSpin);
+            // Composite: year-filtered BEN aggregation used by RiskInsightsRepository.
+            // Lets SQLite satisfy WHERE FundingYear=? AND ApplicantEntityNumber IN (...)
+            // GROUP BY ApplicantEntityNumber with a single contiguous index range scan.
+            e.HasIndex(d => new { d.FundingYear, d.ApplicantEntityNumber });
             e.Property(d => d.RawSourceKey).HasMaxLength(120);
             e.Property(d => d.FundingRequestNumber).HasMaxLength(50);
             e.Property(d => d.InvoiceId).HasMaxLength(30);
@@ -78,6 +82,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(c => c.ServiceProviderName);
             e.HasIndex(c => c.ApplicantEntityNumber);
             e.HasIndex(c => c.CommitmentStatus);
+            // Composite: year-filtered BEN aggregation used by RiskInsightsRepository.
+            // Covers WHERE FundingYear=? AND ApplicantEntityNumber IS NOT NULL
+            // GROUP BY ApplicantEntityNumber for GetTopRiskApplicants, GetTopGaps,
+            // GetTopReductions. SQLite can resolve the group boundaries entirely from
+            // the index without re-scanning the heap for each group key change.
+            e.HasIndex(c => new { c.FundingYear, c.ApplicantEntityNumber });
             e.Property(c => c.RawSourceKey).HasMaxLength(100);
             e.Property(c => c.FundingRequestNumber).HasMaxLength(50);
             e.Property(c => c.ApplicantEntityNumber).HasMaxLength(20);

@@ -35,13 +35,37 @@ public static class OwnerBadge
     };
 }
 
-internal static class WorkflowData
+public static class WorkflowData
 {
     public static readonly WorkflowPhase[] Phases =
     [
         new(
+            Number: 0,
+            Title: "Client Engagement &amp; Intake",
+            Timing: "Jul – Sep",
+            Lead: "Pre-470 advisory intake and planning",
+            AccentColor: "#0891b2",    // cyan — pre-cycle advisory tone
+            Danger: false,
+            Steps:
+            [
+                new("Initial Consultation",
+                    "Understand district or library goals, connectivity needs, timeline, and likely funding priorities for the upcoming cycle.",
+                    "Shared"),
+                new("Eligibility Review",
+                    "Verify school/library participation status, entity readiness, prior E-Rate participation, and key data needed for discount and eligibility analysis.",
+                    "E-Rate Central"),
+                new("Data Collection",
+                    "Gather entity numbers, student counts, NSLP/CEP inputs where relevant, existing contracts, service inventory, and key planning documents.",
+                    "Client"),
+                new("Planning Strategy",
+                    "Define the funding approach, upcoming procurement timeline, likely Form 470 needs, and advisor/client responsibilities.",
+                    "E-Rate Central"),
+            ],
+            FooterNote: "Entry point: schools or libraries often begin here before formal bidding and application work starts"),
+
+        new(
             Number: 1,
-            Title: "Eligibility &amp; Planning",
+            Title: "Program Planning &amp; Eligibility Confirmation",
             Timing: "Jul – Oct",
             Lead: "E-Rate Central leads",
             AccentColor: "#2563eb",

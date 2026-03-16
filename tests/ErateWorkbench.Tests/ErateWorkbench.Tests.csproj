@@ -26,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ErateWorkbench.Domain\ErateWorkbench.Domain.csproj" />
     <ProjectReference Include="..\..\src\ErateWorkbench.Infrastructure\ErateWorkbench.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\ErateWorkbench.Api\ErateWorkbench.Api.csproj" />
   </ItemGroup>
 
 </Project>
