@@ -77,9 +77,11 @@ public class FundingCommitmentCsvParserTests
     [Fact]
     public void Parse_EmptyOptionalFields_AreStoredAsNull()
     {
+        // ros_entity_name, organization_name, and billed_entity_number all blank/absent
+        // so ApplicantName has no fallback and must be null
         const string csv = """
-            funding_request_number,form_471_line_item_number,organization_name,funding_year,spin_name,spin_number,form_471_frn_status_name,post_discount_extended_eligible_line_item_costs,pre_discount_extended_eligible_line_item_costs
-            FRN0000001,1,,2024,,,,,
+            funding_request_number,form_471_line_item_number,ros_entity_name,organization_name,billed_entity_number,funding_year,spin_name,spin_number,form_471_frn_status_name,post_discount_extended_eligible_line_item_costs,pre_discount_extended_eligible_line_item_costs
+            FRN0000001,1,,,,2024,,,,,
             """;
 
         var results = _parser.Parse(ToCsvStream(csv)).ToList();
@@ -92,6 +94,48 @@ public class FundingCommitmentCsvParserTests
         Assert.Null(c.CommitmentStatus);
         Assert.Null(c.CommittedAmount);
         Assert.Null(c.TotalEligibleAmount);
+    }
+
+    [Fact]
+    public void Parse_PrefersRosEntityNameOverOrganizationName()
+    {
+        const string csv = """
+            funding_request_number,funding_year,ros_entity_name,organization_name,billed_entity_number
+            FRN1234567,2024,Springfield Elementary School,Springfield School District,100001
+            """;
+
+        var results = _parser.Parse(ToCsvStream(csv)).ToList();
+
+        Assert.Single(results);
+        Assert.Equal("Springfield Elementary School", results[0].ApplicantName);
+    }
+
+    [Fact]
+    public void Parse_FallsBackToOrganizationNameWhenRosEntityNameIsBlank()
+    {
+        const string csv = """
+            funding_request_number,funding_year,ros_entity_name,organization_name,billed_entity_number
+            FRN1234567,2024,,Springfield School District,100001
+            """;
+
+        var results = _parser.Parse(ToCsvStream(csv)).ToList();
+
+        Assert.Single(results);
+        Assert.Equal("Springfield School District", results[0].ApplicantName);
+    }
+
+    [Fact]
+    public void Parse_FallsBackToEntityLabelWhenBothNamesAreBlank()
+    {
+        const string csv = """
+            funding_request_number,funding_year,ros_entity_name,organization_name,billed_entity_number
+            FRN1234567,2024,,,100001
+            """;
+
+        var results = _parser.Parse(ToCsvStream(csv)).ToList();
+
+        Assert.Single(results);
+        Assert.Equal("Entity 100001", results[0].ApplicantName);
     }
 
     [Fact]

@@ -20,8 +20,13 @@ public class FundingCommitmentCsvRow
     [Name("form_471_line_item_number")]
     public string? FrnLineItemNumber { get; set; }
 
+    // Most specific entity-level name (individual school/library); preferred over organization_name.
+    [Name("ros_entity_name")]
+    public string? RosEntityName { get; set; }
+
+    // Organization or district name; used as fallback when ros_entity_name is absent.
     [Name("organization_name")]
-    public string? ApplicantName { get; set; }
+    public string? OrganizationName { get; set; }
 
     [Name("billed_entity_number")]
     public string? ApplicantEntityNumber { get; set; }

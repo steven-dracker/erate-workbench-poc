@@ -1,0 +1,715 @@
+@page
+@model RiskInsightsModel
+@using ErateWorkbench.Infrastructure
+@{
+    ViewData["Title"] = "Risk Insights";
+    ViewData["ActivePage"] = "RiskInsights";
+
+    // Formatting helpers scoped to this page.
+    string Dollars(decimal d) => d switch
+    {
+        >= 1_000_000_000 => $"${d / 1_000_000_000:F2}B",
+        >= 1_000_000     => $"${d / 1_000_000:F1}M",
+        >= 1_000         => $"${d / 1_000:F0}K",
+        _                => $"${d:F0}",
+    };
+    string Pct(double d) => $"{d * 100:F1}%";
+
+    // Formats an approved-invoice-to-committed ratio honestly.
+    // Appends "+" when the ratio exceeds 100% rather than silently capping.
+    string InvoiceRatio(decimal invoiced, decimal committed)
+    {
+        if (committed <= 0m) return "—";
+        var ratio = (double)invoiced / (double)committed;
+        return ratio > 1.005 ? $"{ratio * 100:F1}%+" : $"{ratio * 100:F1}%";
+    }
+
+    string RiskBadge(string level) => level switch
+    {
+        "High"     => "danger",
+        "Moderate" => "warning",
+        _          => "success",
+    };
+}
+
+<style>
+    .ri-stat-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: .5rem;
+        padding: .875rem 1.125rem;
+    }
+    .ri-stat-label {
+        font-size: .6875rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+        color: #94a3b8;
+        margin-bottom: .2rem;
+    }
+    .ri-stat-value {
+        font-size: 1.375rem;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1.2;
+    }
+    .ri-stat-sub {
+        font-size: .7375rem;
+        color: #64748b;
+        margin-top: .15rem;
+    }
+    .ri-section-title {
+        font-size: .875rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: .125rem;
+    }
+    .ri-section-sub {
+        font-size: .775rem;
+        color: #64748b;
+        margin-bottom: .875rem;
+    }
+    .ri-caveat {
+        font-size: .725rem;
+        color: #94a3b8;
+        margin-top: .5rem;
+    }
+    .table-ri th {
+        font-size: .7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: #64748b;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    .table-ri td {
+        font-size: .8125rem;
+        vertical-align: middle;
+    }
+    /* Waterfall chart */
+    .wf-row {
+        display: flex;
+        align-items: center;
+        gap: .875rem;
+        margin-bottom: .375rem;
+    }
+    .wf-label {
+        width: 11rem;
+        flex-shrink: 0;
+        font-size: .7875rem;
+        font-weight: 600;
+        color: #374151;
+        text-align: right;
+    }
+    .wf-track {
+        flex-grow: 1;
+        height: 1.75rem;
+        background: #f1f5f9;
+        border-radius: .25rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .wf-bar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        border-radius: .25rem;
+        display: flex;
+        align-items: center;
+        padding-left: .5rem;
+        transition: width .4s ease;
+    }
+    .wf-bar-label {
+        font-size: .7375rem;
+        font-weight: 700;
+        color: #fff;
+        white-space: nowrap;
+    }
+    .wf-value {
+        width: 6rem;
+        flex-shrink: 0;
+        font-size: .8125rem;
+        font-weight: 700;
+        color: #1e293b;
+        text-align: right;
+    }
+    .wf-connector {
+        margin: .1rem 0 .1rem 11.875rem;
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        color: #94a3b8;
+        font-size: .725rem;
+    }
+    .wf-connector-line {
+        flex-grow: 1;
+        height: 1px;
+        background: #e2e8f0;
+    }
+    .fulfillment-bar {
+        height: 6px;
+        border-radius: 3px;
+        background: #e2e8f0;
+        position: relative;
+        min-width: 60px;
+    }
+    .fulfillment-fill {
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        border-radius: 3px;
+    }
+    /* Loading overlay */
+    #ri-loading {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 1055;
+        background: rgba(248, 249, 250, 0.75);
+        backdrop-filter: blur(2px);
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: .75rem;
+    }
+    #ri-loading.active { display: flex; }
+    #ri-loading .ri-spinner {
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 3px solid #e2e8f0;
+        border-top-color: #2563eb;
+        border-radius: 50%;
+        animation: ri-spin .7s linear infinite;
+    }
+    @@keyframes ri-spin { to { transform: rotate(360deg); } }
+    #ri-loading p {
+        font-size: .875rem;
+        font-weight: 600;
+        color: #374151;
+        margin: 0;
+    }
+    /* Dim the main content while loading */
+    body.ri-loading-active main { opacity: .4; pointer-events: none; transition: opacity .15s; }
+</style>
+
+<!-- Loading overlay — shown on filter submit, cleared by page reload -->
+<div id="ri-loading" role="status" aria-live="polite">
+    <div class="ri-spinner"></div>
+    <p>Applying filters…</p>
+</div>
+
+<div class="d-flex align-items-baseline gap-3 mb-3">
+    <h4 class="mb-0">Program Risk Insights</h4>
+    <span class="text-muted small">
+        Identify applicants with elevated E-Rate execution risk based on funding outcomes and disbursement behavior.
+    </span>
+</div>
+
+<!-- Filter bar -->
+<form id="ri-filter-form" method="get" class="mb-4 p-3 bg-white border rounded">
+    <div class="d-flex flex-wrap align-items-end gap-2">
+        <div>
+            <label class="form-label mb-1" style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b">
+                Funding Year
+            </label>
+            <select name="year" class="form-select form-select-sm" style="min-width:7.5rem">
+                <option value="">All Years</option>
+                @foreach (var y in Model.AvailableYears)
+                {
+                    if (Model.Year == y) { <option value="@y" selected>@y</option> }
+                    else                 { <option value="@y">@y</option> }
+                }
+            </select>
+        </div>
+        <div>
+            <label class="form-label mb-1" style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b">
+                Risk Severity
+            </label>
+            <select name="severity" class="form-select form-select-sm" style="min-width:8rem">
+                <option value="">All Levels</option>
+                @if (Model.Severity == "High")     { <option value="High"     selected>High</option> }
+                else                               { <option value="High">High</option> }
+                @if (Model.Severity == "Moderate") { <option value="Moderate" selected>Moderate</option> }
+                else                               { <option value="Moderate">Moderate</option> }
+                @if (Model.Severity == "Low")      { <option value="Low"      selected>Low</option> }
+                else                               { <option value="Low">Low</option> }
+            </select>
+        </div>
+        <button id="ri-apply-btn" type="submit" class="btn btn-primary btn-sm">Apply</button>
+        @if (Model.HasFilters)
+        {
+            <a href="/RiskInsights" class="btn btn-outline-secondary btn-sm">Clear</a>
+        }
+        @if (Model.HasFilters)
+        {
+            <span class="ms-1 text-muted" style="font-size:.775rem">
+                Active:
+                @if (Model.Year.HasValue) { <span class="badge bg-primary-subtle text-primary-emphasis me-1">FY @Model.Year</span> }
+                @if (!string.IsNullOrEmpty(Model.Severity)) { <span class="badge bg-secondary-subtle text-secondary-emphasis">@Model.Severity risk only</span> }
+            </span>
+        }
+    </div>
+    <!-- Filter scope legend -->
+    <div class="mt-2" style="font-size:.725rem;color:#94a3b8;line-height:1.4">
+        <span class="me-3">
+            <span style="color:#2563eb;font-weight:700">&#x25CF;</span>
+            Funding Year — applies to all metrics, waterfall, and all tables
+        </span>
+        <span>
+            <span style="color:#64748b;font-weight:700">&#x25CF;</span>
+            Risk Severity — applies to Applicant Risk Results only
+        </span>
+    </div>
+</form>
+
+<!-- =======================================================================
+     Section 1: National Program Snapshot
+     ======================================================================= -->
+<div class="row g-3 mb-4">
+    <div class="col">
+        <div class="ri-stat-card" style="border-left:4px solid #2563eb">
+            <div class="ri-stat-label">Total Eligible (Requested)</div>
+            <div class="ri-stat-value">@Dollars(Model.Snapshot.TotalRequested)</div>
+            <div class="ri-stat-sub">Pre-discount eligible amount across all FRNs</div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="ri-stat-card" style="border-left:4px solid #16a34a">
+            <div class="ri-stat-label">Total Committed</div>
+            <div class="ri-stat-value">@Dollars(Model.Snapshot.TotalCommitted)</div>
+            <div class="ri-stat-sub">E-Rate share committed by USAC</div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="ri-stat-card" style="border-left:4px solid #d97706">
+            <div class="ri-stat-label">Approved Invoice Amount</div>
+            <div class="ri-stat-value">@Dollars(Model.Snapshot.TotalDisbursed)</div>
+            <div class="ri-stat-sub">Sum of approved invoice line amounts (disbursements dataset)</div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="ri-stat-card" style="border-left:4px solid #7c3aed">
+            <div class="ri-stat-label">Commitment Fulfillment</div>
+            <div class="ri-stat-value">@Pct(Model.Snapshot.CommitmentFulfillmentRate)</div>
+            <div class="ri-stat-sub">Committed ÷ Eligible requested</div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="ri-stat-card" style="border-left:4px solid #0891b2">
+            <div class="ri-stat-label">Approved Invoice / Commitment Ratio</div>
+            <div class="ri-stat-value">@InvoiceRatio(Model.Snapshot.TotalDisbursed, Model.Snapshot.TotalCommitted)</div>
+            <div class="ri-stat-sub">Approved invoice amt ÷ Committed — can exceed 100% (cross-dataset)</div>
+        </div>
+    </div>
+</div>
+
+<!-- =======================================================================
+     Section 2: National Funding Flow (waterfall)
+     ======================================================================= -->
+@{
+    var snap = Model.Snapshot;
+    // Scale bars relative to TotalRequested. Cap invoice bar at 100% width — amount shown in value column.
+    double scale = snap.TotalRequested > 0 ? 100.0 / (double)snap.TotalRequested : 0.0;
+    int reqW = 100;
+    int comW = (int)Math.Round((double)snap.TotalCommitted * scale);
+    int invW = Math.Min(100, (int)Math.Round((double)snap.TotalDisbursed * scale));
+    bool invoiceExceedsCommitment = snap.TotalDisbursed > snap.TotalCommitted;
+    decimal invoiceDelta = invoiceExceedsCommitment
+        ? snap.TotalDisbursed - snap.TotalCommitted
+        : snap.TotalCommitted - snap.TotalDisbursed;
+}
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="ri-section-title">National Funding Flow</div>
+        <div class="ri-section-sub">
+            Two independent USAC datasets shown in sequence: commitments (eligible → committed) and
+            approved invoices. Directionally useful, but not a strict closed-loop accounting funnel.
+        </div>
+
+        <div style="display:inline-flex;align-items:center;gap:.4rem;background:#f0f6ff;border:1px solid #bfdbfe;border-radius:.375rem;padding:.3rem .6rem;margin-bottom:.875rem;opacity:.85">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 20 20" fill="#3b82f6" aria-hidden="true" style="flex-shrink:0">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+            <span style="font-size:.7rem;color:#475569;font-style:italic">Cross-dataset comparison — not a transactional lifecycle metric</span>
+        </div>
+
+        @if (snap.TotalRequested == 0)
+        {
+            <p class="text-muted small">No data available — import funding commitments first.</p>
+        }
+        else
+        {
+            <!-- Row 1: Requested (Eligible) -->
+            <div class="wf-row">
+                <div class="wf-label">Requested (Eligible)</div>
+                <div class="wf-track">
+                    <div class="wf-bar" style="width:@(reqW)%;background:#2563eb">
+                        <span class="wf-bar-label">100%</span>
+                    </div>
+                </div>
+                <div class="wf-value">@Dollars(snap.TotalRequested)</div>
+            </div>
+
+            <!-- Connector: reduction (commitments dataset) -->
+            <div class="wf-connector">
+                <div class="wf-connector-line"></div>
+                <span>
+                    − @Dollars(snap.ReductionAmount)
+                    not committed after PIA review
+                    (@Pct(snap.TotalRequested > 0 ? (double)(snap.ReductionAmount / snap.TotalRequested) : 0))
+                </span>
+                <div class="wf-connector-line"></div>
+            </div>
+
+            <!-- Row 2: Committed by USAC -->
+            <div class="wf-row">
+                <div class="wf-label">Committed by USAC</div>
+                <div class="wf-track">
+                    <div class="wf-bar" style="width:@(comW)%;background:#16a34a">
+                        <span class="wf-bar-label">@Pct(snap.CommitmentFulfillmentRate)</span>
+                    </div>
+                </div>
+                <div class="wf-value">@Dollars(snap.TotalCommitted)</div>
+            </div>
+
+            <!-- Connector: invoice vs commitment (cross-dataset) -->
+            <div class="wf-connector">
+                <div class="wf-connector-line"></div>
+                @if (invoiceExceedsCommitment)
+                {
+                    <span style="color:#d97706;font-weight:600">
+                        + @Dollars(invoiceDelta)
+                        approved invoices exceed committed amount
+                        (@InvoiceRatio(snap.TotalDisbursed, snap.TotalCommitted) of committed — cross-dataset)
+                    </span>
+                }
+                else
+                {
+                    <span>
+                        − @Dollars(invoiceDelta)
+                        committed not yet matched by approved invoices
+                        (@Pct(snap.TotalCommitted > 0 ? (double)invoiceDelta / (double)snap.TotalCommitted : 0))
+                    </span>
+                }
+                <div class="wf-connector-line"></div>
+            </div>
+
+            <!-- Row 3: Approved Invoice Amount (disbursements dataset) -->
+            <div class="wf-row">
+                <div class="wf-label">Approved Invoice Amt</div>
+                <div class="wf-track">
+                    <div class="wf-bar" style="width:@(invW)%;background:#d97706">
+                        <span class="wf-bar-label">@InvoiceRatio(snap.TotalDisbursed, snap.TotalCommitted) of committed</span>
+                    </div>
+                </div>
+                <div class="wf-value">@Dollars(snap.TotalDisbursed)</div>
+            </div>
+
+            <p class="ri-caveat mt-3">
+                Bar widths are proportional to Requested (Eligible); the Approved Invoice Amount bar is capped at 100% width when it exceeds Requested — the exact amount is shown to the right.
+                <strong>Requested</strong> = TotalEligiblePreDiscountAmount (USAC commitments dataset) ·
+                <strong>Committed</strong> = E-Rate share after PIA review (USAC commitments dataset) ·
+                <strong>Approved Invoice Amount</strong> = approved_inv_line_amt, Approved status only (USAC disbursements dataset).
+                These are two independent USAC datasets matched by funding year. They do not reconcile 1:1 within a single year — approved invoice amounts can exceed committed amounts due to invoicing timing, multi-year payment cycles, and dataset scope differences. Comparisons are directionally useful, not strict accounting closure.
+                @if (Model.Year.HasValue)
+                {
+                    <span>Funding Year @Model.Year filter is applied to both datasets independently.</span>
+                }
+            </p>
+        }
+    </div>
+</div>
+
+<!-- =======================================================================
+     Section 3: Advisory Signals
+     ======================================================================= -->
+@{
+    string AnomalyBadge(string anomalyType) => anomalyType switch
+    {
+        "No Commitment"   => "danger",
+        "No Disbursement" => "warning",
+        "High Reduction"  => "danger",
+        _                 => "primary",   // Low Utilization
+    };
+}
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="ri-section-title">Advisory Signals</div>
+        <div class="ri-section-sub">
+            Applicants requiring attention based on funding gaps, reductions, or utilization patterns
+        </div>
+
+        <p class="ri-caveat" style="margin-bottom:.75rem">
+            One row per signal type per applicant — an applicant may appear multiple times if it matches multiple conditions.
+            Ordered by risk score, then by committed amount.
+        </p>
+
+        @if (!Model.AdvisorySignals.Any())
+        {
+            <p class="text-muted small">No advisory signals — import funding commitments and disbursements first.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-sm table-ri">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Applicant</th>
+                            <th>Type</th>
+                            <th class="text-end">Committed</th>
+                            <th class="text-end">Approved Inv.</th>
+                            <th class="text-end">Reduction %</th>
+                            <th class="text-end">Inv/Commit %</th>
+                            <th class="text-center">Risk Level</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sig in Model.AdvisorySignals)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="fw-medium">@(sig.ApplicantEntityName ?? sig.EntityNumber)</span>
+                                    <br><span class="text-muted" style="font-size:.7rem">BEN @sig.EntityNumber · FY @sig.FundingYear</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-@AnomalyBadge(sig.AnomalyType)">@sig.AnomalyType</span>
+                                </td>
+                                <td class="text-end">@Dollars(sig.TotalCommittedAmount)</td>
+                                <td class="text-end">@Dollars(sig.TotalApprovedDisbursementAmount)</td>
+                                <td class="text-end">
+                                    <span class="@(sig.ReductionPct > 0.3 ? "text-danger fw-semibold" : "")">
+                                        @Pct(sig.ReductionPct)
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <span class="@(sig.DisbursementPct < 0.5 ? "text-warning fw-semibold" : "")">
+                                        @InvoiceRatio(sig.TotalApprovedDisbursementAmount, sig.TotalCommittedAmount)
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-@RiskBadge(sig.RiskLevel)">@sig.RiskLevel</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- =======================================================================
+     Section 4: Applicant Risk Results
+     ======================================================================= -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="ri-section-title">Applicant Risk Results</div>
+        <div class="ri-section-sub">
+            @if (string.IsNullOrEmpty(Model.Severity))
+            {
+                <span>Top applicants ranked by composite risk score.</span>
+            }
+            else
+            {
+                <span>Showing <strong>@Model.Severity</strong> risk applicants.</span>
+            }
+            Risk Score = 50% reduction rate + 50% invoice gap — higher score means higher execution risk.
+        </div>
+
+        @if (!Model.TopRiskApplicants.Any())
+        {
+            <p class="text-muted small">No data available — import funding commitments and disbursements first.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-sm table-ri">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Applicant</th>
+                            <th>State</th>
+                            <th class="text-end">Eligible (Req.)</th>
+                            <th class="text-end">Committed</th>
+                            <th class="text-end">Approved Inv.</th>
+                            <th class="text-end">Reduction</th>
+                            <th class="text-end">Inv/Commit %</th>
+                            <th class="text-center">Risk</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in Model.TopRiskApplicants)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="fw-medium">@(row.ApplicantName ?? row.EntityNumber)</span>
+                                    <br><span class="text-muted" style="font-size:.7rem">BEN @row.EntityNumber</span>
+                                </td>
+                                <td>@(row.State ?? "—")</td>
+                                <td class="text-end">@Dollars(row.Requested)</td>
+                                <td class="text-end">@Dollars(row.Committed)</td>
+                                <td class="text-end">@Dollars(row.Disbursed)</td>
+                                <td class="text-end">
+                                    <span class="@(row.ReductionPct > 0.3 ? "text-danger fw-semibold" : "")">
+                                        @Pct(row.ReductionPct)
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <span class="@(row.DisbursementPct < 0.7 ? "text-warning fw-semibold" : "")">
+                                        @InvoiceRatio(row.Disbursed, row.Committed)
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-@RiskBadge(row.RiskLevel)">@row.RiskLevel</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="ri-caveat">
+                Eligible (Req.) = TotalEligiblePreDiscountAmount (commitments dataset).
+                Committed = E-Rate share after discount and PIA review (commitments dataset).
+                Approved Inv. = Sum of approved_inv_line_amt for Approved invoice lines (disbursements dataset; jpiu-tj8h).
+                Inv/Commit % = Approved invoice amt ÷ Committed; can exceed 100% — these are two independent datasets, not a closed accounting ledger.
+            </p>
+        }
+    </div>
+</div>
+
+<!-- =======================================================================
+     Section 5: Supporting Detail Tables
+     ======================================================================= -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="ri-section-title">Commitment vs Approved Invoice Gap</div>
+                <div class="ri-section-sub">
+                    Districts where committed amount most exceeds approved invoices.
+                    A large gap may indicate uninvoiced funds — or a cross-dataset timing difference.
+                </div>
+
+                @if (!Model.TopGaps.Any())
+                {
+                    <p class="text-muted small">No data available.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm table-ri">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Applicant</th>
+                                    <th>St.</th>
+                                    <th class="text-end">Committed</th>
+                                    <th class="text-end">Approved Inv.</th>
+                                    <th class="text-end">Gap</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in Model.TopGaps)
+                                {
+                                    var rawPct = row.Committed > 0
+                                        ? (double)(row.Disbursed / row.Committed)
+                                        : 0.0;
+                                    var barPct = Math.Min(1.0, rawPct);  // cap bar width; amount shown in cell
+                                    <tr>
+                                        <td>
+                                            <div class="fw-medium" style="font-size:.8rem">@(row.ApplicantName ?? row.EntityNumber)</div>
+                                            <div class="fulfillment-bar mt-1">
+                                                <div class="fulfillment-fill"
+                                                     style="width:@((int)(barPct * 100))%;background:@(barPct >= 0.8 ? "#16a34a" : barPct >= 0.5 ? "#d97706" : "#dc2626")"></div>
+                                            </div>
+                                        </td>
+                                        <td>@(row.State ?? "—")</td>
+                                        <td class="text-end">@Dollars(row.Committed)</td>
+                                        <td class="text-end">@Dollars(row.Disbursed)</td>
+                                        <td class="text-end text-danger fw-semibold">@Dollars(row.Gap)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================
+         5b: Reduction Rate Analysis
+         =================================================================== -->
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="ri-section-title">Reduction Rate Analysis</div>
+                <div class="ri-section-sub">
+                    Districts where the largest share of eligible funding was not committed.
+                    Indicates USAC denial, PIA adjustment, or program rule issues.
+                </div>
+
+                @if (!Model.TopReductions.Any())
+                {
+                    <p class="text-muted small">No data available.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm table-ri">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Applicant</th>
+                                    <th>St.</th>
+                                    <th class="text-end">Eligible</th>
+                                    <th class="text-end">Committed</th>
+                                    <th class="text-end">Reduction %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in Model.TopReductions)
+                                {
+                                    <tr>
+                                        <td style="font-size:.8rem">@(row.ApplicantName ?? row.EntityNumber)</td>
+                                        <td>@(row.State ?? "—")</td>
+                                        <td class="text-end">@Dollars(row.Requested)</td>
+                                        <td class="text-end">@Dollars(row.Committed)</td>
+                                        <td class="text-end">
+                                            <span class="badge bg-@(row.ReductionPct > 0.6 ? "danger" : row.ReductionPct > 0.3 ? "warning" : "secondary")">
+                                                @Pct(row.ReductionPct)
+                                            </span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="ri-caveat">Only includes districts with ≥$100 in eligible amount to filter out data artifacts.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<p class="ri-caveat text-center mb-4" style="opacity:.7">
+    Data validated against USAC open datasets using year-level reconciliation.
+</p>
+
+@section Scripts {
+<script>
+(function () {
+    var form  = document.getElementById('ri-filter-form');
+    var btn   = document.getElementById('ri-apply-btn');
+    var overlay = document.getElementById('ri-loading');
+    if (!form || !btn || !overlay) return;
+
+    form.addEventListener('submit', function () {
+        // Show overlay and dim content immediately.
+        overlay.classList.add('active');
+        document.body.classList.add('ri-loading-active');
+        // Disable the button to prevent duplicate submissions.
+        btn.disabled = true;
+        btn.textContent = 'Loading…';
+    });
+}());
+</script>
+}

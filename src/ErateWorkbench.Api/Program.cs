@@ -2,6 +2,7 @@ using ErateWorkbench.Api;
 using ErateWorkbench.Domain;
 using ErateWorkbench.Infrastructure;
 using ErateWorkbench.Infrastructure.Csv;
+using ErateWorkbench.Infrastructure.Reconciliation;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -38,6 +39,27 @@ builder.Services.AddScoped<ServiceProviderImportService>();
 builder.Services.AddScoped<Form471CsvParser>();
 builder.Services.AddScoped<Form471Repository>();
 builder.Services.AddScoped<Form471ImportService>();
+builder.Services.AddScoped<EntityCsvParser>();
+builder.Services.AddScoped<EntityRepository>();
+builder.Services.AddScoped<EntityImportService>();
+builder.Services.AddScoped<DisbursementCsvParser>();
+builder.Services.AddScoped<DisbursementRepository>();
+builder.Services.AddScoped<DisbursementImportService>();
+builder.Services.AddScoped<AnalyticsRepository>();
+builder.Services.AddScoped<RiskInsightsRepository>();
+
+// Reconciliation
+builder.Services.AddHttpClient<SocrataReconciliationService>();
+builder.Services.AddScoped<FundingCommitmentLocalDataProvider>();
+builder.Services.AddScoped<DisbursementLocalDataProvider>();
+builder.Services.AddScoped<FundingCommitmentSummaryLocalProvider>();
+builder.Services.AddScoped<ReconciliationReportWriter>();
+
+// Summary builders
+builder.Services.AddScoped<ApplicantYearCommitmentSummaryBuilder>();
+builder.Services.AddScoped<ApplicantYearDisbursementSummaryBuilder>();
+builder.Services.AddScoped<DisbursementSummaryLocalProvider>();
+builder.Services.AddScoped<ApplicantYearRiskSummaryBuilder>();
 
 var app = builder.Build();
 
@@ -142,6 +164,29 @@ app.MapPost("/import/service-providers", async (
 .WithSummary("Trigger ingestion of the USAC E-Rate Service Provider (SPIN) dataset")
 .WithOpenApi();
 
+app.MapPost("/import/entities", async (
+    EntityImportRequest? request,
+    EntityImportService importService,
+    CancellationToken ct) =>
+{
+    var result = await importService.RunAsync(
+        baseUrl: request?.DatasetUrl ?? "https://datahub.usac.org/resource/avi8-svp9.csv",
+        cancellationToken: ct);
+
+    return Results.Ok(new FundingImportResultDto(
+        result.RecordsProcessed,
+        result.RecordsInserted,
+        result.RecordsUpdated,
+        result.RecordsFailed,
+        result.Duration.ToString(@"hh\:mm\:ss"),
+        result.DatasetName,
+        result.Status.ToString(),
+        result.ErrorMessage));
+})
+.WithName("TriggerEntityImport")
+.WithSummary("Trigger ingestion of USAC E-Rate ROS entity data from the funding commitments dataset")
+.WithOpenApi();
+
 app.MapPost("/import/form471", async (
     Form471ImportRequest? request,
     Form471ImportService importService,
@@ -163,6 +208,169 @@ app.MapPost("/import/form471", async (
 })
 .WithName("TriggerForm471Import")
 .WithSummary("Trigger ingestion of the USAC FCC Form 471 application dataset")
+.WithOpenApi();
+
+app.MapPost("/import/disbursements", async (
+    DisbursementImportRequest? request,
+    DisbursementImportService importService,
+    CancellationToken ct) =>
+{
+    var result = await importService.RunAsync(
+        baseUrl: request?.DatasetUrl ?? "https://datahub.usac.org/resource/jpiu-tj8h.csv",
+        cancellationToken: ct);
+
+    return Results.Ok(new FundingImportResultDto(
+        result.RecordsProcessed,
+        result.RecordsInserted,
+        result.RecordsUpdated,
+        result.RecordsFailed,
+        result.Duration.ToString(@"hh\:mm\:ss"),
+        result.DatasetName,
+        result.Status.ToString(),
+        result.ErrorMessage));
+})
+.WithName("TriggerDisbursementImport")
+.WithSummary("Trigger ingestion of the USAC E-Rate Invoices and Authorized Disbursements dataset")
+.WithOpenApi();
+
+// --- Summary builder endpoints (dev) ---
+
+app.MapPost("/dev/summary/risk", async (
+    int? year,
+    ApplicantYearRiskSummaryBuilder builder,
+    CancellationToken ct) =>
+{
+    var result = await builder.RebuildAsync(fundingYear: year, cancellationToken: ct);
+    return Results.Ok(result);
+})
+.WithName("RebuildRiskSummary")
+.WithSummary("(Dev) Rebuild ApplicantYearRiskSummary by merging commitment and disbursement summaries. " +
+             "Pass ?year=2021 to rebuild a single year.")
+.WithOpenApi();
+
+app.MapPost("/dev/summary/disbursements", async (
+    int? year,
+    ApplicantYearDisbursementSummaryBuilder builder,
+    CancellationToken ct) =>
+{
+    var result = await builder.RebuildAsync(fundingYear: year, cancellationToken: ct);
+    return Results.Ok(result);
+})
+.WithName("RebuildDisbursementSummary")
+.WithSummary("(Dev) Rebuild ApplicantYearDisbursementSummary from raw Disbursements (ApprovedAmount > 0). " +
+             "Pass ?year=2021 to rebuild a single year.")
+.WithOpenApi();
+
+app.MapPost("/dev/summary/funding-commitments", async (
+    int? year,
+    ApplicantYearCommitmentSummaryBuilder builder,
+    CancellationToken ct) =>
+{
+    var result = await builder.RebuildAsync(fundingYear: year, cancellationToken: ct);
+    return Results.Ok(result);
+})
+.WithName("RebuildFundingCommitmentSummary")
+.WithSummary("(Dev) Rebuild ApplicantYearCommitmentSummary from raw FundingCommitments. " +
+             "Pass ?year=2021 to rebuild a single year.")
+.WithOpenApi();
+
+// --- Reconciliation endpoints (dev/validation) ---
+
+app.MapPost("/dev/reconcile/funding-commitments", async (
+    SocrataReconciliationService reconciler,
+    FundingCommitmentLocalDataProvider localProvider,
+    FundingCommitmentSummaryLocalProvider summaryProvider,
+    ReconciliationReportWriter writer,
+    CancellationToken ct) =>
+{
+    var result = await reconciler.ReconcileAsync(
+        DatasetManifests.FundingCommitments, localProvider, summaryProvider, ct);
+    var dir    = Path.Combine(Directory.GetCurrentDirectory(), "reports");
+    var stamp  = result.RunAtUtc.ToString("yyyyMMdd-HHmmss");
+    await writer.WriteMarkdownAsync(result, Path.Combine(dir, $"reconcile-FundingCommitments-{stamp}.md"), ct);
+    await writer.WriteJsonAsync(result,     Path.Combine(dir, $"reconcile-FundingCommitments-{stamp}.json"), ct);
+    return Results.Ok(result);
+})
+.WithName("ReconcileFundingCommitments")
+.WithSummary("(Dev) Compare local FundingCommitments table against USAC Socrata source — writes report to /reports/")
+.WithOpenApi();
+
+app.MapPost("/dev/reconcile/disbursements", async (
+    SocrataReconciliationService reconciler,
+    DisbursementLocalDataProvider localProvider,
+    DisbursementSummaryLocalProvider summaryProvider,
+    ReconciliationReportWriter writer,
+    CancellationToken ct) =>
+{
+    var result = await reconciler.ReconcileAsync(DatasetManifests.Disbursements, localProvider, summaryProvider, ct);
+    var dir    = Path.Combine(Directory.GetCurrentDirectory(), "reports");
+    var stamp  = result.RunAtUtc.ToString("yyyyMMdd-HHmmss");
+    await writer.WriteMarkdownAsync(result, Path.Combine(dir, $"reconcile-Disbursements-{stamp}.md"), ct);
+    await writer.WriteJsonAsync(result,     Path.Combine(dir, $"reconcile-Disbursements-{stamp}.json"), ct);
+    return Results.Ok(result);
+})
+.WithName("ReconcileDisbursements")
+.WithSummary("(Dev) Compare local Disbursements table against USAC Socrata source — writes report to /reports/")
+.WithOpenApi();
+
+// --- Analytics endpoints ---
+
+app.MapGet("/analytics/commitment-vs-disbursement", async (
+    AnalyticsRepository analytics,
+    CancellationToken ct) =>
+{
+    var rows = await analytics.GetCommitmentVsDisbursementByYearAsync(ct);
+    return Results.Ok(rows);
+})
+.WithName("GetCommitmentVsDisbursementByYear")
+.WithSummary("Committed vs disbursed (approved) amounts grouped by funding year")
+.WithOpenApi();
+
+app.MapGet("/analytics/top-applicants", async (
+    int? top,
+    AnalyticsRepository analytics,
+    CancellationToken ct) =>
+{
+    var rows = await analytics.GetTopApplicantsAsync(Math.Clamp(top ?? 20, 1, 100), ct);
+    return Results.Ok(rows);
+})
+.WithName("GetTopApplicants")
+.WithSummary("Top applicant entities by total committed amount, with disbursements")
+.WithOpenApi();
+
+app.MapGet("/analytics/top-providers", async (
+    int? top,
+    AnalyticsRepository analytics,
+    CancellationToken ct) =>
+{
+    var rows = await analytics.GetTopServiceProvidersAsync(Math.Clamp(top ?? 20, 1, 100), ct);
+    return Results.Ok(rows);
+})
+.WithName("GetTopProviders")
+.WithSummary("Top service providers by total committed amount, with disbursements")
+.WithOpenApi();
+
+app.MapGet("/analytics/rural-urban-summary", async (
+    AnalyticsRepository analytics,
+    CancellationToken ct) =>
+{
+    var rows = await analytics.GetRuralUrbanSummaryAsync(ct);
+    return Results.Ok(rows);
+})
+.WithName("GetRuralUrbanSummary")
+.WithSummary("Funding commitments and disbursements grouped by rural/urban status of the applicant entity")
+.WithOpenApi();
+
+app.MapGet("/analytics/funding-per-student", async (
+    int? top,
+    AnalyticsRepository analytics,
+    CancellationToken ct) =>
+{
+    var rows = await analytics.GetFundingPerStudentAsync(Math.Clamp(top ?? 50, 1, 200), ct);
+    return Results.Ok(rows);
+})
+.WithName("GetFundingPerStudent")
+.WithSummary("Committed funding per student for entities with student counts in the Entities table")
 .WithOpenApi();
 
 app.MapGet("/entities", async (
@@ -255,3 +463,5 @@ record EpcEntityImportRequest(string? DatasetUrl);
 record FundingCommitmentsImportRequest(string? DatasetUrl);
 record ServiceProviderImportRequest(string? DatasetUrl);
 record Form471ImportRequest(string? DatasetUrl);
+record EntityImportRequest(string? DatasetUrl);
+record DisbursementImportRequest(string? DatasetUrl);
