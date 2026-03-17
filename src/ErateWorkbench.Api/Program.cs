@@ -2,6 +2,7 @@ using ErateWorkbench.Api;
 using ErateWorkbench.Domain;
 using ErateWorkbench.Infrastructure;
 using ErateWorkbench.Infrastructure.Csv;
+using ErateWorkbench.Infrastructure.Reconciliation;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,6 +47,19 @@ builder.Services.AddScoped<DisbursementRepository>();
 builder.Services.AddScoped<DisbursementImportService>();
 builder.Services.AddScoped<AnalyticsRepository>();
 builder.Services.AddScoped<RiskInsightsRepository>();
+
+// Reconciliation
+builder.Services.AddHttpClient<SocrataReconciliationService>();
+builder.Services.AddScoped<FundingCommitmentLocalDataProvider>();
+builder.Services.AddScoped<DisbursementLocalDataProvider>();
+builder.Services.AddScoped<FundingCommitmentSummaryLocalProvider>();
+builder.Services.AddScoped<ReconciliationReportWriter>();
+
+// Summary builders
+builder.Services.AddScoped<ApplicantYearCommitmentSummaryBuilder>();
+builder.Services.AddScoped<ApplicantYearDisbursementSummaryBuilder>();
+builder.Services.AddScoped<DisbursementSummaryLocalProvider>();
+builder.Services.AddScoped<ApplicantYearRiskSummaryBuilder>();
 
 var app = builder.Build();
 
@@ -217,6 +231,86 @@ app.MapPost("/import/disbursements", async (
 })
 .WithName("TriggerDisbursementImport")
 .WithSummary("Trigger ingestion of the USAC E-Rate Invoices and Authorized Disbursements dataset")
+.WithOpenApi();
+
+// --- Summary builder endpoints (dev) ---
+
+app.MapPost("/dev/summary/risk", async (
+    int? year,
+    ApplicantYearRiskSummaryBuilder builder,
+    CancellationToken ct) =>
+{
+    var result = await builder.RebuildAsync(fundingYear: year, cancellationToken: ct);
+    return Results.Ok(result);
+})
+.WithName("RebuildRiskSummary")
+.WithSummary("(Dev) Rebuild ApplicantYearRiskSummary by merging commitment and disbursement summaries. " +
+             "Pass ?year=2021 to rebuild a single year.")
+.WithOpenApi();
+
+app.MapPost("/dev/summary/disbursements", async (
+    int? year,
+    ApplicantYearDisbursementSummaryBuilder builder,
+    CancellationToken ct) =>
+{
+    var result = await builder.RebuildAsync(fundingYear: year, cancellationToken: ct);
+    return Results.Ok(result);
+})
+.WithName("RebuildDisbursementSummary")
+.WithSummary("(Dev) Rebuild ApplicantYearDisbursementSummary from raw Disbursements (ApprovedAmount > 0). " +
+             "Pass ?year=2021 to rebuild a single year.")
+.WithOpenApi();
+
+app.MapPost("/dev/summary/funding-commitments", async (
+    int? year,
+    ApplicantYearCommitmentSummaryBuilder builder,
+    CancellationToken ct) =>
+{
+    var result = await builder.RebuildAsync(fundingYear: year, cancellationToken: ct);
+    return Results.Ok(result);
+})
+.WithName("RebuildFundingCommitmentSummary")
+.WithSummary("(Dev) Rebuild ApplicantYearCommitmentSummary from raw FundingCommitments. " +
+             "Pass ?year=2021 to rebuild a single year.")
+.WithOpenApi();
+
+// --- Reconciliation endpoints (dev/validation) ---
+
+app.MapPost("/dev/reconcile/funding-commitments", async (
+    SocrataReconciliationService reconciler,
+    FundingCommitmentLocalDataProvider localProvider,
+    FundingCommitmentSummaryLocalProvider summaryProvider,
+    ReconciliationReportWriter writer,
+    CancellationToken ct) =>
+{
+    var result = await reconciler.ReconcileAsync(
+        DatasetManifests.FundingCommitments, localProvider, summaryProvider, ct);
+    var dir    = Path.Combine(Directory.GetCurrentDirectory(), "reports");
+    var stamp  = result.RunAtUtc.ToString("yyyyMMdd-HHmmss");
+    await writer.WriteMarkdownAsync(result, Path.Combine(dir, $"reconcile-FundingCommitments-{stamp}.md"), ct);
+    await writer.WriteJsonAsync(result,     Path.Combine(dir, $"reconcile-FundingCommitments-{stamp}.json"), ct);
+    return Results.Ok(result);
+})
+.WithName("ReconcileFundingCommitments")
+.WithSummary("(Dev) Compare local FundingCommitments table against USAC Socrata source — writes report to /reports/")
+.WithOpenApi();
+
+app.MapPost("/dev/reconcile/disbursements", async (
+    SocrataReconciliationService reconciler,
+    DisbursementLocalDataProvider localProvider,
+    DisbursementSummaryLocalProvider summaryProvider,
+    ReconciliationReportWriter writer,
+    CancellationToken ct) =>
+{
+    var result = await reconciler.ReconcileAsync(DatasetManifests.Disbursements, localProvider, summaryProvider, ct);
+    var dir    = Path.Combine(Directory.GetCurrentDirectory(), "reports");
+    var stamp  = result.RunAtUtc.ToString("yyyyMMdd-HHmmss");
+    await writer.WriteMarkdownAsync(result, Path.Combine(dir, $"reconcile-Disbursements-{stamp}.md"), ct);
+    await writer.WriteJsonAsync(result,     Path.Combine(dir, $"reconcile-Disbursements-{stamp}.json"), ct);
+    return Results.Ok(result);
+})
+.WithName("ReconcileDisbursements")
+.WithSummary("(Dev) Compare local Disbursements table against USAC Socrata source — writes report to /reports/")
 .WithOpenApi();
 
 // --- Analytics endpoints ---

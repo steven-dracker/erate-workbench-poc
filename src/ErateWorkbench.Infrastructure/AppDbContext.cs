@@ -13,6 +13,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<FundingCommitment> FundingCommitments => Set<FundingCommitment>();
     public DbSet<ServiceProvider> ServiceProviders => Set<ServiceProvider>();
     public DbSet<Form471Application> Form471Applications => Set<Form471Application>();
+    public DbSet<ApplicantYearCommitmentSummary> ApplicantYearCommitmentSummaries => Set<ApplicantYearCommitmentSummary>();
+    public DbSet<ApplicantYearDisbursementSummary> ApplicantYearDisbursementSummaries => Set<ApplicantYearDisbursementSummary>();
+    public DbSet<ApplicantYearRiskSummary> ApplicantYearRiskSummaries => Set<ApplicantYearRiskSummary>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -114,6 +117,40 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(a => a.ApplicantState).HasMaxLength(2);
             e.Property(a => a.CategoryOfService).HasMaxLength(50);
             e.Property(a => a.ApplicationStatus).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<ApplicantYearCommitmentSummary>(e =>
+        {
+            // Primary lookup: one row per (year, BEN).
+            e.HasIndex(s => new { s.FundingYear, s.ApplicantEntityNumber }).IsUnique();
+            // Single-column indexes for year-only and BEN-only filters.
+            e.HasIndex(s => s.FundingYear);
+            e.HasIndex(s => s.ApplicantEntityNumber);
+            e.Property(s => s.ApplicantEntityNumber).HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<ApplicantYearDisbursementSummary>(e =>
+        {
+            // Primary lookup: one row per (year, BEN).
+            e.HasIndex(s => new { s.FundingYear, s.ApplicantEntityNumber }).IsUnique();
+            // Single-column indexes for year-only and BEN-only filters.
+            e.HasIndex(s => s.FundingYear);
+            e.HasIndex(s => s.ApplicantEntityNumber);
+            e.Property(s => s.ApplicantEntityNumber).HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<ApplicantYearRiskSummary>(e =>
+        {
+            // Primary lookup: one row per (year, BEN).
+            e.HasIndex(s => new { s.FundingYear, s.ApplicantEntityNumber }).IsUnique();
+            // Single-column indexes for year-only, BEN-only, and level filters.
+            e.HasIndex(s => s.FundingYear);
+            e.HasIndex(s => s.ApplicantEntityNumber);
+            e.HasIndex(s => s.RiskLevel);
+            // Composite: year + level filter used by risk dashboard and analytics queries.
+            e.HasIndex(s => new { s.FundingYear, s.RiskLevel });
+            e.Property(s => s.ApplicantEntityNumber).HasMaxLength(20);
+            e.Property(s => s.RiskLevel).HasMaxLength(20);
         });
     }
 }

@@ -13,7 +13,17 @@
         >= 1_000         => $"${d / 1_000:F0}K",
         _                => $"${d:F0}",
     };
-    string Pct(double d)   => $"{d * 100:F1}%";
+    string Pct(double d) => $"{d * 100:F1}%";
+
+    // Formats an approved-invoice-to-committed ratio honestly.
+    // Appends "+" when the ratio exceeds 100% rather than silently capping.
+    string InvoiceRatio(decimal invoiced, decimal committed)
+    {
+        if (committed <= 0m) return "—";
+        var ratio = (double)invoiced / (double)committed;
+        return ratio > 1.005 ? $"{ratio * 100:F1}%+" : $"{ratio * 100:F1}%";
+    }
+
     string RiskBadge(string level) => level switch
     {
         "High"     => "danger",
@@ -248,7 +258,7 @@
         </span>
         <span>
             <span style="color:#64748b;font-weight:700">&#x25CF;</span>
-            Risk Severity — applies to the High Risk Applicants table only
+            Risk Severity — applies to Applicant Risk Results only
         </span>
     </div>
 </form>
@@ -273,9 +283,9 @@
     </div>
     <div class="col">
         <div class="ri-stat-card" style="border-left:4px solid #d97706">
-            <div class="ri-stat-label">Total Disbursed</div>
+            <div class="ri-stat-label">Approved Invoice Amount</div>
             <div class="ri-stat-value">@Dollars(Model.Snapshot.TotalDisbursed)</div>
-            <div class="ri-stat-sub">Approved invoice amounts paid</div>
+            <div class="ri-stat-sub">Sum of approved invoice line amounts (disbursements dataset)</div>
         </div>
     </div>
     <div class="col">
@@ -287,9 +297,9 @@
     </div>
     <div class="col">
         <div class="ri-stat-card" style="border-left:4px solid #0891b2">
-            <div class="ri-stat-label">Disbursement Completion</div>
-            <div class="ri-stat-value">@Pct(Model.Snapshot.DisbursementCompletionRate)</div>
-            <div class="ri-stat-sub">Disbursed ÷ Committed</div>
+            <div class="ri-stat-label">Approved Invoice / Commitment Ratio</div>
+            <div class="ri-stat-value">@InvoiceRatio(Model.Snapshot.TotalDisbursed, Model.Snapshot.TotalCommitted)</div>
+            <div class="ri-stat-sub">Approved invoice amt ÷ Committed — can exceed 100% (cross-dataset)</div>
         </div>
     </div>
 </div>
@@ -299,20 +309,29 @@
      ======================================================================= -->
 @{
     var snap = Model.Snapshot;
-    // Scale all bars relative to TotalRequested so the widths are proportional.
+    // Scale bars relative to TotalRequested. Cap invoice bar at 100% width — amount shown in value column.
     double scale = snap.TotalRequested > 0 ? 100.0 / (double)snap.TotalRequested : 0.0;
-    int reqW  = 100;
-    int comW  = (int)Math.Round((double)snap.TotalCommitted   * scale);
-    int redW  = (int)Math.Round((double)snap.ReductionAmount   * scale);
-    int disbW = (int)Math.Round((double)snap.TotalDisbursed    * scale);
-    int undW  = (int)Math.Round((double)snap.UndisbursedAmount * scale);
+    int reqW = 100;
+    int comW = (int)Math.Round((double)snap.TotalCommitted * scale);
+    int invW = Math.Min(100, (int)Math.Round((double)snap.TotalDisbursed * scale));
+    bool invoiceExceedsCommitment = snap.TotalDisbursed > snap.TotalCommitted;
+    decimal invoiceDelta = invoiceExceedsCommitment
+        ? snap.TotalDisbursed - snap.TotalCommitted
+        : snap.TotalCommitted - snap.TotalDisbursed;
 }
 <div class="card mb-4">
     <div class="card-body">
         <div class="ri-section-title">National Funding Flow</div>
         <div class="ri-section-sub">
-            Visualize how E-Rate funding progresses from requested to committed to disbursed,
-            and where value is lost or delayed at each stage.
+            Two independent USAC datasets shown in sequence: commitments (eligible → committed) and
+            approved invoices. Directionally useful, but not a strict closed-loop accounting funnel.
+        </div>
+
+        <div style="display:inline-flex;align-items:center;gap:.4rem;background:#f0f6ff;border:1px solid #bfdbfe;border-radius:.375rem;padding:.3rem .6rem;margin-bottom:.875rem;opacity:.85">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 20 20" fill="#3b82f6" aria-hidden="true" style="flex-shrink:0">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            </svg>
+            <span style="font-size:.7rem;color:#475569;font-style:italic">Cross-dataset comparison — not a transactional lifecycle metric</span>
         </div>
 
         @if (snap.TotalRequested == 0)
@@ -321,7 +340,7 @@
         }
         else
         {
-            <!-- Row 1: Requested -->
+            <!-- Row 1: Requested (Eligible) -->
             <div class="wf-row">
                 <div class="wf-label">Requested (Eligible)</div>
                 <div class="wf-track">
@@ -332,18 +351,18 @@
                 <div class="wf-value">@Dollars(snap.TotalRequested)</div>
             </div>
 
-            <!-- Connector: reduction -->
+            <!-- Connector: reduction (commitments dataset) -->
             <div class="wf-connector">
                 <div class="wf-connector-line"></div>
                 <span>
                     − @Dollars(snap.ReductionAmount)
-                    reduced during review
+                    not committed after PIA review
                     (@Pct(snap.TotalRequested > 0 ? (double)(snap.ReductionAmount / snap.TotalRequested) : 0))
                 </span>
                 <div class="wf-connector-line"></div>
             </div>
 
-            <!-- Row 2: Committed -->
+            <!-- Row 2: Committed by USAC -->
             <div class="wf-row">
                 <div class="wf-label">Committed by USAC</div>
                 <div class="wf-track">
@@ -354,34 +373,48 @@
                 <div class="wf-value">@Dollars(snap.TotalCommitted)</div>
             </div>
 
-            <!-- Connector: undisbursed -->
+            <!-- Connector: invoice vs commitment (cross-dataset) -->
             <div class="wf-connector">
                 <div class="wf-connector-line"></div>
-                <span>
-                    − @Dollars(snap.UndisbursedAmount)
-                    not yet invoiced / pending
-                    (@Pct(snap.TotalCommitted > 0 ? (double)(snap.UndisbursedAmount / snap.TotalCommitted) : 0))
-                </span>
+                @if (invoiceExceedsCommitment)
+                {
+                    <span style="color:#d97706;font-weight:600">
+                        + @Dollars(invoiceDelta)
+                        approved invoices exceed committed amount
+                        (@InvoiceRatio(snap.TotalDisbursed, snap.TotalCommitted) of committed — cross-dataset)
+                    </span>
+                }
+                else
+                {
+                    <span>
+                        − @Dollars(invoiceDelta)
+                        committed not yet matched by approved invoices
+                        (@Pct(snap.TotalCommitted > 0 ? (double)invoiceDelta / (double)snap.TotalCommitted : 0))
+                    </span>
+                }
                 <div class="wf-connector-line"></div>
             </div>
 
-            <!-- Row 3: Disbursed -->
+            <!-- Row 3: Approved Invoice Amount (disbursements dataset) -->
             <div class="wf-row">
-                <div class="wf-label">Disbursed (Paid)</div>
+                <div class="wf-label">Approved Invoice Amt</div>
                 <div class="wf-track">
-                    <div class="wf-bar" style="width:@(disbW)%;background:#d97706">
-                        <span class="wf-bar-label">@Pct(snap.TotalRequested > 0 ? (double)(snap.TotalDisbursed / snap.TotalRequested) : 0) of eligible</span>
+                    <div class="wf-bar" style="width:@(invW)%;background:#d97706">
+                        <span class="wf-bar-label">@InvoiceRatio(snap.TotalDisbursed, snap.TotalCommitted) of committed</span>
                     </div>
                 </div>
                 <div class="wf-value">@Dollars(snap.TotalDisbursed)</div>
             </div>
 
             <p class="ri-caveat mt-3">
-                Bar widths are proportional to Requested (Eligible).
-                Requested = TotalEligiblePreDiscountAmount · Committed = E-Rate share after PIA review · Disbursed = Approved invoice line amounts (Approved status only; Pending and Not-Approved lines excluded).
+                Bar widths are proportional to Requested (Eligible); the Approved Invoice Amount bar is capped at 100% width when it exceeds Requested — the exact amount is shown to the right.
+                <strong>Requested</strong> = TotalEligiblePreDiscountAmount (USAC commitments dataset) ·
+                <strong>Committed</strong> = E-Rate share after PIA review (USAC commitments dataset) ·
+                <strong>Approved Invoice Amount</strong> = approved_inv_line_amt, Approved status only (USAC disbursements dataset).
+                These are two independent USAC datasets matched by funding year. They do not reconcile 1:1 within a single year — approved invoice amounts can exceed committed amounts due to invoicing timing, multi-year payment cycles, and dataset scope differences. Comparisons are directionally useful, not strict accounting closure.
                 @if (Model.Year.HasValue)
                 {
-                    <span>Funding Year @Model.Year filter is applied consistently to both commitments and disbursements.</span>
+                    <span>Funding Year @Model.Year filter is applied to both datasets independently.</span>
                 }
             </p>
         }
@@ -389,14 +422,99 @@
 </div>
 
 <!-- =======================================================================
-     Section 3 (was 2): High Risk Applicants
+     Section 3: Advisory Signals
+     ======================================================================= -->
+@{
+    string AnomalyBadge(string anomalyType) => anomalyType switch
+    {
+        "No Commitment"   => "danger",
+        "No Disbursement" => "warning",
+        "High Reduction"  => "danger",
+        _                 => "primary",   // Low Utilization
+    };
+}
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="ri-section-title">Advisory Signals</div>
+        <div class="ri-section-sub">
+            Applicants requiring attention based on funding gaps, reductions, or utilization patterns
+        </div>
+
+        <p class="ri-caveat" style="margin-bottom:.75rem">
+            One row per signal type per applicant — an applicant may appear multiple times if it matches multiple conditions.
+            Ordered by risk score, then by committed amount.
+        </p>
+
+        @if (!Model.AdvisorySignals.Any())
+        {
+            <p class="text-muted small">No advisory signals — import funding commitments and disbursements first.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-sm table-ri">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Applicant</th>
+                            <th>Type</th>
+                            <th class="text-end">Committed</th>
+                            <th class="text-end">Approved Inv.</th>
+                            <th class="text-end">Reduction %</th>
+                            <th class="text-end">Inv/Commit %</th>
+                            <th class="text-center">Risk Level</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sig in Model.AdvisorySignals)
+                        {
+                            <tr>
+                                <td>
+                                    <span class="fw-medium">@(sig.ApplicantEntityName ?? sig.EntityNumber)</span>
+                                    <br><span class="text-muted" style="font-size:.7rem">BEN @sig.EntityNumber · FY @sig.FundingYear</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-@AnomalyBadge(sig.AnomalyType)">@sig.AnomalyType</span>
+                                </td>
+                                <td class="text-end">@Dollars(sig.TotalCommittedAmount)</td>
+                                <td class="text-end">@Dollars(sig.TotalApprovedDisbursementAmount)</td>
+                                <td class="text-end">
+                                    <span class="@(sig.ReductionPct > 0.3 ? "text-danger fw-semibold" : "")">
+                                        @Pct(sig.ReductionPct)
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <span class="@(sig.DisbursementPct < 0.5 ? "text-warning fw-semibold" : "")">
+                                        @InvoiceRatio(sig.TotalApprovedDisbursementAmount, sig.TotalCommittedAmount)
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-@RiskBadge(sig.RiskLevel)">@sig.RiskLevel</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- =======================================================================
+     Section 4: Applicant Risk Results
      ======================================================================= -->
 <div class="card mb-4">
     <div class="card-body">
-        <div class="ri-section-title">High Risk Applicants</div>
+        <div class="ri-section-title">Applicant Risk Results</div>
         <div class="ri-section-sub">
-            Top 20 districts ranked by composite risk score.
-            Risk Score = 50% reduction rate + 50% disbursement gap — higher score means higher execution risk.
+            @if (string.IsNullOrEmpty(Model.Severity))
+            {
+                <span>Top applicants ranked by composite risk score.</span>
+            }
+            else
+            {
+                <span>Showing <strong>@Model.Severity</strong> risk applicants.</span>
+            }
+            Risk Score = 50% reduction rate + 50% invoice gap — higher score means higher execution risk.
         </div>
 
         @if (!Model.TopRiskApplicants.Any())
@@ -413,9 +531,9 @@
                             <th>State</th>
                             <th class="text-end">Eligible (Req.)</th>
                             <th class="text-end">Committed</th>
-                            <th class="text-end">Disbursed</th>
+                            <th class="text-end">Approved Inv.</th>
                             <th class="text-end">Reduction</th>
-                            <th class="text-end">Disbursed %</th>
+                            <th class="text-end">Inv/Commit %</th>
                             <th class="text-center">Risk</th>
                         </tr>
                     </thead>
@@ -438,7 +556,7 @@
                                 </td>
                                 <td class="text-end">
                                     <span class="@(row.DisbursementPct < 0.7 ? "text-warning fw-semibold" : "")">
-                                        @Pct(row.DisbursementPct)
+                                        @InvoiceRatio(row.Disbursed, row.Committed)
                                     </span>
                                 </td>
                                 <td class="text-center">
@@ -450,26 +568,26 @@
                 </table>
             </div>
             <p class="ri-caveat">
-                Eligible (Req.) = TotalEligiblePreDiscountAmount from USAC commitments dataset.
-                Committed = E-Rate share after discount and PIA review.
-                Disbursed = Sum of approved_inv_line_amt for invoice lines with Approved status
-                (jpiu-tj8h). Pending and Not-Approved lines are excluded.
+                Eligible (Req.) = TotalEligiblePreDiscountAmount (commitments dataset).
+                Committed = E-Rate share after discount and PIA review (commitments dataset).
+                Approved Inv. = Sum of approved_inv_line_amt for Approved invoice lines (disbursements dataset; jpiu-tj8h).
+                Inv/Commit % = Approved invoice amt ÷ Committed; can exceed 100% — these are two independent datasets, not a closed accounting ledger.
             </p>
         }
     </div>
 </div>
 
 <!-- =======================================================================
-     Section 3: Commitment vs Disbursement Gap
+     Section 5: Supporting Detail Tables
      ======================================================================= -->
 <div class="row g-4 mb-4">
     <div class="col-lg-6">
         <div class="card h-100">
             <div class="card-body">
-                <div class="ri-section-title">Commitment vs Disbursement Gap</div>
+                <div class="ri-section-title">Commitment vs Approved Invoice Gap</div>
                 <div class="ri-section-sub">
-                    Districts with the largest absolute difference between committed and disbursed funds.
-                    A large gap signals money left on the table.
+                    Districts where committed amount most exceeds approved invoices.
+                    A large gap may indicate uninvoiced funds — or a cross-dataset timing difference.
                 </div>
 
                 @if (!Model.TopGaps.Any())
@@ -485,22 +603,23 @@
                                     <th>Applicant</th>
                                     <th>St.</th>
                                     <th class="text-end">Committed</th>
-                                    <th class="text-end">Disbursed</th>
+                                    <th class="text-end">Approved Inv.</th>
                                     <th class="text-end">Gap</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var row in Model.TopGaps)
                                 {
-                                    var pct = row.Committed > 0
+                                    var rawPct = row.Committed > 0
                                         ? (double)(row.Disbursed / row.Committed)
                                         : 0.0;
+                                    var barPct = Math.Min(1.0, rawPct);  // cap bar width; amount shown in cell
                                     <tr>
                                         <td>
                                             <div class="fw-medium" style="font-size:.8rem">@(row.ApplicantName ?? row.EntityNumber)</div>
                                             <div class="fulfillment-bar mt-1">
                                                 <div class="fulfillment-fill"
-                                                     style="width:@((int)(pct * 100))%;background:@(pct >= 0.8 ? "#16a34a" : pct >= 0.5 ? "#d97706" : "#dc2626")"></div>
+                                                     style="width:@((int)(barPct * 100))%;background:@(barPct >= 0.8 ? "#16a34a" : barPct >= 0.5 ? "#d97706" : "#dc2626")"></div>
                                             </div>
                                         </td>
                                         <td>@(row.State ?? "—")</td>
@@ -518,7 +637,7 @@
     </div>
 
     <!-- ===================================================================
-         Section 4: Reduction Rate Analysis
+         5b: Reduction Rate Analysis
          =================================================================== -->
     <div class="col-lg-6">
         <div class="card h-100">
@@ -570,6 +689,10 @@
         </div>
     </div>
 </div>
+
+<p class="ri-caveat text-center mb-4" style="opacity:.7">
+    Data validated against USAC open datasets using year-level reconciliation.
+</p>
 
 @section Scripts {
 <script>

@@ -100,60 +100,51 @@ public record ReductionRateRow(
     decimal Committed,
     double ReductionPct);
 
+public record AdvisorySignalDto(
+    string EntityNumber,
+    string? ApplicantEntityName,
+    int FundingYear,
+    decimal TotalCommittedAmount,
+    decimal TotalApprovedDisbursementAmount,
+    double ReductionPct,
+    double DisbursementPct,
+    string RiskLevel,
+    string AnomalyType);
+
 // ---------------------------------------------------------------------------
 // Repository
 // ---------------------------------------------------------------------------
 
 /// <summary>
-/// Cross-dataset risk queries joining FundingCommitments, Disbursements, and EpcEntities.
+/// Risk queries backed entirely by <see cref="Domain.ApplicantYearRiskSummary"/>.
 ///
-/// Query strategy:
-///   1. Aggregate FundingCommitments and Disbursements per BEN in SQL (GROUP BY).
-///   2. Join and compute risk metrics in memory.
-///   3. Fetch state from EpcEntities only for the final result rows to keep the WHERE IN small.
+/// The summary table is the single authoritative source for all risk page data.
+/// It is produced by <see cref="ApplicantYearRiskSummaryBuilder"/>, which merges
+/// ApplicantYearCommitmentSummary and ApplicantYearDisbursementSummary with full-
+/// outer-join semantics and pre-computes ReductionPct, DisbursementPct, RiskScore,
+/// and RiskLevel using <see cref="RiskCalculator"/>.
 ///
-/// All monetary aggregations use Sum((double?)amount ?? 0.0) to work around SQLite's
-/// lack of native decimal SUM. Results are converted back to decimal in memory.
+/// This repository does NOT query FundingCommitments or Disbursements directly.
+/// InvoiceLineStatus filtering and disbursement inclusion rules are responsibilities
+/// of the builder pipeline (tested in DisbursementSummaryBuilderTests).
+///
+/// State lookup (PhysicalState) is still fetched from EpcEntities for the top-N
+/// result rows, keeping the WHERE IN small.
 /// </summary>
 public class RiskInsightsRepository(AppDbContext db, ILogger<RiskInsightsRepository>? logger = null)
 {
     // Minimum eligible amount to include an entity in reduction-rate analysis.
-    // Filters out rows with no meaningful data.
     private const double MinRequestedThreshold = 100.0;
 
     // -----------------------------------------------------------------------
-    // Disbursement base query
-    //
-    // The USAC jpiu-tj8h dataset ("E-Rate Invoices and Authorized Disbursements")
-    // stores invoice line items with an inv_line_item_status column. The
-    // approved_inv_line_amt column is populated for ALL statuses — including
-    // Pending lines (proposed/under-review amount) and Not Approved / Cancelled
-    // lines (amount that was reviewed but ultimately denied). Summing all rows
-    // therefore inflates disbursed totals far beyond committed amounts.
-    //
-    // This base query restricts to:
-    //   - InvoiceLineStatus IS NULL    — older USAC exports that predate the
-    //                                    status field; assumed to be paid records.
-    //   - InvoiceLineStatus = "Approved" (case-insensitive) — confirmed payment.
-    //
-    // "Pending", "Not Approved", "Cancelled", and any other non-final statuses
-    // are excluded so that only amounts USAC has actually authorized/paid are
-    // included in risk calculations.
-    // -----------------------------------------------------------------------
-    private IQueryable<Domain.Disbursement> ApprovedDisbursements =>
-        db.Disbursements.Where(d =>
-            d.InvoiceLineStatus == null ||
-            d.InvoiceLineStatus.ToLower() == "approved");
-
-    // -----------------------------------------------------------------------
-    // Section 0: Available years (for filter dropdown)
+    // Available years (for filter dropdown)
     // -----------------------------------------------------------------------
 
     public async Task<List<int>> GetAvailableYearsAsync(CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
-        var result = await db.FundingCommitments
-            .Select(c => c.FundingYear)
+        var result = await db.ApplicantYearRiskSummaries
+            .Select(r => r.FundingYear)
             .Distinct()
             .OrderByDescending(y => y)
             .ToListAsync(ct);
@@ -163,126 +154,94 @@ public class RiskInsightsRepository(AppDbContext db, ILogger<RiskInsightsReposit
     }
 
     // -----------------------------------------------------------------------
-    // Section 1: National snapshot
+    // National snapshot
     // -----------------------------------------------------------------------
 
     public async Task<RiskSnapshot> GetSnapshotAsync(int? year = null, CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
-        var commitmentQuery = db.FundingCommitments.AsQueryable();
+
+        var query = db.ApplicantYearRiskSummaries.AsQueryable();
         if (year.HasValue)
-            commitmentQuery = commitmentQuery.Where(c => c.FundingYear == year.Value);
+            query = query.Where(r => r.FundingYear == year.Value);
 
-        double totalReqD = (double?)await commitmentQuery
-            .Select(c => (double?)c.TotalEligibleAmount).SumAsync(ct) ?? 0.0;
+        // Three separate SUM queries — each translates to a single SQL aggregate.
+        // The (double?) cast pattern works around EF Core + SQLite decimal-as-TEXT
+        // by projecting to REAL before summing, consistent with the rest of the codebase.
+        var totalEligD = (double?)await query.Select(r => (double?)r.TotalEligibleAmount).SumAsync(ct) ?? 0.0;
+        var totalComD  = (double?)await query.Select(r => (double?)r.TotalCommittedAmount).SumAsync(ct) ?? 0.0;
+        var totalDisbD = (double?)await query.Select(r => (double?)r.TotalApprovedDisbursementAmount).SumAsync(ct) ?? 0.0;
 
-        double totalComD = (double?)await commitmentQuery
-            .Select(c => (double?)c.CommittedAmount).SumAsync(ct) ?? 0.0;
+        var commitmentRate   = totalEligD > 0 ? Math.Clamp(totalComD  / totalEligD, 0.0, 1.0) : 0.0;
+        var disbursementRate = totalComD  > 0 ? Math.Clamp(totalDisbD / totalComD,  0.0, 1.0) : 0.0;
 
-        // Disbursements carry their own FundingYear — filter directly so the disbursed
-        // total is year-consistent with the commitment totals above.
-        // ApprovedDisbursements already excludes Pending/Not-Approved/Cancelled lines.
-        var disbursementQuery = ApprovedDisbursements;
-        if (year.HasValue)
-            disbursementQuery = disbursementQuery.Where(d => d.FundingYear == year.Value);
+        var snapshot = new RiskSnapshot(
+            (decimal)totalEligD,
+            (decimal)totalComD,
+            (decimal)totalDisbD,
+            commitmentRate,
+            disbursementRate);
 
-        double totalDisbD = (double?)await disbursementQuery
-            .Select(d => (double?)d.ApprovedAmount).SumAsync(ct) ?? 0.0;
-
-        var totalRequested  = (decimal)totalReqD;
-        var totalCommitted  = (decimal)totalComD;
-        var totalDisbursed  = (decimal)totalDisbD;
-
-        var commitmentRate  = totalReqD  > 0 ? totalComD  / totalReqD  : 0.0;
-        var disbursementRate = totalComD > 0 ? totalDisbD / totalComD  : 0.0;
-
-        var snapshot = new RiskSnapshot(totalRequested, totalCommitted, totalDisbursed,
-            Math.Clamp(commitmentRate, 0.0, 1.0),
-            Math.Clamp(disbursementRate, 0.0, 1.0));
         logger?.LogDebug(
             "RiskInsights.GetSnapshot completed in {ElapsedMs}ms (year={Year}, req={Req:F0}, com={Com:F0}, disb={Disb:F0})",
-            sw.ElapsedMilliseconds, year?.ToString() ?? "all", totalReqD, totalComD, totalDisbD);
+            sw.ElapsedMilliseconds, year?.ToString() ?? "all", totalEligD, totalComD, totalDisbD);
         return snapshot;
     }
 
     // -----------------------------------------------------------------------
-    // Section 2: Top risk applicants
+    // Top risk applicants
     // -----------------------------------------------------------------------
 
     public async Task<List<ApplicantRiskRow>> GetTopRiskApplicantsAsync(
         int topN = 20, int? year = null, string? severity = null, CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
-        // Step 1: aggregate commitments by BEN in SQL.
-        var commitmentQuery = db.FundingCommitments
-            .Where(c => c.ApplicantEntityNumber != null);
-        if (year.HasValue)
-            commitmentQuery = commitmentQuery.Where(c => c.FundingYear == year.Value);
 
-        var commitments = await commitmentQuery
-            .GroupBy(c => c.ApplicantEntityNumber!)
-            .Select(g => new
+        var query = db.ApplicantYearRiskSummaries
+            .Where(r => r.ApplicantEntityNumber != null);
+
+        if (year.HasValue)
+            query = query.Where(r => r.FundingYear == year.Value);
+
+        if (!string.IsNullOrEmpty(severity))
+        {
+            var severityLower = severity.ToLowerInvariant();
+            query = query.Where(r => r.RiskLevel.ToLower() == severityLower);
+        }
+
+        var topRows = await query
+            .OrderByDescending(r => r.RiskScore)
+            .Take(topN)
+            .Select(r => new
             {
-                Ben    = g.Key,
-                TotalReq = g.Sum(c => (double?)c.TotalEligibleAmount ?? 0.0),
-                TotalCom = g.Sum(c => (double?)c.CommittedAmount     ?? 0.0),
-                Name   = g.Select(c => c.ApplicantName).FirstOrDefault(n => n != null),
+                r.ApplicantEntityNumber,
+                r.ApplicantEntityName,
+                r.TotalEligibleAmount,
+                r.TotalCommittedAmount,
+                r.TotalApprovedDisbursementAmount,
+                r.ReductionPct,
+                r.DisbursementPct,
+                r.RiskScore,
+                r.RiskLevel,
             })
             .ToListAsync(ct);
 
-        var bens = commitments.Select(r => r.Ben).ToHashSet();
-
-        // Step 2: aggregate disbursements for those BENs in SQL.
-        // Filter by year when active — Disbursement.FundingYear keeps this year-consistent
-        // with the commitment totals computed above.
-        // ApprovedDisbursements already excludes Pending/Not-Approved/Cancelled lines.
-        var disbQuery = ApprovedDisbursements
-            .Where(d => d.ApplicantEntityNumber != null && bens.Contains(d.ApplicantEntityNumber!));
-        if (year.HasValue)
-            disbQuery = disbQuery.Where(d => d.FundingYear == year.Value);
-
-        var disbursed = await disbQuery
-            .GroupBy(d => d.ApplicantEntityNumber!)
-            .Select(g => new { Ben = g.Key, TotalDisb = g.Sum(d => (double?)d.ApprovedAmount ?? 0.0) })
-            .ToListAsync(ct);
-
-        var disbLookup = disbursed.ToDictionary(r => r.Ben, r => r.TotalDisb);
-
-        // Step 3: compute risk scores in memory; apply severity filter; take top N.
-        var scored = commitments
-            .Select(c =>
-            {
-                var disb    = disbLookup.GetValueOrDefault(c.Ben, 0.0);
-                var redPct  = RiskCalculator.ReductionPct(c.TotalReq, c.TotalCom);
-                var disbPct = RiskCalculator.DisbursementPct(c.TotalCom, disb);
-                var score   = RiskCalculator.ComputeRiskScore(redPct, disbPct);
-                var level   = RiskCalculator.ClassifyRisk(score);
-                return (c.Ben, c.Name, c.TotalReq, c.TotalCom, disb, redPct, disbPct, score, level);
-            })
-            .OrderByDescending(r => r.score);
-
-        var filtered = string.IsNullOrEmpty(severity)
-            ? scored
-            : scored.Where(r => r.level.Equals(severity, StringComparison.OrdinalIgnoreCase));
-
-        var topRows = filtered.Take(topN).ToList();
-
-        // Step 4: fetch states only for the top-N BENs.
-        var topBens = topRows.Select(r => r.Ben).ToHashSet();
+        var topBens    = topRows.Select(r => r.ApplicantEntityNumber!).ToHashSet();
         var stateLookup = await FetchStatesAsync(topBens, ct);
 
         var rows = topRows.Select(r => new ApplicantRiskRow(
-            r.Ben,
-            r.Name,
-            stateLookup.GetValueOrDefault(r.Ben),
-            (decimal)r.TotalReq,
-            (decimal)r.TotalCom,
-            (decimal)r.disb,
-            r.redPct,
-            r.disbPct,
-            r.score,
-            r.level
+            r.ApplicantEntityNumber!,
+            r.ApplicantEntityName,
+            stateLookup.GetValueOrDefault(r.ApplicantEntityNumber!),
+            r.TotalEligibleAmount,
+            r.TotalCommittedAmount,
+            r.TotalApprovedDisbursementAmount,
+            r.ReductionPct,
+            r.DisbursementPct,
+            r.RiskScore,
+            r.RiskLevel
         )).ToList();
+
         logger?.LogDebug(
             "RiskInsights.GetTopRiskApplicants completed in {ElapsedMs}ms (year={Year}, severity={Severity}, rows={Rows})",
             sw.ElapsedMilliseconds, year?.ToString() ?? "all", severity ?? "all", rows.Count);
@@ -290,62 +249,59 @@ public class RiskInsightsRepository(AppDbContext db, ILogger<RiskInsightsReposit
     }
 
     // -----------------------------------------------------------------------
-    // Section 3: Commitment vs disbursement gap
+    // Commitment vs disbursement gap
     // -----------------------------------------------------------------------
 
     public async Task<List<CommitmentGapRow>> GetTopCommitmentDisbursementGapsAsync(
         int topN = 15, int? year = null, CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
-        var commitmentQuery = db.FundingCommitments
-            .Where(c => c.ApplicantEntityNumber != null && c.CommittedAmount > 0);
-        if (year.HasValue)
-            commitmentQuery = commitmentQuery.Where(c => c.FundingYear == year.Value);
 
-        var commitments = await commitmentQuery
-            .GroupBy(c => c.ApplicantEntityNumber!)
-            .Select(g => new
+        var query = db.ApplicantYearRiskSummaries
+            .Where(r => r.ApplicantEntityNumber != null && r.TotalCommittedAmount > 0);
+
+        if (year.HasValue)
+            query = query.Where(r => r.FundingYear == year.Value);
+
+        // Committed and approved amounts are loaded for the committed-only pre-filtered set.
+        // Gap filtering and ordering are done in memory: EF Core + SQLite cannot translate
+        // decimal column subtraction (TEXT affinity) in ORDER BY expressions to SQL.
+        var items = await query
+            .Select(r => new
             {
-                Ben    = g.Key,
-                TotalCom = g.Sum(c => (double?)c.CommittedAmount ?? 0.0),
-                Name   = g.Select(c => c.ApplicantName).FirstOrDefault(n => n != null),
+                r.ApplicantEntityNumber,
+                r.ApplicantEntityName,
+                r.TotalCommittedAmount,
+                r.TotalApprovedDisbursementAmount,
             })
             .ToListAsync(ct);
 
-        var bens = commitments.Select(r => r.Ben).ToHashSet();
-
-        // ApprovedDisbursements already excludes Pending/Not-Approved/Cancelled lines.
-        var gapDisbQuery = ApprovedDisbursements
-            .Where(d => d.ApplicantEntityNumber != null && bens.Contains(d.ApplicantEntityNumber!));
-        if (year.HasValue)
-            gapDisbQuery = gapDisbQuery.Where(d => d.FundingYear == year.Value);
-
-        var disbursed = await gapDisbQuery
-            .GroupBy(d => d.ApplicantEntityNumber!)
-            .Select(g => new { Ben = g.Key, TotalDisb = g.Sum(d => (double?)d.ApprovedAmount ?? 0.0) })
-            .ToListAsync(ct);
-
-        var disbLookup = disbursed.ToDictionary(r => r.Ben, r => r.TotalDisb);
-
-        var topRows = commitments
-            .Select(c => (c.Ben, c.Name, c.TotalCom, Disb: disbLookup.GetValueOrDefault(c.Ben, 0.0)))
-            .Select(r => (r.Ben, r.Name, r.TotalCom, r.Disb, Gap: r.TotalCom - r.Disb))
+        var topRows = items
+            .Select(r => new
+            {
+                r.ApplicantEntityNumber,
+                r.ApplicantEntityName,
+                r.TotalCommittedAmount,
+                r.TotalApprovedDisbursementAmount,
+                Gap = r.TotalCommittedAmount - r.TotalApprovedDisbursementAmount,
+            })
             .Where(r => r.Gap > 0)
             .OrderByDescending(r => r.Gap)
             .Take(topN)
             .ToList();
 
-        var topBens = topRows.Select(r => r.Ben).ToHashSet();
+        var topBens    = topRows.Select(r => r.ApplicantEntityNumber!).ToHashSet();
         var stateLookup = await FetchStatesAsync(topBens, ct);
 
         var gapRows = topRows.Select(r => new CommitmentGapRow(
-            r.Ben,
-            r.Name,
-            stateLookup.GetValueOrDefault(r.Ben),
-            (decimal)r.TotalCom,
-            (decimal)r.Disb,
-            (decimal)r.Gap
+            r.ApplicantEntityNumber!,
+            r.ApplicantEntityName,
+            stateLookup.GetValueOrDefault(r.ApplicantEntityNumber!),
+            r.TotalCommittedAmount,
+            r.TotalApprovedDisbursementAmount,
+            r.TotalCommittedAmount - r.TotalApprovedDisbursementAmount
         )).ToList();
+
         logger?.LogDebug(
             "RiskInsights.GetTopCommitmentDisbursementGaps completed in {ElapsedMs}ms (year={Year}, rows={Rows})",
             sw.ElapsedMilliseconds, year?.ToString() ?? "all", gapRows.Count);
@@ -353,52 +309,131 @@ public class RiskInsightsRepository(AppDbContext db, ILogger<RiskInsightsReposit
     }
 
     // -----------------------------------------------------------------------
-    // Section 4: Reduction rate
+    // Reduction rate
     // -----------------------------------------------------------------------
 
     public async Task<List<ReductionRateRow>> GetTopReductionRatesAsync(
         int topN = 15, int? year = null, CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
-        var commitmentQuery = db.FundingCommitments
-            .Where(c => c.ApplicantEntityNumber != null && c.TotalEligibleAmount > 0);
-        if (year.HasValue)
-            commitmentQuery = commitmentQuery.Where(c => c.FundingYear == year.Value);
 
-        var commitments = await commitmentQuery
-            .GroupBy(c => c.ApplicantEntityNumber!)
-            .Select(g => new
+        var threshold = (decimal)MinRequestedThreshold;
+        var query = db.ApplicantYearRiskSummaries
+            .Where(r => r.ApplicantEntityNumber != null && r.TotalEligibleAmount >= threshold);
+
+        if (year.HasValue)
+            query = query.Where(r => r.FundingYear == year.Value);
+
+        var topRows = await query
+            .OrderByDescending(r => r.ReductionPct)
+            .Take(topN)
+            .Select(r => new
             {
-                Ben    = g.Key,
-                TotalReq = g.Sum(c => (double?)c.TotalEligibleAmount ?? 0.0),
-                TotalCom = g.Sum(c => (double?)c.CommittedAmount     ?? 0.0),
-                Name   = g.Select(c => c.ApplicantName).FirstOrDefault(n => n != null),
+                r.ApplicantEntityNumber,
+                r.ApplicantEntityName,
+                r.TotalEligibleAmount,
+                r.TotalCommittedAmount,
+                r.ReductionPct,
             })
             .ToListAsync(ct);
 
-        var topRows = commitments
-            .Where(c => c.TotalReq >= MinRequestedThreshold)
-            .Select(c => (c.Ben, c.Name, c.TotalReq, c.TotalCom,
-                         RedPct: RiskCalculator.ReductionPct(c.TotalReq, c.TotalCom)))
-            .OrderByDescending(r => r.RedPct)
-            .Take(topN)
-            .ToList();
-
-        var topBens = topRows.Select(r => r.Ben).ToHashSet();
+        var topBens    = topRows.Select(r => r.ApplicantEntityNumber!).ToHashSet();
         var stateLookup = await FetchStatesAsync(topBens, ct);
 
         var reductionRows = topRows.Select(r => new ReductionRateRow(
-            r.Ben,
-            r.Name,
-            stateLookup.GetValueOrDefault(r.Ben),
-            (decimal)r.TotalReq,
-            (decimal)r.TotalCom,
-            r.RedPct
+            r.ApplicantEntityNumber!,
+            r.ApplicantEntityName,
+            stateLookup.GetValueOrDefault(r.ApplicantEntityNumber!),
+            r.TotalEligibleAmount,
+            r.TotalCommittedAmount,
+            r.ReductionPct
         )).ToList();
+
         logger?.LogDebug(
             "RiskInsights.GetTopReductionRates completed in {ElapsedMs}ms (year={Year}, rows={Rows})",
             sw.ElapsedMilliseconds, year?.ToString() ?? "all", reductionRows.Count);
         return reductionRows;
+    }
+
+    // -----------------------------------------------------------------------
+    // Advisory signals
+    // -----------------------------------------------------------------------
+
+    public async Task<List<AdvisorySignalDto>> GetAdvisorySignalsAsync(
+        int? year = null, int topN = 25, CancellationToken ct = default)
+    {
+        var sw = Stopwatch.StartNew();
+
+        var query = db.ApplicantYearRiskSummaries
+            .Where(r => r.ApplicantEntityNumber != null);
+
+        if (year.HasValue)
+            query = query.Where(r => r.FundingYear == year.Value);
+
+        // Load rows that match at least one advisory condition.
+        // All filter predicates use double/bool columns — fully SQL-translated.
+        var rows = await query
+            .Where(r =>
+                (!r.HasCommitmentData && r.HasDisbursementData) ||
+                (r.HasCommitmentData  && !r.HasDisbursementData) ||
+                r.ReductionPct > 0.5 ||
+                (r.DisbursementPct < 0.5 && r.HasCommitmentData))
+            .Select(r => new
+            {
+                r.ApplicantEntityNumber,
+                r.ApplicantEntityName,
+                r.FundingYear,
+                r.TotalCommittedAmount,
+                r.TotalApprovedDisbursementAmount,
+                r.ReductionPct,
+                r.DisbursementPct,
+                r.RiskLevel,
+                r.RiskScore,
+                r.HasCommitmentData,
+                r.HasDisbursementData,
+            })
+            .ToListAsync(ct);
+
+        // Expand each row into one signal per matching condition.
+        var signals = new List<(double Score, AdvisorySignalDto Dto)>(rows.Count * 2);
+        foreach (var r in rows)
+        {
+            if (!r.HasCommitmentData && r.HasDisbursementData)
+                signals.Add((r.RiskScore, new AdvisorySignalDto(
+                    r.ApplicantEntityNumber!, r.ApplicantEntityName, r.FundingYear,
+                    r.TotalCommittedAmount, r.TotalApprovedDisbursementAmount,
+                    r.ReductionPct, r.DisbursementPct, r.RiskLevel, "No Commitment")));
+
+            if (r.HasCommitmentData && !r.HasDisbursementData)
+                signals.Add((r.RiskScore, new AdvisorySignalDto(
+                    r.ApplicantEntityNumber!, r.ApplicantEntityName, r.FundingYear,
+                    r.TotalCommittedAmount, r.TotalApprovedDisbursementAmount,
+                    r.ReductionPct, r.DisbursementPct, r.RiskLevel, "No Disbursement")));
+
+            if (r.ReductionPct > 0.5)
+                signals.Add((r.RiskScore, new AdvisorySignalDto(
+                    r.ApplicantEntityNumber!, r.ApplicantEntityName, r.FundingYear,
+                    r.TotalCommittedAmount, r.TotalApprovedDisbursementAmount,
+                    r.ReductionPct, r.DisbursementPct, r.RiskLevel, "High Reduction")));
+
+            if (r.DisbursementPct < 0.5 && r.HasCommitmentData)
+                signals.Add((r.RiskScore, new AdvisorySignalDto(
+                    r.ApplicantEntityNumber!, r.ApplicantEntityName, r.FundingYear,
+                    r.TotalCommittedAmount, r.TotalApprovedDisbursementAmount,
+                    r.ReductionPct, r.DisbursementPct, r.RiskLevel, "Low Utilization")));
+        }
+
+        var result = signals
+            .OrderByDescending(x => x.Score)
+            .ThenByDescending(x => x.Dto.TotalCommittedAmount)
+            .Take(topN)
+            .Select(x => x.Dto)
+            .ToList();
+
+        logger?.LogDebug(
+            "RiskInsights.GetAdvisorySignals completed in {ElapsedMs}ms (year={Year}, signalRows={Rows})",
+            sw.ElapsedMilliseconds, year?.ToString() ?? "all", result.Count);
+        return result;
     }
 
     // -----------------------------------------------------------------------

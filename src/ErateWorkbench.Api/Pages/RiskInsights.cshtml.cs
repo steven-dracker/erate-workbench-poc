@@ -19,6 +19,7 @@ public class RiskInsightsModel(RiskInsightsRepository repo) : PageModel
     public List<ApplicantRiskRow> TopRiskApplicants { get; private set; } = [];
     public List<CommitmentGapRow> TopGaps { get; private set; } = [];
     public List<ReductionRateRow> TopReductions { get; private set; } = [];
+    public List<AdvisorySignalDto> AdvisorySignals { get; private set; } = [];
 
     public async Task OnGetAsync(CancellationToken ct)
     {
@@ -27,5 +28,6 @@ public class RiskInsightsModel(RiskInsightsRepository repo) : PageModel
         TopRiskApplicants  = await repo.GetTopRiskApplicantsAsync(20, Year, Severity, ct);
         TopGaps            = await repo.GetTopCommitmentDisbursementGapsAsync(15, Year, ct);
         TopReductions      = await repo.GetTopReductionRatesAsync(15, Year, ct);
+        AdvisorySignals    = await repo.GetAdvisorySignalsAsync(Year, 25, ct);
     }
 }
