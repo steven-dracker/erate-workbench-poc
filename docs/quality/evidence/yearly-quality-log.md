@@ -32,7 +32,7 @@ Use these codes consistently across all tables and entries.
 
 ## Current data quality status
 
-**Last updated:** 2026-03-18 (CC-ERATE-000010 repair import in progress — FY2021 FC row count recovering; final reconciliation pending import completion)
+**Last updated:** 2026-03-18 (CC-ERATE-000010 repair complete — FY2021 FC fully recovered; summary rebuilt; reconciliation confirmed)
 **Full validation cycle:** not yet run
 
 This table represents the *current assessed state* of each loaded year.
@@ -49,7 +49,7 @@ Note: Socrata source row count is expected to be ~10–15× local raw row count 
 | 2018 | 169,179 | 1,639,720 | 9.7× | `validated-caveat` | — | `not-run` | `not-run` | `not-run` | 2026-03-18 | Pre-2020 |
 | 2019 | 183,345 | 1,439,485 | 7.8× | `validated-caveat` | — | `not-run` | `not-run` | `not-run` | 2026-03-18 | Pre-2020 |
 | 2020 | 250,037 | 1,702,938 | 6.8× | `validated-caveat` | −$34M (−1.0%) | `not-run` | `not-run` | `not-run` | 2026-03-18 | Raw→Sum: small variance, likely null-entity exclusion |
-| 2021 | ~171,000 | 2,116,248 | ~12.3× | `validated-caveat` | <2% (est.) | `complete` | `complete` | `pass` | 2026-03-18 | Anomaly resolved — was 125,296/16.9× (incomplete import); full import recovered missing rows; see CC-ERATE-000011 |
+| 2021 | 171,977 | 2,116,248 | 12.3× | `validated-caveat` | ~$0 (<0.001%) | `complete` | `complete` | `pass` | 2026-03-18 | Anomaly resolved — was 125,296/16.9× (incomplete import); full import recovered missing rows; Raw→Sum variance confirmed ~0; see CC-ERATE-000010/000011 |
 | 2022 | 169,458 | 2,185,316 | 12.9× | `validated-caveat` | ~$0 (<0.001%) | `not-run` | `not-run` | `validated-caveat` | 2026-03-18 | Reference year — Raw→Sum amounts match to floating-point precision |
 | 2023 | 155,537 | 2,369,338 | 15.2× | `validated-caveat` | −$28M (−0.8%) | `not-run` | `not-run` | `not-run` | 2026-03-18 | |
 | 2024 | 157,964 | 2,004,155 | 12.7× | `validated-caveat` | −$70M (−1.8%) | `not-run` | `not-run` | `not-run` | 2026-03-18 | |
@@ -76,7 +76,7 @@ Reference: `runbooks/full-data-validation-runbook.md §7`.
 
 | Item | Description | Expected behavior |
 |---|---|---|
-| FY2021 FC row count anomaly (repair in progress) | Was 125,296 rows / 16.9× ratio / −9.6% Raw→Sum variance. Root cause confirmed (CC-ERATE-000010D): prior imports were killed before reaching the FY2021 portion of Socrata's dataset order (offset ~8–12M). | **CC-ERATE-000010 repair import running.** FY2021 at 171,086 rows (mid-import) vs FY2022 172,920 — nearly normalized. Summary rebuild and reconciliation required after import completes. Next step: POST /dev/summary/funding-commitments?year=2021 → /dev/summary/risk?year=2021 → /dev/reconcile/funding-commitments. |
+| ~~FY2021 FC row count anomaly~~ | ~~Was 125,296 rows / 16.9× ratio / −9.6% Raw→Sum variance. Root cause confirmed (CC-ERATE-000010D): prior imports were killed before reaching the FY2021 portion of Socrata's dataset order (offset ~8–12M).~~ | **Resolved 2026-03-18 (CC-ERATE-000010).** Final: 171,977 rows / 12.3× ratio / Raw→Sum ~$0 variance. Summary and risk rebuilt. Reconciliation confirmed. |
 | Current/partial year advisory signals | Advisory signals for the most recent partial year may overstate anomalies | Mark all current-year signals as "preliminary — partial year" in any stakeholder presentation |
 | Summary rebuild order | Risk summary must be built after disbursement and commitment summaries | Stale input produces misleading Raw→Summary variance; confirm order on every cycle |
 | Analytics in-memory gap sort | `GetTopCommitmentDisbursementGapsAsync` loads all risk summary rows to memory before sorting by gap | With full multi-year data, watch Risk Insights page load time; profile if it becomes slow |
@@ -130,7 +130,7 @@ Delete rows or sections that are not applicable; note the reason.
 | Dataset | Year | Row count | Expected (approx) | Status |
 |---|---:|---:|---:|---|
 | FundingCommitments | 2020 | | ~250,000 | |
-| FundingCommitments | 2021 | | ~125,000 | See watchlist |
+| FundingCommitments | 2021 | | ~172,000 | |
 | FundingCommitments | 2022 | | ~169,000 | |
 | FundingCommitments | 2023 | | ~156,000 | |
 | FundingCommitments | 2024 | | ~158,000 | |
@@ -282,44 +282,31 @@ The Socrata `avi8-svp9.csv` endpoint returns rows in internal Socrata record ord
 2. Re-import with year filter (not possible — import has no year param)
 3. Alternatively: wait for a full import to complete (current approach)
 
-### Repair progress (in progress as of 2026-03-18)
+### Repair outcome (confirmed 2026-03-18)
 
-| Metric | Before | Mid-repair (import still running) |
+Import job 46 ran 19:10–22:52 UTC, 3h41m. Completed all FY2021 offset range before a `HttpClient.Timeout` on the final page. All committed rows remain.
+
+| Metric | Before | After (confirmed) |
 |---|---|---|
-| FY2021 raw rows | 125,296 | 171,086 (+45,790) |
+| FY2021 raw rows | 125,296 | **171,977** (+46,681) |
 | FY2021 distinct FRNs | 37,498 | 50,692 |
-| FY2021 distinct BENs | 15,214 | 19,605 |
-| FY2021 TotalEligibleAmount | $2.77B | $3.47B (growing) |
-| Source/Raw ratio (est.) | 16.9× | ~12.3× (improving) |
-| Total FC rows in DB | 1,901,862 | 2,071,640 (growing) |
+| FY2021 distinct BENs | 15,214 | 19,637 |
+| FY2021 TotalEligibleAmount | $2.77B | **$3.48B** |
+| Source/Raw ratio | 16.9× | **12.3×** |
 
-FY2021 row count is now within ~1% of FY2022. Pattern is consistent with other mature years (3.37 rows/FRN for FY2021 vs 3.1 for FY2022). Anomaly appears to be resolving structurally.
+Summary rebuilt, risk rebuilt, reconciliation run. Raw→Summary variance dropped from −9.6% to ~$0. See CC-ERATE-000011 entry for confirmed post-repair numbers.
 
-### Required next steps (after import completes)
-
-Import is expected to complete in approximately 1–2 hours from 22:30 UTC.
-
-1. **Rebuild FY2021 Commitment Summary:** `POST /dev/summary/funding-commitments?year=2021`
-2. **Rebuild FY2021 Risk Summary:** `POST /dev/summary/risk?year=2021`
-3. **Re-run FC reconciliation:** `POST /dev/reconcile/funding-commitments`
-4. **Check FY2021 Raw→Summary variance** — expected to drop from −9.6% to <2%
-5. **Update status table from `needs-investigation` to `validated-caveat`** if variance normalizes
-
-A background monitor has been set to auto-trigger steps 1–2 when the import job transitions to `Succeeded`.
-
-### Overall verdict (preliminary — import not yet complete)
+### Overall verdict
 
 | Area | Result | Notes |
 |---|---|---|
 | Root cause | `validated` | Prior imports truncated before FY2021 offset range in Socrata order |
-| Repair approach | `validated` | Full re-import (idempotent) is correct; no delete step needed or available |
-| FY2021 row count | `improving` | 125,296 → 171,086 mid-import; approaching FY2022 range |
-| Summary rebuild | `not-run` | Pending import completion |
-| Reconciliation | `not-run` | Pending summary rebuild |
+| Repair approach | `validated` | Full re-import (idempotent); no delete step needed or available |
+| FY2021 row count | `validated` | 125,296 → 171,977; 12.3× ratio in expected band |
+| Summary rebuild | `complete` | Both commitment and risk summaries rebuilt |
+| Reconciliation | `validated-caveat` | Raw→Summary ~$0; source→local structural mismatch documented |
 
-**Cycle verdict:** `needs-investigation` → `in-repair`
-
-Root cause confirmed. Repair is making meaningful progress. Final verdict deferred until import completes and summaries are rebuilt.
+**Cycle verdict:** `pass` (closed 2026-03-18 CC-ERATE-000011)
 
 ---
 
@@ -640,44 +627,51 @@ implemented.)*
 
 ---
 
-## 2026-03-18 — FY2021 Import Completion & Reconciliation
+## 2026-03-18 — FY2021 FC repair: confirmed complete post-import (CC-ERATE-000011)
 
-**Scope:** Funding Commitments (FY2021)
+**Validator:** unattributed
+**Trigger:** Post-import closure of CC-ERATE-000010 repair — summarise rebuild and reconciliation after full import completed
+**App commit:** 16ac22a (feature/import-resilience)
+**Data scope:** FY2021 Funding Commitments only
+**Runbook version:** current HEAD
 
-### Summary
+### Post-repair confirmed state
 
-FY2021 data completeness issue identified and resolved during full dataset import.
+Full import (job 46) ran 19:10–22:52 UTC, 3h41m total. Job record shows `status=3 (Failed)` due to `HttpClient.Timeout of 100 seconds` on the final Socrata page fetch. All prior pages were committed per-batch (idempotent upsert). The timeout occurred after the full FY2021 offset range was covered.
 
-### Findings
+| Metric | Before repair | After repair (confirmed) |
+|---|---|---|
+| FY2021 raw rows | 125,296 | **171,977** (+46,681) |
+| Source rows (Socrata) | 2,116,248 | 2,116,248 (unchanged) |
+| Source/Raw ratio | 16.9× | **12.3×** (within expected 10–15×) |
+| Raw TotalEligibleAmount | $2.77B | **$3.48B** |
+| Raw CommittedAmount | $2.12B | **$2.66B** |
+| CommitmentSummary rows | 14,295 | **19,637** |
+| Raw→Sum TotalEligible variance | −$267M (−9.6%) | **~$0 (<0.001%)** |
+| Raw→Sum applicant variance | — | **0** |
+| RiskSummary rows (rebuilt) | 20,817 | **21,199** |
 
-- Prior FY2021 raw data was incomplete due to partial pagination coverage
-- Significant portion of FY2021 rows located in higher offset ranges (~8M–12M)
-- Partial imports resulted in year-skewed dataset (not evenly distributed by year)
+### Summary rebuild results
 
-### Before Repair
+- `POST /dev/summary/funding-commitments?year=2021` → 171,977 raw rows scanned, 19,637 summary rows written, elapsed 2,922ms
+- `POST /dev/summary/risk?year=2021` → 19,637 commitment rows + 20,254 disbursement rows → 21,199 risk rows written, elapsed 4,349ms
 
-- Raw row count: ~125,296
-- TotalEligibleAmount: ~$2.77B
-- Source/Raw ratio: ~16.9×
+### Reconciliation results (post-rebuild)
 
-### After Full Import (mid-run)
+- Source: 2,116,248 rows, 21,364 distinct applicants
+- Local raw: 171,977 rows, 19,637 distinct applicants
+- Raw→Summary: 0 applicant variance; amount variance ~$0 (float rounding only)
+- Status: `validated-caveat` — structural source→local mismatch (per-ROS vs per-FRN) is expected and documented
 
-- Raw row count: ~171,000+
-- TotalEligibleAmount: ~$3.47B
-- Source/Raw ratio: ~12.3× (within expected range)
+### Overall verdict
 
-### Outcome
+| Area | Result | Notes |
+|---|---|---|
+| Raw row count | `validated` | 171,977 — within FY2022 range (172,933); 12.3× ratio in expected band |
+| Raw→Summary amounts | `validated` | Variance ~$0 — down from −9.6% (−$267M) pre-repair |
+| Summary rebuild | `complete` | Both commitment and risk summaries rebuilt |
+| Reconciliation | `validated-caveat` | Source→local structural mismatch documented; internal consistency confirmed |
 
-- Data distribution now aligns with adjacent years (2020, 2022)
-- No structural anomalies observed post-import
-- Summary and risk layers rebuilt successfully
+**Cycle verdict:** `pass`
 
-### Conclusion
-
-FY2021 dataset validated as complete and suitable for analytics and demo use.
-
-### Notes
-
-- Root cause: incomplete traversal of Socrata paged dataset
-- Import endpoint is not year-scoped; full dataset ingestion required for completeness
-- Reinforces need for reconciliation-based validation over assumption of completeness
+FY2021 anomaly fully resolved. Data is suitable for analytics and stakeholder use.
