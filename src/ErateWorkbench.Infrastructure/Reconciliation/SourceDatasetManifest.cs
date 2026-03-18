@@ -62,14 +62,22 @@ public static class DatasetManifests
         DatasetId = "avi8-svp9",
         LocalTableName = "FundingCommitments",
         YearColumn = "funding_year",
-        ApplicantColumn = "applicant_entity_number",
+        // Fixed 2026-03-18 (CC-ERATE-000009): Socrata avi8-svp9 uses "billed_entity_number",
+        // not "applicant_entity_number" (which does not exist in the SoQL API schema).
+        ApplicantColumn = "billed_entity_number",
         SupportsDistinctApplicantCount = true,
         AmountMetrics =
         [
-            new() { SourceColumn = "total_eligible_amount", LocalProperty = "TotalEligibleAmount", DisplayName = "Total Eligible Amount" },
-            new() { SourceColumn = "committed_amount",      LocalProperty = "CommittedAmount",      DisplayName = "Committed Amount"      },
+            // Fixed 2026-03-18 (CC-ERATE-000009): Socrata avi8-svp9 SoQL uses the full
+            // snake_case column names from the CSV schema, not abbreviated aliases.
+            // "pre_discount_extended_eligible_line_item_costs" = TotalEligibleAmount (CSV: same)
+            // "post_discount_extended_eligible_line_item_costs" = CommittedAmount (CSV: same)
+            new() { SourceColumn = "pre_discount_extended_eligible_line_item_costs",  LocalProperty = "TotalEligibleAmount", DisplayName = "Total Eligible Amount" },
+            new() { SourceColumn = "post_discount_extended_eligible_line_item_costs", LocalProperty = "CommittedAmount",      DisplayName = "Committed Amount"      },
         ],
-        Notes = "USAC Open Data avi8-svp9. All commitment statuses included in source row count and sums.",
+        Notes = "USAC Open Data avi8-svp9. All commitment statuses included in source row count and sums. " +
+                "Source row count is ~10-15x local raw count (one source row per ROS per FRN line item; " +
+                "local deduplicates by FRN). Amount comparison uses sum of per-ROS costs across all rows.",
     };
 
     /// <summary>USAC E-Rate Invoices and Authorized Disbursements — Socrata jpiu-tj8h.</summary>

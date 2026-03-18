@@ -65,13 +65,17 @@ public class ReconciliationManifestTests
     [Fact]
     public void BuildByYearUrl_FundingCommitments_ContainsFundingYearGroup()
     {
+        // Updated 2026-03-18 (CC-ERATE-000009): corrected SoQL column names.
+        // "applicant_entity_number" → "billed_entity_number"
+        // "total_eligible_amount"   → "pre_discount_extended_eligible_line_item_costs"
+        // "committed_amount"        → "post_discount_extended_eligible_line_item_costs"
         var svc = Service();
         var url = svc.BuildByYearUrl(DatasetManifests.FundingCommitments);
         Assert.Contains("funding_year", url);
         Assert.Contains("count", url);
-        Assert.Contains("total_eligible_amount", url);
-        Assert.Contains("committed_amount", url);
-        Assert.Contains("applicant_entity_number", url);
+        Assert.Contains("pre_discount_extended_eligible_line_item_costs",  url);
+        Assert.Contains("post_discount_extended_eligible_line_item_costs", url);
+        Assert.Contains("billed_entity_number", url);
     }
 
     [Fact]
@@ -122,9 +126,40 @@ public class ReconciliationManifestTests
     }
 
     [Fact]
-    public void FundingCommitments_Manifest_ApplicantColumn_IsApplicantEntityNumber()
+    public void FundingCommitments_Manifest_ApplicantColumn_IsBilledEntityNumber()
     {
-        Assert.Equal("applicant_entity_number", DatasetManifests.FundingCommitments.ApplicantColumn);
+        // Regression: was "applicant_entity_number" (does not exist in Socrata avi8-svp9 SoQL schema).
+        // Fixed 2026-03-18 (CC-ERATE-000009). Correct column is "billed_entity_number" (same as Disbursements).
+        Assert.Equal("billed_entity_number", DatasetManifests.FundingCommitments.ApplicantColumn);
+        Assert.DoesNotContain("applicant_entity_number", DatasetManifests.FundingCommitments.ApplicantColumn ?? "");
+    }
+
+    [Fact]
+    public void FundingCommitments_Manifest_AmountMetrics_UseCorrectSoqlColumnNames()
+    {
+        // Regression: was "total_eligible_amount" and "committed_amount" — both absent from
+        // Socrata avi8-svp9 SoQL API, causing 400 from Socrata. Fixed 2026-03-18 (CC-ERATE-000009).
+        var metrics = DatasetManifests.FundingCommitments.AmountMetrics;
+        var sourceCols = metrics.Select(m => m.SourceColumn).ToList();
+        Assert.Contains("pre_discount_extended_eligible_line_item_costs",  sourceCols);
+        Assert.Contains("post_discount_extended_eligible_line_item_costs", sourceCols);
+        Assert.DoesNotContain("total_eligible_amount", sourceCols);
+        Assert.DoesNotContain("committed_amount",      sourceCols);
+    }
+
+    [Fact]
+    public void FundingCommitments_Manifest_ByYearUrl_ContainsBilledEntityNumberAndCosts()
+    {
+        // Regression: was generating COUNT(DISTINCT applicant_entity_number) and
+        // SUM(total_eligible_amount) which both fail on Socrata avi8-svp9.
+        var svc = Service();
+        var url = svc.BuildByYearUrl(DatasetManifests.FundingCommitments);
+        Assert.Contains("billed_entity_number", url);
+        Assert.Contains("pre_discount_extended_eligible_line_item_costs", url);
+        Assert.Contains("post_discount_extended_eligible_line_item_costs", url);
+        Assert.DoesNotContain("applicant_entity_number", url);
+        Assert.DoesNotContain("total_eligible_amount", url);
+        Assert.DoesNotContain("committed_amount\"", url); // quoted to avoid partial match with column name
     }
 
     // ── Reconciliation URL is not year-scoped (CC-ERATE-000007) ───────────────
@@ -227,12 +262,13 @@ public class SocrataReconciliationServiceTests
 {
     private const string TotalJson = """[{"row_count": "100"}]""";
 
+    // Updated 2026-03-18 (CC-ERATE-000009): column names corrected to match avi8-svp9 SoQL schema.
     private const string ByYearJson = """
         [
           {"funding_year": "2023", "row_count": "60", "distinct_applicants": "10",
-           "total_eligible_amount": "5000000.00", "committed_amount": "4500000.00"},
+           "pre_discount_extended_eligible_line_item_costs": "5000000.00", "post_discount_extended_eligible_line_item_costs": "4500000.00"},
           {"funding_year": "2024", "row_count": "40", "distinct_applicants": "8",
-           "total_eligible_amount": "3000000.00", "committed_amount": "2800000.00"}
+           "pre_discount_extended_eligible_line_item_costs": "3000000.00", "post_discount_extended_eligible_line_item_costs": "2800000.00"}
         ]
         """;
 
@@ -698,10 +734,11 @@ public class FundingCommitmentLocalDataProviderTests : IDisposable
 public class SocrataReconciliationServiceSummaryTests
 {
     private const string TotalJson  = """[{"row_count": "100"}]""";
+    // Updated 2026-03-18 (CC-ERATE-000009): column names corrected to match avi8-svp9 SoQL schema.
     private const string ByYearJson = """
         [
           {"funding_year": "2023", "row_count": "60", "distinct_applicants": "10",
-           "total_eligible_amount": "5000000.00", "committed_amount": "4500000.00"}
+           "pre_discount_extended_eligible_line_item_costs": "5000000.00", "post_discount_extended_eligible_line_item_costs": "4500000.00"}
         ]
         """;
 

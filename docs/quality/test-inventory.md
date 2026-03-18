@@ -23,7 +23,7 @@ Status definitions and lifecycle rules: see `strategy/test-lifecycle.md`.
 
 Runner: `dotnet test`
 Suite location: `tests/ErateWorkbench.Tests/`
-Count: 345 (as of 2026-03-18; CC-ERATE-000007 added sections A8–A10; CC-ERATE-000008 corrected smoke-test location references)
+Count: 347 (as of 2026-03-18; CC-ERATE-000007 added A8–A10; CC-ERATE-000008 corrected smoke references; CC-ERATE-000009 added MANIFEST-005/006 and corrected MANIFEST-002)
 
 ### A1 — CSV parsing
 
@@ -112,9 +112,16 @@ Count: 345 (as of 2026-03-18; CC-ERATE-000007 added sections A8–A10; CC-ERATE-
 | Name | Type | Mode | Scope | Location | Status | Supersedes / Superseded by | Notes |
 |---|---|---|---|---|---|---|---|
 | MANIFEST-001 | unit | automated | `DatasetManifests.Disbursements.ApplicantColumn` is `"billed_entity_number"` (not `"ben"`) | `ReconciliationManifestTests` | active | — | **Regression guard** for 2026-03-18 fix. Tests property directly, independent of URL construction. |
-| MANIFEST-002 | unit | automated | `DatasetManifests.FundingCommitments.ApplicantColumn` is `"applicant_entity_number"` | `ReconciliationManifestTests` | active | — | Baseline guard for FC manifest column name |
+| MANIFEST-002 | unit | automated | `DatasetManifests.FundingCommitments.ApplicantColumn` is `"billed_entity_number"` (not `"applicant_entity_number"`) | `ReconciliationManifestTests` | active | — | **Regression guard** for 2026-03-18 fix (CC-ERATE-000009). `"applicant_entity_number"` does not exist in avi8-svp9 SoQL API. |
 | MANIFEST-003 | unit | automated | `BuildByYearUrl` does not contain `$where=` clause for either dataset | `ReconciliationManifestTests` | active | — | Documents that reconciliation uses simple-filter not `$where` syntax |
 | MANIFEST-004 | unit | automated | `BuildTotalCountUrl` does not contain `funding_year=` — reconciliation is not year-scoped | `ReconciliationManifestTests` | active | — | Documents intentional absence of year filter; reconciliation fetches all years at once via GROUP BY |
+
+### A9b — FC manifest amount column regression guards (CC-ERATE-000009)
+
+| Name | Type | Mode | Scope | Location | Status | Supersedes / Superseded by | Notes |
+|---|---|---|---|---|---|---|---|
+| MANIFEST-005 | unit | automated | `DatasetManifests.FundingCommitments.AmountMetrics` source columns are `"pre_discount_extended_eligible_line_item_costs"` and `"post_discount_extended_eligible_line_item_costs"` — NOT `"total_eligible_amount"` or `"committed_amount"` | `ReconciliationManifestTests` | active | — | **Regression guard** for 2026-03-18 fix (CC-ERATE-000009). Both old column names caused HTTP 400 from Socrata avi8-svp9 — neither exists in the SoQL API. |
+| MANIFEST-006 | unit | automated | `BuildByYearUrl` for FundingCommitments contains `billed_entity_number` and both cost column names, and does NOT contain `applicant_entity_number`, `total_eligible_amount`, or `committed_amount` | `ReconciliationManifestTests` | active | — | URL-level regression guard; ensures no wrong column name reaches the Socrata API call. |
 
 ### A10 — Sparse-data safety (CC-ERATE-000007)
 

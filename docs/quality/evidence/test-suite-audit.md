@@ -1,10 +1,10 @@
 # Test Suite Audit
 
 **Date:** 2026-03-18
-**Commit:** feature/import-resilience (updated via CC-ERATE-000007)
-**Total tests:** 345 (across 26 test classes in 25 files)
+**Commit:** feature/import-resilience (updated via CC-ERATE-000007, CC-ERATE-000008, CC-ERATE-000009)
+**Total tests:** 347 (across 26 test classes in 25 files)
 **Runner:** `dotnet test tests/ErateWorkbench.Tests`
-**All 345 tests pass.**
+**All 347 tests pass.**
 
 ---
 
@@ -99,6 +99,33 @@ changes.
 ---
 
 ## Gaps and open defects
+
+### G0 — FundingCommitments manifest column defects (3) — **FIXED 2026-03-18**
+
+**Found in:** CC-ERATE-000009 runtime validation pass — `POST /dev/reconcile/funding-commitments` returned HTTP 500
+**Fixed in:** `SourceDatasetManifest.cs` (FundingCommitments manifest)
+**Root cause:** Three Socrata SoQL column names in the FundingCommitments manifest were incorrect and do not exist in the avi8-svp9 REST API:
+
+| Property | Was (wrong) | Correct |
+|---|---|---|
+| `ApplicantColumn` | `"applicant_entity_number"` | `"billed_entity_number"` |
+| `AmountMetrics[0].SourceColumn` | `"total_eligible_amount"` | `"pre_discount_extended_eligible_line_item_costs"` |
+| `AmountMetrics[1].SourceColumn` | `"committed_amount"` | `"post_discount_extended_eligible_line_item_costs"` |
+
+**Impact:** Every call to `POST /dev/reconcile/funding-commitments` failed with HTTP 500 since the endpoint was introduced. FC reconciliation was never successfully run.
+
+**Tests updated:**
+- `BuildByYearUrl_FundingCommitments_ContainsFundingYearGroup` — assertions updated
+- `ReconcileAsync_MatchingLocalData_NoVariance`, `ReconcileAsync_AmountVariance_ComputedCorrectly`, `ReconcileAsync_WithSummaryProvider_SourceVsSummaryVarianceComputed` — stub JSON keys corrected
+
+**New regression guards added (3 tests):**
+- `FundingCommitments_Manifest_ApplicantColumn_IsBilledEntityNumber`
+- `FundingCommitments_Manifest_AmountMetrics_UseCorrectSoqlColumnNames`
+- `FundingCommitments_Manifest_ByYearUrl_ContainsBilledEntityNumberAndCosts`
+
+All 347 tests pass after the fix.
+
+---
 
 ### G1 — `ben` column defect — **FIXED 2026-03-18**
 
