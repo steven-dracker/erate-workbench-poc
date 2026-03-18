@@ -145,6 +145,26 @@ All 334 tests pass after the fix.
 
 ---
 
+### G7 — No import-completion detectability / interrupted-import recovery — **NEW 2026-03-18**
+
+**Discovered in:** CC-ERATE-000010D (FY2021 repair investigation)
+
+**Gap:** When an import is killed mid-run (app process terminated), the `ImportJob` row remains with `Status = Running` and `RecordsProcessed = 0`. There is no:
+- Mechanism to detect that an import was interrupted (vs. still running)
+- Mechanism to resume from the last committed offset (imports always restart from offset 0)
+- Test that exercises the killed-import / partial-state scenario
+
+**Impact observed:** FY2021 Funding Commitments had only 125,296 rows because all prior imports were killed before reaching the FY2021 offset range (~8–12M) in Socrata's non-year-ordered dataset. This went undetected until the reconciliation ratio anomaly was noticed in CC-ERATE-000009.
+
+**What would help:**
+1. On app startup, mark any `Running` jobs older than N minutes as `Failed` (a restart detection pattern). Currently stuck jobs accumulate in the job table indefinitely.
+2. A periodic check or monitoring alert if `ImportJob` rows stay in `Running` state for >30 minutes.
+3. No test change needed at this time — the existing tests correctly document that imports are full-dataset. The gap is operational, not code.
+
+**Recommendation:** Add app-startup cleanup logic that marks stale `Running` import jobs as `Failed` with message "Marked failed on restart — interrupted". This is a low-complexity safety improvement but is not a correctness fix (the idempotent upsert protects data integrity regardless).
+
+---
+
 ### G2 — Year-scoped import URL not tested — **ADDRESSED 2026-03-18**
 
 **Corrected understanding:** Import services are not year-scoped by design.
