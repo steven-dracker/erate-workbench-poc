@@ -75,13 +75,14 @@ public class ReconciliationManifestTests
     }
 
     [Fact]
-    public void BuildByYearUrl_Disbursements_ContainsBenAndApprovedAmt()
+    public void BuildByYearUrl_Disbursements_ContainsBilledEntityNumberAndApprovedAmt()
     {
         var svc = Service();
         var url = svc.BuildByYearUrl(DatasetManifests.Disbursements);
         Assert.Contains("jpiu-tj8h", url);
         Assert.Contains("approved_inv_line_amt", url);
-        Assert.Contains("ben", url);
+        Assert.Contains("billed_entity_number", url);
+        Assert.DoesNotContain("\"ben\"", url); // regression guard — "ben" was the incorrect column name
     }
 
     [Fact]

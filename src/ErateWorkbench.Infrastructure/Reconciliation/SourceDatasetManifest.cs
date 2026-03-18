@@ -79,7 +79,7 @@ public static class DatasetManifests
         DatasetId = "jpiu-tj8h",
         LocalTableName = "Disbursements",
         YearColumn = "funding_year",
-        ApplicantColumn = "ben",
+        ApplicantColumn = "billed_entity_number",
         SupportsDistinctApplicantCount = true,
         AmountMetrics =
         [
