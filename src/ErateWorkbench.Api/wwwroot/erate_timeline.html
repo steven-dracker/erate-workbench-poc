@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Rate Central — Historical Timeline</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #f0f2f5;
+    --surface:     #ffffff;
+    --border:      #e5e7eb;
+    --border-dark: #d1d5db;
+    --text:        #111827;
+    --text-muted:  #6b7280;
+    --text-dim:    #9ca3af;
+    --blue:        #2563eb;
+    --blue-light:  #eff6ff;
+    --blue-border: #bfdbfe;
+    --green:       #16a34a;
+    --green-light: #f0fdf4;
+    --green-border:#bbf7d0;
+    --purple:      #7c3aed;
+    --purple-light:#f5f3ff;
+    --purple-border:#ddd6fe;
+    --amber:       #d97706;
+    --amber-light: #fffbeb;
+    --amber-border:#fde68a;
+    --red:         #dc2626;
+    --red-light:   #fef2f2;
+    --red-border:  #fecaca;
+    --teal:        #0d9488;
+    --teal-light:  #f0fdfa;
+    --teal-border: #99f6e4;
+    --gray:        #6b7280;
+    --gray-light:  #f9fafb;
+    --nav-bg:      #1a1a2e;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  nav {
+    background: var(--nav-bg);
+    padding: 0 24px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none;
+  }
+
+  .nav-bars { display: flex; align-items: flex-end; gap: 2px; height: 18px; }
+  .nav-bars span { background: #2563eb; border-radius: 1px; width: 4px; display: block; }
+
+  .nav-links { display: flex; gap: 24px; list-style: none; }
+  .nav-links a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px; }
+  .nav-links a.active, .nav-links a:hover { color: #fff; }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
+
+  .page-header { margin-bottom: 28px; }
+  .page-title { font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .page-subtitle { font-size: 14px; color: var(--text-muted); }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 32px;
+  }
+
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .legend-pip { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  /* Timeline container */
+  .timeline { position: relative; }
+
+  /* Vertical spine */
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 110px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border-dark);
+    border-radius: 1px;
+  }
+
+  /* Year group */
+  .year-group { margin-bottom: 8px; }
+
+  .year-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+    position: relative;
+    min-height: 32px;
+  }
+
+  /* Year label */
+  .year-label {
+    width: 100px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 20px;
+    padding-top: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    position: sticky;
+  }
+
+  .year-label.major {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* Spine dot */
+  .spine-dot {
+    width: 22px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 10px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  /* Events container */
+  .events {
+    flex: 1;
+    padding: 4px 0 4px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* Individual event card */
+  .event {
+    border-radius: 7px;
+    border: 1px solid;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .event-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .event-tag {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 2px 7px;
+    border-radius: 3px;
+    border: 1px solid;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .event-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+  }
+
+  .event-detail {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* Category color schemes */
+  .cat-org {
+    background: var(--blue-light);
+    border-color: var(--blue-border);
+  }
+  .cat-org .event-tag { background: var(--blue-light); color: var(--blue); border-color: var(--blue-border); }
+  .cat-org .dot { border-color: var(--blue); }
+
+  .cat-program {
+    background: var(--green-light);
+    border-color: var(--green-border);
+  }
+  .cat-program .event-tag { background: var(--green-light); color: var(--green); border-color: var(--green-border); }
+  .cat-program .dot { border-color: var(--green); }
+
+  .cat-legal {
+    background: var(--red-light);
+    border-color: var(--red-border);
+  }
+  .cat-legal .event-tag { background: var(--red-light); color: var(--red); border-color: var(--red-border); }
+  .cat-legal .dot { border-color: var(--red); }
+
+  .cat-funding {
+    background: var(--amber-light);
+    border-color: var(--amber-border);
+  }
+  .cat-funding .event-tag { background: var(--amber-light); color: var(--amber); border-color: var(--amber-border); }
+  .cat-funding .dot { border-color: var(--amber); }
+
+  .cat-policy {
+    background: var(--purple-light);
+    border-color: var(--purple-border);
+  }
+  .cat-policy .event-tag { background: var(--purple-light); color: var(--purple); border-color: var(--purple-border); }
+  .cat-policy .dot { border-color: var(--purple); }
+
+  .cat-cyber {
+    background: var(--teal-light);
+    border-color: var(--teal-border);
+  }
+  .cat-cyber .event-tag { background: var(--teal-light); color: var(--teal); border-color: var(--teal-border); }
+  .cat-cyber .dot { border-color: var(--teal); }
+
+  /* Year divider */
+  .year-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0 4px 122px;
+  }
+
+  /* Page footer */
+  .page-footer {
+    margin-top: 40px;
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  @media (max-width: 600px) {
+    .timeline::before { left: 60px; }
+    .year-label { width: 52px; font-size: 11px; padding-right: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="#">
+    <div class="nav-bars">
+      <span style="height:8px"></span>
+      <span style="height:12px"></span>
+      <span style="height:16px"></span>
+      <span style="height:10px"></span>
+    </div>
+    ERATE <span style="font-weight:300;opacity:0.7;margin-left:4px">Workbench</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#">Dashboard</a></li>
+    <li><a href="#">School &amp; Library Search</a></li>
+    <li><a href="#">Analytics</a></li>
+    <li><a href="#">Program Workflow</a></li>
+    <li><a href="#" class="active">History</a></li>
+  </ul>
+</nav>
+
+<div class="page">
+
+  <div class="page-header">
+    <h1 class="page-title">E-Rate Central — Historical Timeline</h1>
+    <p class="page-subtitle">The evolution of the organization alongside key program milestones, legislation, legal decisions, and funding changes · 1996 to present</p>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-pip" style="background:var(--blue)"></div>Organization milestone</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--green)"></div>E-Rate program event</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--amber)"></div>Funding change</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--red)"></div>Legal / court decision</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--purple)"></div>Policy / legislation</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--teal)"></div>Cybersecurity</div>
+  </div>
+
+  <div class="timeline">
+
+    <!-- 1996 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label major">1996</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--green);width:16px;height:16px;margin-top:-2px"></div></div>
+        <div class="events">
+          <div class="event cat-policy">
+            <div class="event-header">
+              <span class="event-tag">Legislation</span>
+              <span class="event-title">Telecommunications Act of 1996 signed into law</span>
+            </div>
+            <div class="event-detail">President Clinton signs the Act on February 8, 1996. Section 254 creates the legal foundation for the E-Rate program — mandating affordable telecommunications access for schools and libraries. Only 14% of US classrooms have internet access at this time.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 1997 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label major">1997</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--blue);width:16px;height:16px;margin-top:-2px"></div></div>
+        <div class="events">
+          <div class="event cat-org">
+            <div class="event-header">
+              <span class="event-tag">Organization</span>
+              <span class="event-title">Winston Himsworth founds E-Rate Central</span>
+            </div>
+            <div class="event-detail">Established with the sole purpose of helping schools, school districts, and libraries navigate the new and complex E-Rate program rules from day one of the program's inception. Winston recognizes immediately that districts will need expert guidance to access these funds.</div>
+          </div>
+          <div class="event cat-program">
+            <div class="event-header">
+              <span class="event-tag">Program</span>
+              <span class="event-title">FCC establishes the Universal Service Fund</span>
+            </div>
+            <div class="event-detail">The FCC creates USAC (Universal Service Administrative Company) as a nonprofit to administer the USF. The E-Rate program — formally the Schools and Libraries Program — begins accepting its first applications. Initial contribution factor set at 5.66%.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 1998 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label major">1998</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--blue);width:16px;height:16px;margin-top:-2px"></div></div>
+        <div class="events">
+          <div class="event cat-org">
+            <div class="event-header">
+              <span class="event-tag">Organization</span>
+              <span class="event-title">Tel/Logic Inc. incorporated in New York State</span>
+            </div>
+            <div class="event-detail">The legal parent entity Tel/Logic Inc. dba E-Rate Central is formally incorporated on March 30, 1998. The company establishes its headquarters in Westbury, New York — five minutes from where the Head of Technology candidate lives today.</div>
+          </div>
+          <div class="event cat-program">
+            <div class="event-header">
+              <span class="event-tag">Program</span>
+              <span class="event-title">Children's Internet Protection Act (CIPA) passes</span>
+            </div>
+            <div class="event-detail">CIPA is enacted, requiring schools and libraries receiving E-Rate funding to implement internet safety policies and content filtering technology. This becomes a mandatory annual certification on Form 486 — and a persistent compliance gap for districts using network-only filtering.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2000 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label">2000</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--purple)"></div></div>
+        <div class="events">
+          <div class="event cat-policy">
+            <div class="event-header">
+              <span class="event-tag">Policy</span>
+              <span class="event-title">CIPA signed into law — compliance required for E-Rate</span>
+            </div>
+            <div class="event-detail">The Children's Internet Protection Act is formally signed into law, mandating internet safety policies and technology protection measures as a condition of E-Rate funding eligibility. Districts must certify CIPA compliance on Form 486 annually.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2004 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label">2004</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--program)"></div></div>
+        <div class="events">
+          <div class="event cat-program">
+            <div class="event-header">
+              <span class="event-tag">Program</span>
+              <span class="event-title">FCC 5th Report and Order establishes document retention</span>
+            </div>
+            <div class="event-detail">FCC Order 04-190 creates the first formal document retention requirements for E-Rate participants — establishing the obligation to retain all pre-bidding, bidding, contract, and invoicing documentation. This becomes a foundational compliance requirement E-Rate Central helps clients manage.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2010 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label">2010</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--org)"></div></div>
+        <div class="events">
+          <div class="event cat-org">
+            <div class="event-header">
+              <span class="event-tag">Organization</span>
+              <span class="event-title">E-Rate Central becomes founding member of E-mpa</span>
+            </div>
+            <div class="event-detail">Winston Himsworth co-founds the E-rate Management Professionals Association (E-mpa), the industry association for E-Rate consultants. E-Rate Central holds a board seat from inception, establishing the firm as a nationally recognized thought leader and standards-setter in the industry.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2014 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label major">2014</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--amber);width:16px;height:16px;margin-top:-2px"></div></div>
+        <div class="events">
+          <div class="event cat-funding">
+            <div class="event-header">
+              <span class="event-tag">Funding</span>
+              <span class="event-title">E-Rate Modernization Order — major program overhaul</span>
+            </div>
+            <div class="event-detail">FCC Order 14-99 — the most significant reform since the program's founding. Annual cap raised to $3.9 billion. Program refocused on high-speed broadband and Wi-Fi. Five-year Category Two budget cycles introduced. Document retention period extended to 10 years. Category 1 and Category 2 structure formalized.</div>
+          </div>
+          <div class="event cat-org">
+            <div class="event-header">
+              <span class="event-tag">Organization</span>
+              <span class="event-title">E-Rate Central expands to 30 states</span>
+            </div>
+            <div class="event-detail">Following the Modernization Order creating new complexity and opportunities, E-Rate Central grows its national footprint significantly — ultimately serving clients in 30 states and becoming State E-Rate Coordinators for six states.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2015 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label">2015</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--green)"></div></div>
+        <div class="events">
+          <div class="event cat-program">
+            <div class="event-header">
+              <span class="event-tag">Program</span>
+              <span class="event-title">E-Rate funds all eligible requests for first time</span>
+            </div>
+            <div class="event-detail">With the cap raised to $3.9 billion, the E-Rate program is able to commit funding to every eligible application submitted — ending the era of competitive rationing. This holds through the present day, making E-Rate a guaranteed funding source for qualifying districts that apply correctly.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2016 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label">2016</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--amber)"></div></div>
+        <div class="events">
+          <div class="event cat-funding">
+            <div class="event-header">
+              <span class="event-tag">Funding</span>
+              <span class="event-title">First FY2016–2020 Category Two five-year cycle begins</span>
+            </div>
+            <div class="event-detail">The first structured five-year Category Two budget cycle begins under the modernized program. Districts receive a fixed per-student budget ($150/student) for internal connections over five years. BEAR reimbursements switch to direct deposit.</div>
+          </div>
+          <div class="event cat-org">
+            <div class="event-header">
+              <span class="event-tag">Organization</span>
+              <span class="event-title">Textbook Central established at 400 Post Avenue</span>
+            </div>
+            <div class="event-detail">A sister entity, Textbook Central, is established at the same Westbury headquarters specializing in centralized textbook distribution for private and parochial school students in Nassau County. Bretton Himsworth — the next generation — joins the organization.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2018 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label">2018</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--green)"></div></div>
+        <div class="events">
+          <div class="event cat-program">
+            <div class="event-header">
+              <span class="event-tag">Program</span>
+              <span class="event-title">Libraries Connecting Texas initiative launched</span>
+            </div>
+            <div class="event-detail">E-Rate Central launches the Libraries Connecting Texas initiative, increasing bandwidth and funding for libraries statewide. This establishes E-Rate Central's Texas office in Waco as a major regional presence, with 160+ Texas applicants and a team with over 40 years combined E-Rate experience.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2021 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label major">2021</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--amber);width:16px;height:16px;margin-top:-2px"></div></div>
+        <div class="events">
+          <div class="event cat-funding">
+            <div class="event-header">
+              <span class="event-tag">Funding</span>
+              <span class="event-title">FY2021–2025 Category Two cycle begins · $167/student</span>
+            </div>
+            <div class="event-detail">Second five-year Category Two budget cycle begins with per-student budget raised to $167. All district budgets reset. Minimum budget floor set at $25,000 per school.</div>
+          </div>
+          <div class="event cat-policy">
+            <div class="event-header">
+              <span class="event-tag">Policy</span>
+              <span class="event-title">Emergency Connectivity Fund — $7.17 billion COVID relief</span>
+            </div>
+            <div class="event-detail">Congress establishes the $7.17 billion Emergency Connectivity Fund through ARPA to help schools purchase devices and connectivity for remote learning during COVID-19. E-Rate Central helps clients navigate this parallel program alongside the core E-Rate application cycle.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2022 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label">2022</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--red)"></div></div>
+        <div class="events">
+          <div class="event cat-legal">
+            <div class="event-header">
+              <span class="event-tag">Legal</span>
+              <span class="event-title">Consumers' Research files USF constitutional challenge</span>
+            </div>
+            <div class="event-detail">The conservative organization Consumers' Research files lawsuits in the 5th, 6th, and 11th Circuits arguing the Universal Service Fund's contribution mechanism is an unconstitutional delegation of congressional taxing authority to the FCC and USAC. This begins a multi-year legal threat to the entire E-Rate program.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2023 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label">2023</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--red)"></div></div>
+        <div class="events">
+          <div class="event cat-legal">
+            <div class="event-header">
+              <span class="event-tag">Legal</span>
+              <span class="event-title">5th Circuit rules USF unconstitutional — circuit split</span>
+            </div>
+            <div class="event-detail">The U.S. Court of Appeals for the 5th Circuit rules the USF funding mechanism unconstitutional. The 6th Circuit rules it constitutional, creating a circuit split. The Supreme Court agrees to hear the consolidated case FCC v. Consumers' Research. The E-Rate program's existence faces its most serious legal threat ever.</div>
+          </div>
+          <div class="event cat-cyber">
+            <div class="event-header">
+              <span class="event-tag">Cybersecurity</span>
+              <span class="event-title">FCC proposes $200M cybersecurity pilot for schools</span>
+            </div>
+            <div class="event-detail">The FCC proposes a three-year pilot program to evaluate using Universal Service funding to support cybersecurity services and equipment for schools and libraries — a significant potential expansion of E-Rate's scope into a new domain.</div>
+          </div>
+          <div class="event cat-policy">
+            <div class="event-header">
+              <span class="event-tag">Policy</span>
+              <span class="event-title">FCC approves school bus Wi-Fi eligibility</span>
+            </div>
+            <div class="event-detail">In a 3-2 vote, the FCC approves expanding E-Rate to support Wi-Fi connectivity on school buses beginning FY2024. This expansion — later reversed in 2025 — represents the ongoing tension between program expansion and statutory limits.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2024 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label major">2024</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--teal);width:16px;height:16px;margin-top:-2px"></div></div>
+        <div class="events">
+          <div class="event cat-cyber">
+            <div class="event-header">
+              <span class="event-tag">Cybersecurity</span>
+              <span class="event-title">FCC launches $200M cybersecurity pilot — application window opens</span>
+            </div>
+            <div class="event-detail">The FCC formally launches the Schools and Libraries Cybersecurity Pilot Program. Application window runs September 17 – November 1, 2024. Districts must complete FCC Form 484 Part 1 describing their cybersecurity needs and proposed projects. Total demand exceeds the $200M cap.</div>
+          </div>
+          <div class="event cat-funding">
+            <div class="event-header">
+              <span class="event-tag">Funding</span>
+              <span class="event-title">Annual E-Rate cap reaches $4.94 billion</span>
+            </div>
+            <div class="event-detail">The inflation-adjusted annual cap reaches $4.94 billion for FY2024. Actual demand is $3.2 billion — meaning the program can fund every eligible request submitted. Schools and libraries receive discounts ranging from 20% to 90% based on poverty levels.</div>
+          </div>
+          <div class="event cat-legal">
+            <div class="event-header">
+              <span class="event-tag">Legal</span>
+              <span class="event-title">Supreme Court hears FCC v. Consumers' Research</span>
+            </div>
+            <div class="event-detail">Oral arguments held before the Supreme Court in March–April 2025. Justice Alito signals skepticism about striking down the program: "I am quite concerned about the effects of a decision in your favor." The E-Rate community watches closely.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2025 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label major">2025</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--green);width:16px;height:16px;margin-top:-2px"></div></div>
+        <div class="events">
+          <div class="event cat-legal">
+            <div class="event-header">
+              <span class="event-tag">Legal</span>
+              <span class="event-title">Supreme Court upholds USF 6-3 — existential threat resolved</span>
+            </div>
+            <div class="event-detail">On June 27, 2025, the Supreme Court reverses the 5th Circuit in a 6-3 decision, ruling the USF funding mechanism constitutional. The Court holds that Congress provided clear and limiting guidance through Section 254 of the Communications Act. The E-Rate program's legal foundation is secured.</div>
+          </div>
+          <div class="event cat-cyber">
+            <div class="event-header">
+              <span class="event-tag">Cybersecurity</span>
+              <span class="event-title">707 districts selected for cybersecurity pilot · $200M committed</span>
+            </div>
+            <div class="event-detail">On January 16, 2025, the FCC announces 707 schools, libraries, and consortia selected to receive up to $200M over three years for cybersecurity services. The Pilot FCC Form 471 funding application window runs March 18 – September 15, 2025. Districts must now procure MDR, SASE, and other security solutions.</div>
+          </div>
+          <div class="event cat-policy">
+            <div class="event-header">
+              <span class="event-tag">Policy</span>
+              <span class="event-title">FCC reverses school bus Wi-Fi and hotspot eligibility</span>
+            </div>
+            <div class="event-detail">Under new FCC Chairman Brendan Carr, the FCC rescinds eligibility for school bus Wi-Fi and off-premises hotspot use on September 30, 2025, ruling these expansions exceeded the program's statutory authority. Pending FY2025 requests for these services are denied.</div>
+          </div>
+          <div class="event cat-funding">
+            <div class="event-header">
+              <span class="event-tag">Funding</span>
+              <span class="event-title">FY2025 — final year of current Category Two cycle</span>
+            </div>
+            <div class="event-detail">FY2025 (July 1, 2025 – June 30, 2026) is the last year of the FY2021–2025 five-year Category Two cycle. Any unspent Cat 2 budgets are permanently lost — a critical "use it or lose it" moment driving consulting urgency. All district budgets reset for the new cycle starting FY2026.</div>
+          </div>
+        </div>
+      </div>
+      <div class="year-divider"></div>
+    </div>
+
+    <!-- 2026 -->
+    <div class="year-group">
+      <div class="year-row">
+        <div class="year-label major">2026</div>
+        <div class="spine-dot"><div class="dot" style="border-color:var(--amber);width:16px;height:16px;margin-top:-2px"></div></div>
+        <div class="events">
+          <div class="event cat-funding">
+            <div class="event-header">
+              <span class="event-tag">Funding</span>
+              <span class="event-title">FY2026–2030 cycle begins · $201.57/student · 20.7% increase</span>
+            </div>
+            <div class="event-detail">The new five-year Category Two budget cycle begins with a 20.7% inflation-adjusted increase. Per-student budget rises to $201.57. Minimum funding floor raised to $30,175 per school. Tribal library floor rises to $66,385. All district budgets reset — every district starts fresh with a new five-year allocation.</div>
+          </div>
+          <div class="event cat-policy">
+            <div class="event-header">
+              <span class="event-tag">Policy</span>
+              <span class="event-title">New ESL expands software and license eligibility</span>
+            </div>
+            <div class="event-detail">The FY2026 Eligible Services List reclassifies software-based services under Internal Connections. Multi-year software licenses, bug fixes, security patches, remote configuration, and on-site training now eligible — a meaningful expansion creating new consulting complexity and opportunity.</div>
+          </div>
+          <div class="event cat-org">
+            <div class="event-header">
+              <span class="event-tag">Organization</span>
+              <span class="event-title">E-Rate Central seeks Head of Technology — reporting to CEO</span>
+            </div>
+            <div class="event-detail">As the program enters a new five-year cycle with expanded scope, a new cybersecurity service opportunity, and growing technology complexity, E-Rate Central begins the search for a Head of Technology to modernize operations, build technology-assisted client services, and serve as a strategic partner to the founder-CEO.</div>
+          </div>
+          <div class="event cat-legal">
+            <div class="event-header">
+              <span class="event-tag">Legal</span>
+              <span class="event-title">USF reform debate continues — contribution base expansion</span>
+            </div>
+            <div class="event-detail">Congress and the FCC continue work on reforming the USF contribution mechanism. The contribution factor has risen from 5.66% in 2000 to 37.6% in 2026 as the traditional telecom revenue base shrinks. Bipartisan working group led by Senators Sullivan (R-AK) and Luján (D-NM) exploring expansion to broadband ISPs and big tech companies.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end timeline -->
+
+</div>
+
+<div class="page-footer">
+  ERATE Workbench POC &nbsp;·&nbsp; Historical Timeline Reference &nbsp;·&nbsp; © 2026
+</div>
+
+</body>
+</html>
