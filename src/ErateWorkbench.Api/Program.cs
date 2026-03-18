@@ -456,6 +456,9 @@ app.MapGet("/applicants/{ben}", (string ben, int? fundingYear, ApplicantReposito
 .WithName("GetApplicantByBen")
 .WithOpenApi();
 
+app.MapGet("/ecosystem", (IWebHostEnvironment env) =>
+    Results.File(Path.Combine(env.WebRootPath, "erate_ecosystem.html"), "text/html"));
+
 app.Run();
 
 record ImportRequest(string DatasetUrl, int FundingYear);

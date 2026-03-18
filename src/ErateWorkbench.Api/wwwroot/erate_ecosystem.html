@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Rate Ecosystem — Entity Flow Diagram</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:          #f0f2f5;
+    --surface:     #ffffff;
+    --border:      #e5e7eb;
+    --border-dark: #d1d5db;
+    --text:        #111827;
+    --text-muted:  #6b7280;
+    --text-dim:    #9ca3af;
+    --blue:        #2563eb;
+    --blue-light:  #eff6ff;
+    --blue-border: #bfdbfe;
+    --green:       #16a34a;
+    --green-light: #f0fdf4;
+    --green-border:#bbf7d0;
+    --purple:      #7c3aed;
+    --purple-light:#f5f3ff;
+    --purple-border:#ddd6fe;
+    --amber:       #d97706;
+    --amber-light: #fffbeb;
+    --amber-border:#fde68a;
+    --red:         #dc2626;
+    --red-light:   #fef2f2;
+    --red-border:  #fecaca;
+    --teal:        #0d9488;
+    --teal-light:  #f0fdfa;
+    --teal-border: #99f6e4;
+    --orange:      #ea580c;
+    --orange-light:#fff7ed;
+    --orange-border:#fed7aa;
+    --nav-bg:      #1a1a2e;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  nav {
+    background: var(--nav-bg);
+    padding: 0 24px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .nav-brand { display: flex; align-items: center; gap: 8px; color: #fff; font-weight: 700; font-size: 15px; text-decoration: none; }
+  .nav-bars { display: flex; align-items: flex-end; gap: 2px; height: 18px; }
+  .nav-bars span { background: #2563eb; border-radius: 1px; width: 4px; display: block; }
+  .nav-links { display: flex; gap: 24px; list-style: none; }
+  .nav-links a { color: rgba(255,255,255,0.6); text-decoration: none; font-size: 14px; }
+  .nav-links a.active, .nav-links a:hover { color: #fff; }
+
+  .page { max-width: 1200px; margin: 0 auto; padding: 32px 24px 80px; }
+  .page-header { margin-bottom: 24px; }
+  .page-title { font-size: 24px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .page-subtitle { font-size: 14px; color: var(--text-muted); }
+
+  /* Legend */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 12px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 16px; margin-bottom: 28px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+  .legend-pip { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ── ECOSYSTEM LAYOUT ── */
+  .ecosystem {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Row = a horizontal tier of entities */
+  .tier {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+    position: relative;
+  }
+
+  /* Flow arrow label between tiers */
+  .flow-label {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .flow-arrow {
+    width: 100%;
+    height: 2px;
+    background: var(--border-dark);
+    position: relative;
+    flex: 1;
+  }
+
+  .flow-arrow::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: -4px;
+    border-left: 8px solid var(--border-dark);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+
+  /* Entity card */
+  .entity {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .entity-header {
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--border);
+    border-left: 4px solid;
+  }
+
+  .entity-tag {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .entity-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .entity-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .entity-body {
+    padding: 10px 14px;
+    flex: 1;
+  }
+
+  .service-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .service-list li {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding-left: 14px;
+    position: relative;
+    line-height: 1.4;
+  }
+
+  .service-list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 7px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--border-dark);
+  }
+
+  .service-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    margin-top: 8px;
+  }
+
+  .service-label:first-child { margin-top: 0; }
+
+  /* Color variants */
+  .e-district .entity-header { border-left-color: var(--blue); background: var(--blue-light); }
+  .e-district .entity-tag { color: var(--blue); }
+  .e-district .service-list li::before { background: var(--blue); }
+
+  .e-consultant .entity-header { border-left-color: var(--green); background: var(--green-light); }
+  .e-consultant .entity-tag { color: var(--green); }
+  .e-consultant .service-list li::before { background: var(--green); }
+
+  .e-government .entity-header { border-left-color: var(--amber); background: var(--amber-light); }
+  .e-government .entity-tag { color: var(--amber); }
+  .e-government .service-list li::before { background: var(--amber); }
+
+  .e-msp .entity-header { border-left-color: var(--purple); background: var(--purple-light); }
+  .e-msp .entity-tag { color: var(--purple); }
+  .e-msp .service-list li::before { background: var(--purple); }
+
+  .e-cyber .entity-header { border-left-color: var(--teal); background: var(--teal-light); }
+  .e-cyber .entity-tag { color: var(--teal); }
+  .e-cyber .service-list li::before { background: var(--teal); }
+
+  .e-isp .entity-header { border-left-color: var(--orange); background: var(--orange-light); }
+  .e-isp .entity-tag { color: var(--orange); }
+  .e-isp .service-list li::before { background: var(--orange); }
+
+  .e-legal .entity-header { border-left-color: var(--red); background: var(--red-light); }
+  .e-legal .entity-tag { color: var(--red); }
+  .e-legal .service-list li::before { background: var(--red); }
+
+  /* Flow indicators between tiers */
+  .tier-connector {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 8px;
+  }
+
+  .connector-line {
+    flex: 1;
+    border-top: 2px dashed var(--border-dark);
+  }
+
+  .connector-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    white-space: nowrap;
+    background: var(--bg);
+    padding: 0 8px;
+  }
+
+  /* Beyond E-Rate section */
+  .beyond-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+
+  .beyond-header {
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--purple-light);
+    border-left: 4px solid var(--purple);
+  }
+
+  .beyond-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--purple);
+  }
+
+  .beyond-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .beyond-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0;
+    background: var(--border);
+  }
+
+  .beyond-item {
+    background: var(--surface);
+    padding: 12px 14px;
+  }
+
+  .beyond-item-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .beyond-item-detail {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .beyond-item-tag {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid;
+    display: inline-block;
+    margin-bottom: 5px;
+  }
+
+  .tag-eligible { background: var(--green-light); color: var(--green); border-color: var(--green-border); }
+  .tag-ineligible { background: var(--red-light); color: var(--red); border-color: var(--red-border); }
+  .tag-pilot { background: var(--teal-light); color: var(--teal); border-color: var(--teal-border); }
+  .tag-partial { background: var(--amber-light); color: var(--amber); border-color: var(--amber-border); }
+
+  .page-footer {
+    margin-top: 40px;
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  @media (max-width: 768px) {
+    .tier { flex-direction: column; }
+    .beyond-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="#">
+    <div class="nav-bars">
+      <span style="height:8px"></span>
+      <span style="height:12px"></span>
+      <span style="height:16px"></span>
+      <span style="height:10px"></span>
+    </div>
+    ERATE <span style="font-weight:300;opacity:0.7;margin-left:4px">Workbench</span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#">Dashboard</a></li>
+    <li><a href="#">School &amp; Library Search</a></li>
+    <li><a href="#">Analytics</a></li>
+    <li><a href="#">Program Workflow</a></li>
+    <li><a href="#" class="active">Ecosystem</a></li>
+  </ul>
+</nav>
+
+<div class="page">
+
+  <div class="page-header">
+    <h1 class="page-title">E-Rate Ecosystem — Entity Flow</h1>
+    <p class="page-subtitle">Every organization involved from funding application through reimbursement — including what service providers offer schools beyond basic internet</p>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-pip" style="background:var(--blue)"></div>School / Library (applicant)</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--green)"></div>E-Rate Central (consultant)</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--amber)"></div>Government (FCC / USAC)</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--purple)"></div>MSP / Service provider</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--teal)"></div>Cybersecurity vendor</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--orange)"></div>ISP / Telecom carrier</div>
+    <div class="legend-item"><div class="legend-pip" style="background:var(--red)"></div>Legal / Regulatory</div>
+  </div>
+
+  <div class="ecosystem">
+
+    <!-- TIER 1: Applicant + Consultant -->
+    <div class="tier">
+
+      <div class="entity e-district" style="flex:1.2">
+        <div class="entity-header">
+          <div class="entity-tag">Applicant</div>
+          <div class="entity-name">School District or Library</div>
+          <div class="entity-sub">3,000+ clients served by E-Rate Central nationally</div>
+        </div>
+        <div class="entity-body">
+          <div class="service-label">What they need</div>
+          <ul class="service-list">
+            <li>Broadband internet access (Cat 1)</li>
+            <li>Internal Wi-Fi infrastructure (Cat 2)</li>
+            <li>Network switches, routers, cabling</li>
+            <li>Managed internal broadband services (MIBS)</li>
+            <li>Cybersecurity services (pilot program)</li>
+            <li>CIPA-compliant content filtering</li>
+          </ul>
+          <div class="service-label">Their constraints</div>
+          <ul class="service-list">
+            <li>Limited IT staff — often one person for everything</li>
+            <li>Federal compliance obligations on all funded services</li>
+            <li>10-year document retention requirement</li>
+            <li>CIPA certification required annually on Form 486</li>
+            <li>Discount rate 20%–90% based on NSLP poverty level</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="entity e-consultant" style="flex:1.2">
+        <div class="entity-header">
+          <div class="entity-tag">Consultant</div>
+          <div class="entity-name">E-Rate Central (Tel/Logic Inc.)</div>
+          <div class="entity-sub">Founded 1997 · Westbury, NY · 47 staff · 8 state offices</div>
+        </div>
+        <div class="entity-body">
+          <div class="service-label">Core consulting services</div>
+          <ul class="service-list">
+            <li>Eligibility assessment and discount rate calculation</li>
+            <li>Form 470 preparation and competitive bidding management</li>
+            <li>Form 471 funding application preparation</li>
+            <li>PIA inquiry response management (15-day deadlines)</li>
+            <li>FCDL review and appeal strategy</li>
+            <li>Form 486 filing and CIPA certification</li>
+            <li>BEAR/SPI invoice management and reconciliation</li>
+            <li>Document retention and audit readiness</li>
+          </ul>
+          <div class="service-label">Strategic role</div>
+          <ul class="service-list">
+            <li>State E-Rate Coordinator for 6 states</li>
+            <li>Founding board member of E-mpa industry association</li>
+            <li>Congressional USF advocacy via SHLB Coalition</li>
+            <li>Weekly newsletter read by FCC and USAC stakeholders</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="entity e-government" style="flex:1">
+        <div class="entity-header">
+          <div class="entity-tag">Government</div>
+          <div class="entity-name">FCC &amp; USAC</div>
+          <div class="entity-sub">Program authority and administration</div>
+        </div>
+        <div class="entity-body">
+          <div class="service-label">FCC responsibilities</div>
+          <ul class="service-list">
+            <li>Sets program rules and Eligible Services List (ESL)</li>
+            <li>Establishes annual funding cap ($4.94B FY2025)</li>
+            <li>Hears appeals of USAC decisions</li>
+            <li>Issues orders changing program scope</li>
+          </ul>
+          <div class="service-label">USAC responsibilities</div>
+          <ul class="service-list">
+            <li>Administers EPC application portal</li>
+            <li>Conducts PIA review of all Form 471s</li>
+            <li>Issues Funding Commitment Decision Letters (FCDLs)</li>
+            <li>Processes invoices and disburses funds (US Treasury)</li>
+            <li>Conducts BCAP audits and PQA assessments</li>
+            <li>Manages suspensions and debarments</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CONNECTOR 1 -->
+    <div class="tier-connector">
+      <div class="connector-line"></div>
+      <div class="connector-label">Competitive bidding · Form 470 · 28-day open window · Vendor selection · Form 471 filed · FCDL issued</div>
+      <div class="connector-line"></div>
+    </div>
+
+    <!-- TIER 2: Service Providers -->
+    <div class="tier">
+
+      <div class="entity e-isp">
+        <div class="entity-header">
+          <div class="entity-tag">Category 1 — ISP / Telecom</div>
+          <div class="entity-name">Internet &amp; Telecom Providers</div>
+          <div class="entity-sub">AT&amp;T, Verizon, Comcast, Spectrum, regional ISPs, dark fiber providers</div>
+        </div>
+        <div class="entity-body">
+          <div class="service-label">E-Rate eligible services</div>
+          <ul class="service-list">
+            <li>Broadband internet access (primary Cat 1)</li>
+            <li>Data transmission / WAN services</li>
+            <li>Leased lit fiber and dark fiber</li>
+            <li>Dedicated internet access (DIA)</li>
+            <li>Voice over IP (VoIP) telecommunications</li>
+          </ul>
+          <div class="service-label">Beyond E-Rate (ineligible but common upsell)</div>
+          <ul class="service-list">
+            <li>Cloud-hosted phone systems</li>
+            <li>Video surveillance network transport</li>
+            <li>Backup connectivity / failover circuits</li>
+            <li>SD-WAN managed services</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="entity e-msp">
+        <div class="entity-header">
+          <div class="entity-tag">Category 2 — MSP / VAR</div>
+          <div class="entity-name">Managed Service Providers</div>
+          <div class="entity-sub">CDW-G, Connection, Presidio, ANC Group, regional VARs and integrators</div>
+        </div>
+        <div class="entity-body">
+          <div class="service-label">E-Rate eligible services (Cat 2)</div>
+          <ul class="service-list">
+            <li>Wi-Fi access points and controllers</li>
+            <li>Network switches and routers</li>
+            <li>Structured cabling and wiring</li>
+            <li>Managed Internal Broadband Services (MIBS)</li>
+            <li>Basic maintenance of internal connections (BMIC)</li>
+            <li>Network monitoring and management</li>
+            <li>Software licenses and bug fixes (new FY2026)</li>
+            <li>Remote configuration and technical assistance (FY2026)</li>
+          </ul>
+          <div class="service-label">Beyond E-Rate (ineligible — significant upsell opportunity)</div>
+          <ul class="service-list">
+            <li>Device management (MDM) — Chromebook, iPad fleets</li>
+            <li>Help desk and IT support services</li>
+            <li>Cloud services and Microsoft 365 / Google Workspace</li>
+            <li>Physical security — cameras, access control (ineligible)</li>
+            <li>Classroom AV — projectors, interactive displays</li>
+            <li>Student information system integrations</li>
+            <li>On-site IT staffing and managed IT</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="entity e-cyber">
+        <div class="entity-header">
+          <div class="entity-tag">Cybersecurity Pilot</div>
+          <div class="entity-name">Cybersecurity Vendors</div>
+          <div class="entity-sub">Arctic Wolf, SentinelOne, Zscaler, Palo Alto, Cisco Umbrella, Fortinet</div>
+        </div>
+        <div class="entity-body">
+          <div class="service-label">Pilot-eligible services ($200M program)</div>
+          <ul class="service-list">
+            <li>Managed Detection and Response (MDR) — ideal for small districts</li>
+            <li>Endpoint Detection and Response (EDR)</li>
+            <li>SASE / Zero Trust Network Access (device-level filtering)</li>
+            <li>Advanced firewall services</li>
+            <li>Security Information and Event Management (SIEM)</li>
+            <li>Identity and access management</li>
+            <li>Incident response services</li>
+          </ul>
+          <div class="service-label">CIPA gap this solves</div>
+          <ul class="service-list">
+            <li>Network-only content filtering fails off campus</li>
+            <li>SASE / zero trust follows the Chromebook everywhere</li>
+            <li>Districts certify CIPA annually — gap creates audit exposure</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CONNECTOR 2 -->
+    <div class="tier-connector">
+      <div class="connector-line"></div>
+      <div class="connector-label">Services delivered · Form 486 filed · CIPA certified · BEAR or SPI invoice submitted · USAC disburses funds</div>
+      <div class="connector-line"></div>
+    </div>
+
+    <!-- TIER 3: Reimbursement flow -->
+    <div class="tier">
+
+      <div class="entity e-district" style="flex:1">
+        <div class="entity-header">
+          <div class="entity-tag">BEAR method — Form 472</div>
+          <div class="entity-name">District pays vendor in full</div>
+          <div class="entity-sub">Then submits BEAR to receive discount back from USAC</div>
+        </div>
+        <div class="entity-body">
+          <ul class="service-list">
+            <li>District pays 100% of invoice to vendor</li>
+            <li>E-Rate Central files Form 472 on district's behalf</li>
+            <li>USAC reviews and approves reimbursement request</li>
+            <li>US Treasury deposits discounted amount directly to district</li>
+            <li>Deadline: 120 days from Form 486 notification letter</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="entity e-msp" style="flex:1">
+        <div class="entity-header">
+          <div class="entity-tag">SPI method — Form 474</div>
+          <div class="entity-name">Vendor bills only non-discounted share</div>
+          <div class="entity-sub">Vendor invoices USAC directly for the discounted portion</div>
+        </div>
+        <div class="entity-body">
+          <ul class="service-list">
+            <li>Vendor bills district only for their share (e.g. 30% if 70% discount)</li>
+            <li>Vendor files Form 474 with USAC for remainder</li>
+            <li>USAC pays vendor directly for the discounted portion</li>
+            <li>District never handles the full amount — cash flow advantage</li>
+            <li>Preferred by most large MSPs and ISPs</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="entity e-government" style="flex:1">
+        <div class="entity-header">
+          <div class="entity-tag">Disbursement</div>
+          <div class="entity-name">USAC + US Treasury</div>
+          <div class="entity-sub">Final funding disbursement</div>
+        </div>
+        <div class="entity-body">
+          <ul class="service-list">
+            <li>USAC reviews invoice against FCDL commitments</li>
+            <li>Verifies amounts match approved FRNs</li>
+            <li>Submits approved payments to FCC for certification</li>
+            <li>US Treasury disburses via direct deposit</li>
+            <li>~5 business days after approval</li>
+            <li>Quarterly disbursement reports issued to all entities</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="entity e-legal" style="flex:1">
+        <div class="entity-header">
+          <div class="entity-tag">Audit &amp; Compliance</div>
+          <div class="entity-name">Post-funding obligations</div>
+          <div class="entity-sub">Ongoing for 10 years after last day of funding year</div>
+        </div>
+        <div class="entity-body">
+          <ul class="service-list">
+            <li>BCAP audit — random or targeted by USAC / FCC OIG</li>
+            <li>PQA payment quality sampling program</li>
+            <li>Document retention — all bid, contract, invoice, delivery records</li>
+            <li>Asset inventory for all Cat 2 equipment purchased</li>
+            <li>CIPA documentation maintained in files</li>
+            <li>Non-compliance = fund recoupment + possible debarment</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BEYOND E-RATE SECTION -->
+    <div style="margin-top: 8px;">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin-bottom:8px;padding-left:4px;">What MSPs offer schools beyond E-Rate eligible services</div>
+      <div class="beyond-section">
+        <div class="beyond-header">
+          <div class="beyond-title">The full MSP service stack for K-12 school districts</div>
+          <div class="beyond-sub">E-Rate funds the network backbone — MSPs typically bundle additional services that are ineligible but critical to school operations</div>
+        </div>
+        <div class="beyond-grid">
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-eligible">E-Rate eligible</span>
+            <div class="beyond-item-title">Managed Wi-Fi (MIBS)</div>
+            <div class="beyond-item-detail">24/7 monitoring, management, and support of access points, switches, and wireless controllers. Includes configuration, troubleshooting, and firmware updates.</div>
+          </div>
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-eligible">E-Rate eligible FY2026</span>
+            <div class="beyond-item-title">Software licenses &amp; remote support</div>
+            <div class="beyond-item-detail">Network management software, bug fixes, security patches, remote configuration adjustments, and on-site training now eligible under new FY2026 ESL rules.</div>
+          </div>
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-pilot">Cybersecurity pilot</span>
+            <div class="beyond-item-title">MDR — Managed Detection &amp; Response</div>
+            <div class="beyond-item-detail">24/7 SOC monitoring, threat detection, and incident response. Ideal for districts with limited IT staff. Replaces the need for an in-house security team. Fundable through the $200M cybersecurity pilot.</div>
+          </div>
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-pilot">Cybersecurity pilot</span>
+            <div class="beyond-item-title">SASE / Zero Trust filtering</div>
+            <div class="beyond-item-detail">Device-level content filtering that follows Chromebooks and student devices off campus. Closes the CIPA compliance gap where network-only filtering fails. Zscaler, Prisma Access, Cisco Umbrella.</div>
+          </div>
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-ineligible">Not E-Rate eligible</span>
+            <div class="beyond-item-title">Device management (MDM)</div>
+            <div class="beyond-item-detail">Chromebook, iPad, and Windows device fleet management. Policy enforcement, app deployment, remote wipe. Google Admin Console, Jamf, Intune. Critical for 1:1 device programs but not covered by E-Rate.</div>
+          </div>
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-ineligible">Not E-Rate eligible</span>
+            <div class="beyond-item-title">Physical security systems</div>
+            <div class="beyond-item-detail">IP cameras, video surveillance, door access control, visitor management. The network infrastructure that supports these systems may be eligible under Cat 2, but the security hardware itself is not.</div>
+          </div>
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-ineligible">Not E-Rate eligible</span>
+            <div class="beyond-item-title">Help desk &amp; IT support</div>
+            <div class="beyond-item-detail">Tier 1–3 IT support for staff and students. Ticketing systems, break/fix services, on-site technician support. Common MSP bundle with network services but explicitly ineligible for E-Rate funding.</div>
+          </div>
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-ineligible">Not E-Rate eligible</span>
+            <div class="beyond-item-title">Cloud productivity suites</div>
+            <div class="beyond-item-detail">Microsoft 365 Education, Google Workspace for Education. Core to district operations but not eligible for E-Rate discounts. Often bundled by MSPs alongside E-Rate-eligible network contracts.</div>
+          </div>
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-ineligible">Not E-Rate eligible</span>
+            <div class="beyond-item-title">Classroom AV &amp; edtech</div>
+            <div class="beyond-item-detail">Interactive whiteboards, projectors, classroom displays, document cameras. Relies on E-Rate-funded network infrastructure but hardware itself not eligible. Large secondary market for MSPs in K-12.</div>
+          </div>
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-partial">Partially eligible</span>
+            <div class="beyond-item-title">Firewall services</div>
+            <div class="beyond-item-detail">Basic firewall bundled with internet access may be Cat 1 eligible. Advanced next-gen firewall as standalone service is Cat 2 or cybersecurity pilot eligible. Classification depends on how it is billed and structured.</div>
+          </div>
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-partial">Partially eligible</span>
+            <div class="beyond-item-title">Network monitoring software</div>
+            <div class="beyond-item-detail">Tools for monitoring network health, bandwidth usage, and device status. Eligible under FY2026 rules if directly tied to managing eligible internal connections. Standalone security monitoring tools fall under the cybersecurity pilot.</div>
+          </div>
+
+          <div class="beyond-item">
+            <span class="beyond-item-tag tag-ineligible">Not E-Rate eligible</span>
+            <div class="beyond-item-title">Student information systems</div>
+            <div class="beyond-item-detail">PowerSchool, Infinite Campus, Skyward. Core operational systems for enrollment, grades, and attendance. Not eligible for E-Rate but often managed by the same MSPs who handle network infrastructure.</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end ecosystem -->
+
+</div>
+
+<div class="page-footer">
+  ERATE Workbench POC &nbsp;·&nbsp; Ecosystem Reference &nbsp;·&nbsp; © 2026
+</div>
+
+</body>
+</html>
