@@ -23,7 +23,7 @@ Status definitions and lifecycle rules: see `strategy/test-lifecycle.md`.
 
 Runner: `dotnet test`
 Suite location: `tests/ErateWorkbench.Tests/`
-Count: 345 (as of 2026-03-18, after CC-ERATE-000007 additions)
+Count: 345 (as of 2026-03-18; CC-ERATE-000007 added sections A8–A10; CC-ERATE-000008 corrected smoke-test location references)
 
 ### A1 — CSV parsing
 
@@ -132,12 +132,12 @@ Procedure: `runbooks/smoke-test-runbook.md`
 
 | Name | Type | Mode | Scope | Location | Status | Supersedes / Superseded by | Notes |
 |---|---|---|---|---|---|---|---|
-| SMOKE-001 | smoke | manual | Home page loads (HTTP 200, no error banner) | Smoke runbook §1 | active | — | |
-| SMOKE-002 | smoke | manual | Swagger UI reachable at `/swagger` | Smoke runbook §2 | active | — | |
-| SMOKE-003 | smoke | manual | Disbursements reconciliation endpoint returns 200 with JSON body | Smoke runbook §3 | active | — | Exercises Socrata HTTP + DB + markdown writer end-to-end |
-| SMOKE-004 | smoke | manual | Risk Insights page renders, no JS console errors | Smoke runbook §4 | active | — | Semantic honesty requires page to render without error |
-| SMOKE-005 | smoke | manual | Program Workflow page renders, year selector present | Smoke runbook §5 | active | — | |
-| SMOKE-006 | smoke | manual | Year-scoped import returns 200 with `recordsProcessed > 0` | Smoke runbook §6 | active | — | Safe to repeat; idempotent by `RawSourceKey` |
+| SMOKE-001 | smoke | manual | Home page loads (HTTP 200, no error banner) | Smoke runbook §1.1 | active | — | |
+| SMOKE-002 | smoke | manual | Swagger UI reachable at `/swagger` | Smoke runbook §1.2 | active | — | |
+| SMOKE-003 | smoke | manual | Disbursements reconciliation endpoint returns 200 with JSON body | Smoke runbook §3.1 | active | — | Exercises Socrata HTTP + DB + markdown writer end-to-end; URL structure verified by MANIFEST-003/004 |
+| SMOKE-004 | smoke | manual | Risk Insights page renders, no JS console errors | Smoke runbook §2.2 | active | — | Semantic honesty requires page to render without error |
+| SMOKE-005 | smoke | manual | Program Workflow page renders, year selector present | Smoke runbook §2.6 | active | — | |
+| SMOKE-006 | smoke | manual | Idempotent re-import returns 200 with `recordsProcessed > 0` | Smoke runbook §3.3 | active | — | Safe to repeat; idempotent by `RawSourceKey`. **Note:** `?year=YYYY` on import endpoints is silently ignored — imports always fetch the complete dataset. Year-scoped processing begins at the summary rebuild stage. Import URL behavior verified by IMP-URL-001–004. |
 
 ---
 

@@ -146,6 +146,34 @@ discipline and must be explicitly noted as temporary in the inventory.
 
 ---
 
+## Net-new automated tests (no prior manual predecessor)
+
+Not every automated test promotes a manual check. Sometimes a test covers a
+behavior that was never checked at all — a previously unprotected invariant,
+a boundary condition, or a documented design decision that lacked a regression
+guard. Examples from CC-ERATE-000007:
+
+- Import URL construction tests (no prior manual step existed for this)
+- Manifest column regression guards (the `ben` defect had a test that was wrong;
+  the replacement tests are substantively new, not a promotion)
+- Sparse-data safety tests (no prior check of any kind existed)
+
+**Path for net-new automated tests:**
+
+1. Write the test; confirm it passes.
+2. Add it to the inventory as `active` with a clear scope description.
+3. If the test documents an intentional design decision (e.g., "imports are always
+   full-dataset"), note that explicitly in the `Notes` column so the test is not
+   later "fixed" by someone who misreads the absence of a year filter as a bug.
+4. No `superseded` entry is needed — there is no prior check to retire.
+
+The `Supersedes / Superseded by` column remains `—` for these entries.
+
+If the new test later renders a manual check redundant, follow the promotion path
+above to retire the manual check properly.
+
+---
+
 ## Review cadence
 
 | Trigger | Action |

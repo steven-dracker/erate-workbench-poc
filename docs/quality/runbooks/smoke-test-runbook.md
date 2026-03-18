@@ -246,6 +246,12 @@ POST http://localhost:5075/dev/reconcile/disbursements?year=2022
 
 **Allow up to 2 minutes** — this makes outbound HTTP calls to Socrata.
 
+> **Automated coverage (URL structure):** MANIFEST-003 and MANIFEST-004 in
+> `ReconciliationManifestTests` verify that reconciliation URLs use simple-filter
+> syntax (no `$where=`) and do not apply a `funding_year=` filter — reconciliation
+> always fetches all years from Socrata at once. This check remains manual because
+> it exercises the live Socrata HTTP call and the full pipeline.
+
 ---
 
 ### 3.2 — Summary rebuild (safe idempotent check)
@@ -262,10 +268,10 @@ POST http://localhost:5075/dev/summary/risk?year=2022
 
 ---
 
-### 3.3 — Year-scoped import (idempotent re-import)
+### 3.3 — Idempotent re-import
 
 ```
-POST http://localhost:5075/import/disbursements?year=2022
+POST http://localhost:5075/import/disbursements
 ```
 
 | Check | Expected | Result | Notes |
@@ -276,6 +282,17 @@ POST http://localhost:5075/import/disbursements?year=2022
 
 **Note:** This re-imports existing data and is safe to run repeatedly. It does not
 change the data if Socrata has not changed. Allow up to 10 minutes.
+
+**⚠ Import endpoints are not year-scoped.** The `?year=YYYY` parameter is silently
+ignored by the import service — any value passed is discarded. Imports always fetch
+the complete USAC dataset via `$limit/$offset` paging and upsert all rows idempotently
+by `RawSourceKey`. Year-scoped processing begins at Step 2 (summary rebuild, `?year=YYYY`).
+
+> **Automated coverage (URL construction):** IMP-URL-001 through IMP-URL-004 in
+> `FundingCommitmentImportServiceTests` and `DisbursementImportServiceTests` verify that
+> import page URLs contain `$limit=` and `$offset=` paging parameters and do not contain
+> `funding_year=`. This check remains manual because it exercises the live HTTP endpoint
+> and end-to-end record processing.
 
 ---
 
@@ -410,5 +427,5 @@ Overall: pass / pass with caveats / fail
 |---|---|---|
 | Reconciliation endpoint (§3.1) | Up to 2 minutes | Socrata API call; failure after 5 min = investigate |
 | Summary rebuild (§3.2) | 30–90 seconds | In-memory group; slower with large years |
-| Year-scoped import (§3.3) | Up to 10 minutes | Idempotent — safe to cancel if needed |
+| Idempotent re-import (§3.3) | Up to 10 minutes | Idempotent — safe to cancel if needed; fetches full dataset regardless of any `?year=` parameter |
 | Socrata unavailability | N/A | If Socrata is down, §3.1 will timeout; mark as "skipped (Socrata unavailable)" not "fail" |

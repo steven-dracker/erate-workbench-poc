@@ -299,3 +299,17 @@ In priority order:
 - `docs/quality/test-inventory.md`: Added sections A8–A10 for new automated checks;
   updated count to 345.
 - All 345 tests pass.
+
+**2026-03-18 — CC-ERATE-000008 lifecycle and documentation alignment:**
+- `docs/quality/test-inventory.md`: Corrected SMOKE-001 through SMOKE-006 section
+  references (all were pointing to wrong runbook sections); corrected SMOKE-006
+  description from "Year-scoped import" to "Idempotent re-import" (imports are not
+  year-scoped); added automation cross-references to SMOKE-003 and SMOKE-006 notes.
+- `docs/quality/runbooks/smoke-test-runbook.md`: Fixed §3.3 heading and removed
+  misleading `?year=2022` from the import URL example; added ⚠ note that
+  `?year=YYYY` is silently ignored on import endpoints; added automation annotation
+  blocks to §3.1 (MANIFEST-003/004) and §3.3 (IMP-URL-001–004).
+- `docs/quality/strategy/test-lifecycle.md`: Added "Net-new automated tests" section
+  covering the case where a test covers a previously unprotected area with no prior
+  manual predecessor (applies to all CC-ERATE-000007 additions).
+- Gaps G2 and G3 are now accurately described in this audit as closed/partially closed.
