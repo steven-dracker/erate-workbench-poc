@@ -23,7 +23,7 @@ Status definitions and lifecycle rules: see `strategy/test-lifecycle.md`.
 
 Runner: `dotnet test`
 Suite location: `tests/ErateWorkbench.Tests/`
-Count: ~350 (as of 2026-03-18)
+Count: 345 (as of 2026-03-18, after CC-ERATE-000007 additions)
 
 ### A1 — CSV parsing
 
@@ -97,6 +97,32 @@ Count: ~350 (as of 2026-03-18)
 | RECON-RPT-001 | unit | automated | Three-layer header present when summary data exists | `ReconciliationReportWriterTests` | active | — | |
 | RECON-RPT-002 | unit | automated | Two-layer header present when no summary data | `ReconciliationReportWriterTests` | active | — | |
 | RECON-RPT-003 | unit | automated | Year scope line appears in markdown when `FundingYearScope` is set | `ReconciliationReportWriterTests` | active | — | |
+
+### A8 — Import URL construction (CC-ERATE-000007)
+
+| Name | Type | Mode | Scope | Location | Status | Supersedes / Superseded by | Notes |
+|---|---|---|---|---|---|---|---|
+| IMP-URL-001 | integration (stubbed HTTP) | automated | `FundingCommitmentImportService` page URLs include `$limit=` and `$offset=` | `FundingCommitmentImportServiceTests` | active | — | Verifies Socrata paging parameters are present |
+| IMP-URL-002 | integration (stubbed HTTP) | automated | `FundingCommitmentImportService` page URLs do not contain `funding_year=` — imports are always full-dataset | `FundingCommitmentImportServiceTests` | active | — | Documents intentional absence of year filter at import stage |
+| IMP-URL-003 | integration (stubbed HTTP) | automated | `DisbursementImportService` page URLs include `$limit=` and `$offset=` | `DisbursementImportServiceTests` | active | — | |
+| IMP-URL-004 | integration (stubbed HTTP) | automated | `DisbursementImportService` page URLs do not contain `funding_year=` — imports are always full-dataset | `DisbursementImportServiceTests` | active | — | Documents intentional absence of year filter at import stage |
+
+### A9 — Manifest column regression guards (CC-ERATE-000007)
+
+| Name | Type | Mode | Scope | Location | Status | Supersedes / Superseded by | Notes |
+|---|---|---|---|---|---|---|---|
+| MANIFEST-001 | unit | automated | `DatasetManifests.Disbursements.ApplicantColumn` is `"billed_entity_number"` (not `"ben"`) | `ReconciliationManifestTests` | active | — | **Regression guard** for 2026-03-18 fix. Tests property directly, independent of URL construction. |
+| MANIFEST-002 | unit | automated | `DatasetManifests.FundingCommitments.ApplicantColumn` is `"applicant_entity_number"` | `ReconciliationManifestTests` | active | — | Baseline guard for FC manifest column name |
+| MANIFEST-003 | unit | automated | `BuildByYearUrl` does not contain `$where=` clause for either dataset | `ReconciliationManifestTests` | active | — | Documents that reconciliation uses simple-filter not `$where` syntax |
+| MANIFEST-004 | unit | automated | `BuildTotalCountUrl` does not contain `funding_year=` — reconciliation is not year-scoped | `ReconciliationManifestTests` | active | — | Documents intentional absence of year filter; reconciliation fetches all years at once via GROUP BY |
+
+### A10 — Sparse-data safety (CC-ERATE-000007)
+
+| Name | Type | Mode | Scope | Location | Status | Supersedes / Superseded by | Notes |
+|---|---|---|---|---|---|---|---|
+| SPARSE-001 | integration | automated | Commitment-only row with all-zero amounts (eligible=0, committed=0) produces score=0.5, level=Moderate — no exception | `RiskSummaryBuilderTests` | active | — | Guards zero-denominator path in `ReductionPct` and `DisbursementPct` under partial-year data |
+| SPARSE-002 | integration | automated | Disbursement-only row with zero approved amount produces score=0.5, level=Moderate — no exception | `RiskSummaryBuilderTests` | active | — | Guards anomalous data path; in practice excluded by DisbursementSummaryBuilder inclusion rule |
+| SPARSE-003 | integration | automated | `GetAdvisorySignalsAsync` with fewer qualifying rows than `topN` returns all qualifying rows without error | `RiskInsightsRepositoryTests` | active | — | Exercises result-set smaller than cap (sparse partial-year data scenario) |
 
 ---
 

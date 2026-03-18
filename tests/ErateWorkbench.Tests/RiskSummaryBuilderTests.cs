@@ -475,6 +475,45 @@ public class RiskSummaryBuilderTests : IDisposable
         Assert.Equal(0, result.DisbursementOnlyRows);
     }
 
+    // ── Sparse-data safety (CC-ERATE-000007) ─────────────────────────────────
+
+    [Fact]
+    public async Task RebuildAsync_ZeroAmountCommitmentOnlyRow_ScoreIsHalfAndLevelIsModerate()
+    {
+        // Commitment row with all-zero amounts (e.g., partial-year data not yet populated).
+        // ReductionPct(0,0)=0, DisbursementPct(0,0)=0 → score=0.5 → Moderate.
+        // Guards against divide-by-zero exceptions in the risk calculator.
+        _db.ApplicantYearCommitmentSummaries.Add(CS(2023, "BEN-1", eligible: 0m, committed: 0m));
+        await _db.SaveChangesAsync();
+
+        await Builder().RebuildAsync(fundingYear: 2023);
+
+        var row = await _db.ApplicantYearRiskSummaries.SingleAsync();
+        Assert.Equal(0.5, row.RiskScore, precision: 10);
+        Assert.Equal("Moderate", row.RiskLevel);
+        Assert.True(row.HasCommitmentData);
+        Assert.False(row.HasDisbursementData);
+        Assert.Equal(0.0, row.ReductionPct);
+    }
+
+    [Fact]
+    public async Task RebuildAsync_ZeroAmountDisbursementOnlyRow_ScoreIsHalfAndLevelIsModerate()
+    {
+        // Disbursement-only row with zero approved amount (anomalous data or sparse load).
+        // Disbursement-only path always uses redPct=0, disbPct=0 → score=0.5 → Moderate.
+        // Guards against exceptions when ApprovedAmount=0 bypasses the summary inclusion rule.
+        _db.ApplicantYearDisbursementSummaries.Add(DS(2023, "BEN-1", approved: 0m));
+        await _db.SaveChangesAsync();
+
+        await Builder().RebuildAsync(fundingYear: 2023);
+
+        var row = await _db.ApplicantYearRiskSummaries.SingleAsync();
+        Assert.Equal(0.5, row.RiskScore, precision: 10);
+        Assert.Equal("Moderate", row.RiskLevel);
+        Assert.False(row.HasCommitmentData);
+        Assert.True(row.HasDisbursementData);
+    }
+
     // ── Cross-year isolation ──────────────────────────────────────────────────
 
     [Fact]

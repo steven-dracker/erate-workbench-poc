@@ -906,6 +906,22 @@ public class RiskInsightsRepositoryTests : IDisposable
         Assert.Equal(3, signals.Count);
     }
 
+    [Fact]
+    public async Task GetAdvisorySignals_WhenFewerRowsQualifyThanTopN_ReturnsAllQualifyingRows()
+    {
+        // Sparse-data guard (CC-ERATE-000007): when fewer signals exist than the topN cap,
+        // all qualifying rows are returned without error or truncation.
+        // Exercises the path where the result set is smaller than the requested limit.
+        _db.ApplicantYearRiskSummaries.AddRange(
+            RSCalc("BEN001", eligible: 0m, committed: 0m, approved: 1000m), // No Commitment
+            RSCalc("BEN002", eligible: 0m, committed: 0m, approved:  500m)); // No Commitment
+        await _db.SaveChangesAsync();
+
+        var signals = await _repo.GetAdvisorySignalsAsync(topN: 25);
+
+        Assert.Equal(2, signals.Count);
+    }
+
     // -----------------------------------------------------------------------
     // GetAdvisorySignalsAsync — year filter
     // -----------------------------------------------------------------------

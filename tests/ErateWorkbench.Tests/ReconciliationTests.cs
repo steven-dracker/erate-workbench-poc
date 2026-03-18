@@ -106,6 +106,55 @@ public class ReconciliationManifestTests
     {
         Assert.Equal(2, DatasetManifests.Disbursements.AmountMetrics.Count);
     }
+
+    // ── Manifest property regression guards (CC-ERATE-000007) ─────────────────
+
+    /// <summary>
+    /// Regression guard for the 2026-03-18 fix: the Disbursements manifest used
+    /// "ben" (incorrect Socrata column), causing null distinct applicant counts in
+    /// every reconciliation report. This test asserts the property directly so any
+    /// future drift is caught before it reaches a reconciliation URL.
+    /// </summary>
+    [Fact]
+    public void Disbursements_Manifest_ApplicantColumn_IsBilledEntityNumber()
+    {
+        Assert.Equal("billed_entity_number", DatasetManifests.Disbursements.ApplicantColumn);
+    }
+
+    [Fact]
+    public void FundingCommitments_Manifest_ApplicantColumn_IsApplicantEntityNumber()
+    {
+        Assert.Equal("applicant_entity_number", DatasetManifests.FundingCommitments.ApplicantColumn);
+    }
+
+    // ── Reconciliation URL is not year-scoped (CC-ERATE-000007) ───────────────
+
+    /// <summary>
+    /// Documents current behavior: BuildByYearUrl uses funding_year as a GROUP BY
+    /// column (so all years are returned in one call), not as a WHERE filter.
+    /// This is intentional — reconciliation does not accept a year parameter.
+    /// </summary>
+    [Fact]
+    public void BuildByYearUrl_DoesNotContainWhereClause()
+    {
+        var svc = Service();
+        var fcUrl   = svc.BuildByYearUrl(DatasetManifests.FundingCommitments);
+        var disbUrl = svc.BuildByYearUrl(DatasetManifests.Disbursements);
+
+        Assert.DoesNotContain("$where=", fcUrl);
+        Assert.DoesNotContain("$where=", disbUrl);
+    }
+
+    [Fact]
+    public void BuildTotalCountUrl_DoesNotContainFundingYearFilter()
+    {
+        var svc = Service();
+        var fcUrl   = svc.BuildTotalCountUrl(DatasetManifests.FundingCommitments);
+        var disbUrl = svc.BuildTotalCountUrl(DatasetManifests.Disbursements);
+
+        Assert.DoesNotContain("funding_year=", fcUrl);
+        Assert.DoesNotContain("funding_year=", disbUrl);
+    }
 }
 
 // ── JSON parsing tests ────────────────────────────────────────────────────────

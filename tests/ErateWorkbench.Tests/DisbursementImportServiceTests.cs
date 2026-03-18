@@ -175,6 +175,65 @@ public class DisbursementImportServiceTests : IDisposable
         Assert.Equal(ImportJobStatus.Failed, result.Status);
         Assert.NotNull(result.ErrorMessage);
     }
+
+    // ── URL construction tests (CC-ERATE-000007) ────────────────────────────
+
+    [Fact]
+    public async Task RunAsync_ConstructedPageUrls_ContainLimitAndOffset()
+    {
+        // Capture every URL the service fetches from Socrata.
+        var requestedUrls = new List<string>();
+        var callCount = 0;
+        var handler = new DisbursementStubHandler(req =>
+        {
+            requestedUrls.Add(req.RequestUri!.ToString());
+            callCount++;
+            var body = callCount == 1
+                ? "funding_request_number,invoice_id,inv_line_num,funding_year\nFRN1,INV1,1,2024\n"
+                : EmptyPage;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = CsvContent(body)
+            });
+        });
+
+        await BuildService(handler).RunAsync("https://test.usac.org/resource/test.csv", pageSize: 500);
+
+        Assert.True(requestedUrls.Count >= 2, "Expected at least a data page and an empty-page terminator.");
+        foreach (var url in requestedUrls)
+        {
+            Assert.Contains("$limit=", url);
+            Assert.Contains("$offset=", url);
+        }
+    }
+
+    [Fact]
+    public async Task RunAsync_ConstructedPageUrls_DoNotContainFundingYearFilter()
+    {
+        // Documents that disbursement imports are always full-dataset.
+        // The import service never appends a year filter to its Socrata requests;
+        // year-scoped processing begins at the summary rebuild stage.
+        var requestedUrls = new List<string>();
+        var callCount = 0;
+        var handler = new DisbursementStubHandler(req =>
+        {
+            requestedUrls.Add(req.RequestUri!.ToString());
+            callCount++;
+            var body = callCount == 1
+                ? "funding_request_number,invoice_id,inv_line_num,funding_year\nFRN1,INV1,1,2024\n"
+                : EmptyPage;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = CsvContent(body)
+            });
+        });
+
+        await BuildService(handler).RunAsync("https://test.usac.org/resource/test.csv", pageSize: 500);
+
+        Assert.True(requestedUrls.Count >= 1);
+        foreach (var url in requestedUrls)
+            Assert.DoesNotContain("funding_year=", url);
+    }
 }
 
 file sealed class DisbursementStubHandler(Func<HttpRequestMessage, Task<HttpResponseMessage>> send)

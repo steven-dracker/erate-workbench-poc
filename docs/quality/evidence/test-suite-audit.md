@@ -1,10 +1,10 @@
 # Test Suite Audit
 
 **Date:** 2026-03-18
-**Commit:** 8e7165a (feature/import-resilience)
-**Total tests:** 340 (across 26 test classes in 25 files)
+**Commit:** feature/import-resilience (updated via CC-ERATE-000007)
+**Total tests:** 345 (across 26 test classes in 25 files)
 **Runner:** `dotnet test tests/ErateWorkbench.Tests`
-**All 340 tests pass.**
+**All 345 tests pass.**
 
 ---
 
@@ -118,48 +118,44 @@ All 334 tests pass after the fix.
 
 ---
 
-### G2 — Year-scoped import URL not tested
+### G2 — Year-scoped import URL not tested — **ADDRESSED 2026-03-18**
 
-No test verifies that `&funding_year=YYYY` appears in the Socrata page URL
-when a year argument is passed to the funding commitment or disbursement import
-services.
+**Corrected understanding:** Import services are not year-scoped by design.
+`FundingCommitmentImportService.RunAsync` and `DisbursementImportService.RunAsync`
+fetch the complete USAC dataset (`$limit/$offset` paging only); no
+`funding_year=` filter is ever appended to import URLs.
 
-**Affected classes:** `FundingCommitmentImportServiceTests`,
-`DisbursementImportServiceTests`
+**New tests added (CC-ERATE-000007):**
+- `RunAsync_ConstructedPageUrls_ContainLimitAndOffset` (both services) — verifies paging params present
+- `RunAsync_ConstructedPageUrls_DoNotContainFundingYearFilter` (both services) — documents that imports are always full-dataset; absence of year filter is correct behavior
 
-These tests verify idempotency, error classification, and retry behavior, but
-they do not capture the URL that the import service builds. If the year filter
-were accidentally dropped from the URL, imports would silently reload all years
-instead of just the target year — a high-impact regression.
+These tests capture the constructed Socrata URLs via a recording closure on the
+stub handler and assert the invariants. The absence of `funding_year=` is
+explicitly documented as intentional — imports fetch all years; year-scoped
+processing begins at the summary rebuild stage. See IMP-URL-001 through
+IMP-URL-004 in `test-inventory.md`.
 
-**Recommendation:** Add URL-capture assertions to the import service tests.
-The stub HTTP handler used in `ReconciliationTests.cs` demonstrates the pattern
-(`RequestedUrls` list on `JsonStubHandler`). The same approach can be applied
-to the import service tests to assert the constructed page URL includes
-`funding_year=YYYY`.
+**Tests added to:** `FundingCommitmentImportServiceTests`, `DisbursementImportServiceTests`
 
 ---
 
-### G3 — No partial-year / sparse-data safety tests
+### G3 — No partial-year / sparse-data safety tests — **PARTIALLY ADDRESSED 2026-03-18**
 
-**Regression-strategy.md Rule 6** requires verifying that:
-- The Risk Insights page does not present the current/partial year without a
-  disclaimer or caveat
-- The year-selector default does not silently pick the most recent year as
-  complete
+**New tests added (CC-ERATE-000007):**
+- `RebuildAsync_ZeroAmountCommitmentOnlyRow_ScoreIsHalfAndLevelIsModerate` — commitment row
+  with `eligible=0, committed=0` produces score=0.5, Moderate, no exception (guards
+  zero-denominator in `ReductionPct` / `DisbursementPct` under partial-year data)
+- `RebuildAsync_ZeroAmountDisbursementOnlyRow_ScoreIsHalfAndLevelIsModerate` — disbursement-only
+  row with `approved=0` produces score=0.5, Moderate, no exception
+- `GetAdvisorySignals_WhenFewerRowsQualifyThanTopN_ReturnsAllQualifyingRows` — 2 qualifying
+  entities with `topN=25` returns exactly 2 without error (exercises sparse result-set path)
 
-There are no automated tests for this. Advisory signal year filter tests exist
-(`GetAdvisorySignals_YearFilter_ExcludesOtherYears`), but nothing tests the
-semantic behavior when data is sparse.
+See SPARSE-001 through SPARSE-003 in `test-inventory.md`.
 
-**Current mitigation:** Manual check SEM-RISK-002 in the smoke runbook covers
-this. But the smoke runbook explicitly notes "no automatic partial-year
-disclaimer on the Risk Insights page" as a known gap in the UI itself.
-
-**Recommendation:** Add to candidates — both the UI disclaimer gap and a unit
-test asserting that the available-years query returns years sorted descending
-(i.e., the current/latest year comes first in the dropdown) so any year-
-selector behavior is testable.
+**Remaining gap:** No automated test covers the UI disclaimer behavior — whether
+the Risk Insights page shows a caveat when the selected year is partial. This
+remains a manual check (SEM-RISK-002). The smoke runbook notes "no automatic
+partial-year disclaimer on the Risk Insights page" as a known gap in the UI itself.
 
 ---
 
@@ -233,27 +229,20 @@ the test inventory. Not newly discovered gaps — recorded for completeness.
 
 In priority order:
 
-1. **Fix the `ben` defect test (G1)** — low effort, immediate accuracy gain.
-   The test currently documents a bug. Once the manifest is fixed, updating
-   the test to assert the correct column name takes minutes and removes a
-   source of false confidence.
+1. ~~**Fix the `ben` defect test (G1)**~~ — **Done 2026-03-18** (G1 section above).
 
-2. **Add year-scoped URL assertions to import service tests (G2)** — medium
-   effort, high regression value. The pattern exists in `ReconciliationTests.cs`
-   (`RequestedUrls` on the stub handler). Capturing the URL constructed by
-   `FundingCommitmentImportService` and `DisbursementImportService` would anchor
-   the year-filter behavior that currently has no automated protection.
+2. ~~**Add year-scoped URL assertions to import service tests (G2)**~~ — **Done 2026-03-18**
+   (CC-ERATE-000007). Tests now document that imports are full-dataset by design and
+   capture `$limit`/`$offset` paging parameters. See IMP-URL-001 through IMP-URL-004.
 
-3. **`GetAdvisorySignals_TopN_DefaultIsRespected` (missing edge case)** — low
-   effort. `GetAdvisorySignals_TopN_LimitsResults` exists, but there is no test
-   for the default topN value when no explicit cap is passed. Minor gap.
+3. ~~**`GetAdvisorySignals_TopN_DefaultIsRespected` (missing edge case)**~~ — **Superseded
+   2026-03-18** by `GetAdvisorySignals_WhenFewerRowsQualifyThanTopN_ReturnsAllQualifyingRows`
+   (SPARSE-003), which exercises the under-count path more meaningfully.
 
-4. **Year-scoped reconciliation URL with `&funding_year=YYYY` suffix (G2
-   variant)** — low effort. `ReconciliationManifestTests` already tests URL
-   construction but does not test the year-scoped variant (the `?year=YYYY` API
-   parameter that appends `&funding_year=YYYY` to the query). A test for
-   `BuildTotalCountUrl_WithYear_IncludesFundingYearFilter` would close the gap
-   documented in the full-data-validation-runbook's reconciliation section.
+4. **Year-scoped reconciliation URL with `&funding_year=YYYY` suffix (G2 variant)** —
+   low effort. `ReconciliationManifestTests` already tests URL construction but does not
+   test the year-scoped variant. A test for `BuildTotalCountUrl_WithYear_IncludesFundingYearFilter`
+   would close the gap documented in the full-data-validation-runbook.
 
 5. **Shared DB helper (G5)** — defer until the boilerplate is causing
    maintenance problems. Not a priority now.
@@ -291,3 +280,22 @@ In priority order:
 - `docs/quality/test-inventory.md`: Updated RECON-URL-002 notes to reflect fix.
 - `docs/quality/evidence/yearly-quality-log.md`: Watchlist updated (removed
   resolved `ben` item; added in-memory gap sort as new item).
+
+**2026-03-18 — CC-ERATE-000007 targeted automation phase:**
+- `tests/ErateWorkbench.Tests/ReconciliationTests.cs`: Added 4 manifest regression
+  guard tests to `ReconciliationManifestTests` class (MANIFEST-001 through MANIFEST-004):
+  direct property assertions for `ApplicantColumn` on both manifests; URL structure
+  guards confirming no `$where=` or `funding_year=` in reconciliation URLs.
+- `tests/ErateWorkbench.Tests/FundingCommitmentImportServiceTests.cs`: Added 2 URL
+  construction tests (IMP-URL-001, IMP-URL-002): paging parameters present; no year
+  filter in import URLs.
+- `tests/ErateWorkbench.Tests/DisbursementImportServiceTests.cs`: Added 2 URL
+  construction tests (IMP-URL-003, IMP-URL-004): same pattern.
+- `tests/ErateWorkbench.Tests/RiskSummaryBuilderTests.cs`: Added 2 sparse-data safety
+  tests (SPARSE-001, SPARSE-002): zero-amount commitment-only and disbursement-only rows
+  produce score=0.5, Moderate, no exception.
+- `tests/ErateWorkbench.Tests/RiskInsightsRepositoryTests.cs`: Added 1 TopN under-count
+  test (SPARSE-003): fewer qualifying rows than topN cap returns all without error.
+- `docs/quality/test-inventory.md`: Added sections A8–A10 for new automated checks;
+  updated count to 345.
+- All 345 tests pass.
