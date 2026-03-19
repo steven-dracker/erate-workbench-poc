@@ -5,9 +5,9 @@
 # Runs on every push and pull request.
 # Current pipeline shape:
 #   build → test → ui-smoke
+#                → security   (parallel with ui-smoke)
 #
-# Designed for future extension. Likely next stages:
-#   security:   SAST (CodeQL), dependency review, secrets scanning
+# Future extension points:
 #   package:    publish artifacts, Docker image build
 #   release:    tag-triggered release workflow
 #   deploy:     environment-specific deployment jobs
@@ -62,7 +62,7 @@ jobs:
       - name: Build
         run: dotnet build ErateWorkbench.sln --no-restore --configuration Release
 
-      # Run only the unit test project; UITests require a running app (see ui-smoke job)
+      # Targets the unit test project only; UITests require a running app (see ui-smoke job)
       - name: Run unit tests
         run: >
           dotnet test tests/ErateWorkbench.Tests/ErateWorkbench.Tests.csproj
@@ -146,15 +146,58 @@ jobs:
             kill -TERM "$APP_PID" 2>/dev/null || true
           fi
 
-  # ── Security (placeholder — future) ──────────────────────────────────────
-  # security:
-  #   name: Security
-  #   runs-on: ubuntu-latest
-  #   needs: test
-  #   steps:
-  #     - name: CodeQL analysis
-  #       ...
-  #     - name: Dependency review
-  #       ...
-  #     - name: Secrets scanning
-  #       ...
+  # ── Security: Dependency Vulnerability Scan ───────────────────────────────
+  #
+  # Scans NuGet packages for known vulnerabilities using the built-in
+  # `dotnet list package --vulnerable` command backed by the NuGet advisory DB.
+  #
+  # Two-tier approach:
+  #   - Direct dependencies:    FAIL on any finding (highest priority; production-facing)
+  #   - Transitive dependencies: WARN only (lower priority; often test-only or non-exploitable)
+  #
+  # Future extension points in this job:
+  #   - CodeQL SAST analysis (add a step using github/codeql-action)
+  #   - Secrets scanning (add trufflesecurity/trufflehog or similar)
+  #   - License compliance check (dotnet list package + custom policy)
+  #   - SARIF upload to GitHub Security tab (requires GitHub Advanced Security or public repo)
+  security:
+    name: Security
+    runs-on: ubuntu-latest
+    needs: test   # Runs in parallel with ui-smoke; both need test to pass first
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore ErateWorkbench.sln
+
+      # Tier 1: Check direct dependencies — fail the build if any are vulnerable.
+      # Direct vulnerable packages represent an active, addressable risk.
+      - name: Check direct dependencies for vulnerabilities
+        run: |
+          output=$(dotnet list package --vulnerable 2>&1)
+          echo "$output"
+          if echo "$output" | grep -q "has the following vulnerable packages"; then
+            echo "::error::Vulnerable direct NuGet packages detected. Update the affected packages."
+            exit 1
+          fi
+          echo "✓ No vulnerable direct packages found."
+
+      # Tier 2: Check transitive dependencies — report but do not fail.
+      # Transitive findings (dependencies of dependencies) are often test-only
+      # or non-exploitable in this context. They are surfaced for visibility.
+      - name: Check transitive dependencies for vulnerabilities (informational)
+        run: |
+          output=$(dotnet list package --vulnerable --include-transitive 2>&1)
+          echo "$output"
+          if echo "$output" | grep -q "has the following vulnerable packages"; then
+            echo "::warning::Vulnerable transitive NuGet packages found. Review and update when possible."
+          else
+            echo "✓ No vulnerable transitive packages found."
+          fi
