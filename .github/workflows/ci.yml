@@ -4,8 +4,9 @@
 #
 # Runs on every push and pull request.
 # Current pipeline shape:
-#   build → test → ui-smoke
-#                → security   (parallel with ui-smoke)
+#   build → test → ui-smoke      (parallel)
+#                → security      (parallel)
+#                → secrets-scan  (parallel)
 #
 # Future extension points:
 #   package:    publish artifacts, Docker image build
@@ -157,7 +158,7 @@ jobs:
   #
   # Future extension points in this job:
   #   - CodeQL SAST analysis (add a step using github/codeql-action)
-  #   - Secrets scanning (add trufflesecurity/trufflehog or similar)
+  #   - Secrets scanning → implemented as separate secrets-scan job
   #   - License compliance check (dotnet list package + custom policy)
   #   - SARIF upload to GitHub Security tab (requires GitHub Advanced Security or public repo)
   security:
@@ -201,3 +202,45 @@ jobs:
           else
             echo "✓ No vulnerable transitive packages found."
           fi
+
+  # ── Secrets Scan ──────────────────────────────────────────────────────────
+  #
+  # Scans git history for hardcoded secrets using gitleaks.
+  # Gitleaks detects common secret patterns: API keys, tokens, private keys,
+  # connection strings with credentials, etc.
+  #
+  # Tool: gitleaks CLI (https://github.com/gitleaks/gitleaks)
+  # - Open source, no license required for CLI use
+  # - Works on private repos without GitHub Advanced Security
+  # - Pinned version for reproducibility
+  # - Config: .gitleaks.toml at repo root (minimal path exclusions)
+  #
+  # Future extension points:
+  #   - Add custom rules to .gitleaks.toml for domain-specific secret patterns
+  #   - Add trufflehog for a second-opinion verified-secrets layer
+  #   - Integrate SARIF output with GitHub Security tab (requires GHAS or public repo)
+  secrets-scan:
+    name: Secrets Scan
+    runs-on: ubuntu-latest
+    needs: test   # Runs in parallel with security and ui-smoke
+
+    steps:
+      # Full history required: gitleaks scans all commits, not just the working tree
+      - name: Checkout (full history)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install gitleaks
+        run: |
+          VERSION="8.30.0"
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}/gitleaks_${VERSION}_linux_x64.tar.gz" \
+            | tar -xz gitleaks
+          sudo install gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      # Scans git history using patterns from .gitleaks.toml (path exclusions for
+      # binary DB and legacy nested working directory).
+      - name: Scan git history for secrets
+        run: gitleaks detect --source . --config .gitleaks.toml --verbose --log-level info
