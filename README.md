@@ -1,48 +1,113 @@
-# E-Rate Workbench
+# ERATE Workbench
 
-A proof-of-concept analytics workbench for USAC E-Rate open data. E-Rate is the FCC program that provides subsidized broadband and telecommunications to eligible schools and libraries across the United States. USAC publishes the underlying datasets publicly; this tool ingests them, normalizes the data into a local database, and surfaces search and analytics through a browser UI and REST API.
+A proof-of-concept analytics and workflow platform built on USAC E-Rate open data. E-Rate is the FCC program that funds broadband and telecommunications for eligible schools and libraries. USAC publishes the underlying datasets publicly; this tool ingests them, normalizes the data into a local SQLite database, and surfaces search, analytics, risk insights, and reference content through a Razor Pages UI and REST API.
 
 ## What it does
 
-- **Ingests four USAC datasets** via one-click import endpoints (entity directory, funding commitments, service providers, Form 471 applications)
+- **Ingests four USAC datasets** via import endpoints — entity directory, funding commitments, service providers, Form 471 applications
 - **Idempotent ETL** — re-running any import updates changed records without creating duplicates
-- **Entity search** — full-text + filter search across 250k+ eligible schools, libraries, and districts
-- **Analytics** — committed funding by year, Category 1 vs Category 2 breakdown, top-funded entities, discount rate analysis, and cross-dataset metrics that join entity eligibility data with actual funding commitments
-- **Swagger UI** — every endpoint is documented and testable at `/swagger`
+- **Entity search** — search across 250k+ eligible schools, libraries, and districts
+- **Analytics** — committed funding by year, top-funded entities, discount rate analysis, cross-dataset commitment vs. disbursement metrics
+- **Risk Insights** — execution risk indicators for advisor use
+- **Reference pages** — Program Workflow, Ecosystem map, E-Rate Central Historical Timeline
+- **Swagger UI** — every API endpoint is testable at `/swagger`
 
-## Running locally
+## Local development
+
+### Prerequisites
+
+- .NET 8 SDK
+- WSL2 (Ubuntu) recommended on Windows
+- `lsof` and `curl` — standard on Ubuntu, used by dev scripts
+
+### Validate (restore → build → test, no app launch)
 
 ```bash
-dotnet run --project src/ErateWorkbench.Api
+./scripts/dev-run.sh --validate
 ```
 
-The database (SQLite) is created automatically on first run. Navigate to `http://localhost:5075`.
+### Run the app (full pipeline + foreground launch)
 
-## Importing data
+```bash
+./scripts/dev-run.sh
+```
 
-Trigger each import via `POST` to the corresponding endpoint (visible in Swagger UI):
+App binds to `http://localhost:5000`. The SQLite database is created automatically on first run via EF Core migrations. Press `Ctrl+C` to stop.
+
+> `dev-run.sh` stops any process already bound to port 5000 before starting.
+
+### Run UI smoke tests
+
+`ui-test.sh` starts the app, waits for `/health` readiness, runs Playwright tests, and stops the app:
+
+```bash
+./scripts/ui-test.sh
+```
+
+If the app is already running separately:
+
+```bash
+./scripts/ui-test.sh --app-running
+```
+
+**One-time Playwright system setup (WSL / bare Ubuntu):**
+
+```bash
+sudo apt-get install -y libnss3 libnspr4 libasound2t64
+~/.dotnet/tools/playwright install chromium
+```
+
+This is handled automatically in GitHub Actions CI.
+
+See [`docs/devops/local-workflow.md`](docs/devops/local-workflow.md) for full script reference.
+
+### Importing data
+
+Trigger each import via `POST` in Swagger UI at `/swagger`:
 
 | Dataset | Endpoint |
 |---|---|
 | USAC Entity Directory (EPC) | `POST /import/usac` |
-| Funding Request Commitments | `POST /import/funding-commitments` |
+| Funding Commitments | `POST /import/funding-commitments` |
 | Service Providers (SPIN) | `POST /import/service-providers` |
 | Form 471 Applications | `POST /import/form471` |
 
-Each import downloads the full dataset from USAC's public data hub, processes it in 500-record batches, and returns a summary of records inserted, updated, and failed. Import history is tracked in the database.
+Imports are idempotent — safe to re-run. Each pages through the full USAC dataset and may take several minutes.
 
-## Running tests
+## CI pipeline
 
-```bash
-dotnet test
+```
+build → test → ui-smoke      (Playwright, headless Chromium)
+             → security      (NuGet vulnerability scan)
+             → secrets-scan  (gitleaks git history scan)
 ```
 
-61 tests covering CSV parsing, idempotent upsert, and analytics queries. All tests use an in-memory SQLite database — no external dependencies required.
+Runs on every push and pull request. See [`docs/devops/pipeline.md`](docs/devops/pipeline.md) for details.
+
+## DevSecOps controls
+
+| Control | Tool | Behavior |
+|---|---|---|
+| Dependency vulnerability scan | `dotnet list package --vulnerable` | Fails on vulnerable direct packages; warns on transitive |
+| Secrets scanning | gitleaks v8.30.0 | Fails on any detected secret in git history |
+| Automated dependency updates | Dependabot | Weekly PRs for NuGet and GitHub Actions |
+
+**Dependabot PR strategy:**
+
+- Patch/minor — merge after CI passes
+- Test/tooling packages — review CI output, merge if green
+- Major runtime upgrades (EF Core, ASP.NET Core) — treat as deliberate work, test carefully
+- Keep the open PR queue small (5-PR limit per ecosystem)
 
 ## Tech stack
 
-- ASP.NET Core 8 — Minimal API + MVC controllers + Razor Pages
-- Entity Framework Core 8 with SQLite
-- CsvHelper for USAC CSV ingestion
-- Chart.js + Bootstrap 5 for the browser UI
-- xUnit for tests
+| Layer | Technology |
+|---|---|
+| Runtime | .NET 8, ASP.NET Core, Razor Pages |
+| Database | SQLite via Entity Framework Core 8 |
+| CSV ingestion | CsvHelper + Socrata HTTP API |
+| UI | Bootstrap 5, Chart.js |
+| Unit tests | xUnit (347 tests) |
+| UI automation | Playwright for .NET (headless Chromium) |
+| CI | GitHub Actions |
+| Security | gitleaks, NuGet advisory DB, Dependabot |
