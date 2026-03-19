@@ -1,0 +1,22 @@
+# .github/dependabot.yml
+#
+# Automated dependency update configuration.
+# Dependabot opens PRs when newer package versions are available,
+# complementing the vulnerability scan in ci.yml.
+
+version: 2
+
+updates:
+  # NuGet — keeps all projects on current package versions
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  # GitHub Actions — keeps workflow action versions current
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

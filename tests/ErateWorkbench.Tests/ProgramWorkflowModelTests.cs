@@ -19,7 +19,7 @@ public class ProgramWorkflowModelTests
     public void Phases_IncludesPhaseZeroThroughSeven()
     {
         var numbers = Phases.Select(p => p.Number).ToArray();
-        Assert.Equal([0, 1, 2, 3, 4, 5, 6, 7], numbers);
+        Assert.Equal(new[] { 0, 1, 2, 3, 4, 5, 6, 7 }, numbers);
     }
 
     [Fact]
