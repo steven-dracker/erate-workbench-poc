@@ -78,6 +78,10 @@ using (var scope = app.Services.CreateScope())
     dbContext.Database.Migrate();
 }
 
+// --- Health ---
+
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
 // --- Import endpoints ---
 
 app.MapPost("/imports", async (ImportRequest request, ImportJobService importJobService, CancellationToken ct) =>
