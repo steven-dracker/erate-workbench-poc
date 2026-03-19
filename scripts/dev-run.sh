@@ -18,6 +18,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SLN="$REPO_ROOT/ErateWorkbench.sln"
+UNIT_TEST_PROJECT="$REPO_ROOT/tests/ErateWorkbench.Tests/ErateWorkbench.Tests.csproj"
 API_PROJECT="$REPO_ROOT/src/ErateWorkbench.Api/ErateWorkbench.Api.csproj"
 APP_PORT="${APP_PORT:-5000}"
 APP_URL="http://localhost:$APP_PORT"
@@ -107,9 +108,11 @@ pass "Build succeeded."
 # ─────────────────────────────────────────────────────────────────────────────
 # Step 4 — Test
 # ─────────────────────────────────────────────────────────────────────────────
-log "Running test suite..."
-dotnet test "$SLN" --no-build --configuration Debug --verbosity quiet
-pass "All tests passed."
+log "Running unit tests..."
+# Targets the unit test project only — UITests require the app to be running and are
+# a separate concern. Run them via scripts/ui-test.sh after the app is started.
+dotnet test "$UNIT_TEST_PROJECT" --no-build --configuration Debug --verbosity quiet
+pass "All unit tests passed."
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Step 5 — Launch (mode-dependent)
