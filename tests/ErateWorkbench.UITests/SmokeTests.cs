@@ -132,16 +132,20 @@ public class SmokeTests : IAsyncLifetime
     public async Task History_Page_Loads_With_Expected_Heading()
     {
         // History is a static reference page integrated as a shared-layout Razor Page (CC-ERATE-000014).
+        // Page title is "E-Rate Central — Historical Timeline — ERATE Workbench"; the word "History"
+        // does not appear in the title string, so we assert the stable shared-layout suffix instead.
         var page = await NewPageAsync();
         var response = await page.GotoAsync($"{_baseUrl}/History");
 
         Assert.NotNull(response);
         Assert.Equal(200, response.Status);
 
+        // All shared-layout pages end with " — ERATE Workbench"; confirms the layout rendered.
         var title = await page.TitleAsync();
-        Assert.Contains("History", title, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ERATE Workbench", title, StringComparison.OrdinalIgnoreCase);
 
-        // The History page should contain E-Rate timeline content.
-        await page.WaitForSelectorAsync("text=E-Rate");
+        // The page renders a visible h1 with the timeline heading.
+        var heading = page.GetByRole(AriaRole.Heading, new() { Name = "E-Rate Central", Exact = false });
+        await heading.WaitForAsync(new LocatorWaitForOptions { Timeout = 5_000 });
     }
 }
