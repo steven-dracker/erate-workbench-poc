@@ -80,6 +80,7 @@ Imports are idempotent — safe to re-run. Each pages through the full USAC data
 build → test → ui-smoke      (Playwright, headless Chromium)
              → security      (NuGet vulnerability scan)
              → secrets-scan  (gitleaks git history scan)
+                    └─────────────────── publish  (self-contained linux-x64 artifact)
 ```
 
 Runs on every push and pull request. See [`docs/devops/pipeline.md`](docs/devops/pipeline.md) for details.

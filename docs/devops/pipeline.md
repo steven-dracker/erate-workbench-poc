@@ -8,6 +8,7 @@ build
        ├─ ui-smoke      (parallel)
        ├─ security      (parallel)
        └─ secrets-scan  (parallel)
+            └─ (all three) ── publish
 ```
 
 Every job runs on `ubuntu-latest`. The pipeline triggers on `push` and `pull_request` across all branches.
@@ -113,6 +114,36 @@ A failure means a likely secret was found in a commit. Investigate the gitleaks 
 
 ---
 
+### publish
+
+**Purpose:** Produce a deployable build artifact from the API project after all validation and security gates pass.
+
+**Depends on:** `ui-smoke`, `security`, `secrets-scan` (all three must succeed)
+
+- Runs `dotnet publish` with `--self-contained true --runtime linux-x64 --configuration Release`
+- Output goes to `publish/` at the repo root
+- Uploads the output directory as a GitHub Actions artifact named **`erate-workbench-api`**
+- Artifact is retained for 14 days and downloadable from the workflow run summary
+
+**What the artifact contains:**
+
+A self-contained linux-x64 binary. No .NET runtime required on the target host — the runtime is bundled. The artifact includes:
+- `ErateWorkbench.Api` — the executable entry point
+- `ErateWorkbench.Api.dll`, `.deps.json`, `.runtimeconfig.json`
+- All dependency DLLs (EF Core, CsvHelper, ASP.NET Core, etc.)
+- Static web assets (`wwwroot/`)
+
+**Why self-contained?**
+
+For a POC with no assumed deployment infrastructure, self-contained is the simplest path to a runnable artifact. Future deploy stages can unpack it and execute directly. If containerization is added later, the publish output is a natural `COPY` source for a Dockerfile.
+
+**Future extensions:**
+- `release` job: trigger on git tag → download artifact → create GitHub Release with binary
+- `deploy` job: download artifact → copy to target host via SSH or cloud provider CLI
+- Switch to framework-dependent publish if a .NET runtime is guaranteed on the target host
+
+---
+
 ## Interpreting failures
 
 | Failing job | Likely cause | Action |
@@ -122,19 +153,21 @@ A failure means a likely secret was found in a commit. Investigate the gitleaks 
 | `ui-smoke` | Page-level regression or broken layout | Check Playwright artifacts; inspect the relevant page |
 | `security` | Vulnerable direct NuGet package | Update the package |
 | `secrets-scan` | Hardcoded secret or false positive | Investigate gitleaks output; update `.gitleaks.toml` if false positive |
+| `publish` | Build or publish failure | Check MSBuild output; likely a project configuration issue |
 
 ---
 
 ## Extending the pipeline
 
-The current shape is intentionally minimal. Future stages slot in cleanly after the existing jobs:
+Future stages slot in cleanly after the existing jobs:
 
 ```
 build → test → ui-smoke
              → security
              → secrets-scan
-             → package     (future: dotnet publish, Docker image)
-             → deploy      (future: environment-specific, tag-triggered)
+                   └──────── publish
+                                └─── release  (future: tag-triggered, GitHub Release)
+                                └─── deploy   (future: environment-specific deployment)
 ```
 
 Add new jobs to `.github/workflows/ci.yml`. Use `needs:` to express dependencies. Keep each job focused on a single concern.

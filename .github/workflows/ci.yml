@@ -7,11 +7,11 @@
 #   build → test → ui-smoke      (parallel)
 #                → security      (parallel)
 #                → secrets-scan  (parallel)
+#                        └─────────────────── publish  (after all validation passes)
 #
 # Future extension points:
-#   package:    publish artifacts, Docker image build
-#   release:    tag-triggered release workflow
-#   deploy:     environment-specific deployment jobs
+#   release:    tag-triggered release workflow consuming the publish artifact
+#   deploy:     environment-specific deployment jobs consuming the publish artifact
 
 name: CI
 
@@ -244,3 +244,53 @@ jobs:
       # binary DB and legacy nested working directory).
       - name: Scan git history for secrets
         run: gitleaks detect --source . --config .gitleaks.toml --verbose --log-level info
+
+  # ── Publish ───────────────────────────────────────────────────────────────
+  #
+  # Produces a self-contained Release build of the API and uploads it as a
+  # GitHub Actions artifact. Runs only after all validation jobs pass.
+  #
+  # The artifact is the natural input for future release and deploy stages:
+  #   release: download artifact → create GitHub Release with binary
+  #   deploy:  download artifact → copy/unpack to target host or container
+  #
+  # Self-contained publish means the artifact can run without a pre-installed
+  # .NET runtime on the target — appropriate for a POC with no assumed infra.
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    needs: [ui-smoke, security, secrets-scan]   # All validation must pass first
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore ErateWorkbench.sln
+
+      # Publish the API project as a self-contained linux-x64 binary.
+      # Output goes to publish/ at the repo root for a predictable artifact path.
+      # Note: --no-restore is intentionally omitted — dotnet publish must restore
+      # with the linux-x64 RID to resolve runtime-specific assets correctly.
+      - name: Publish API
+        run: >
+          dotnet publish src/ErateWorkbench.Api/ErateWorkbench.Api.csproj
+          --configuration Release
+          --runtime linux-x64
+          --self-contained true
+          --output publish/
+
+      # Upload the published output so it is downloadable from the workflow run
+      # and available as input to future release/deploy jobs via actions/download-artifact.
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: erate-workbench-api
+          path: publish/
+          retention-days: 14
+          if-no-files-found: error
