@@ -55,10 +55,12 @@
                            asp-page="/RiskInsights">Risk Insights</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/ecosystem">Ecosystem</a>
+                        <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "Ecosystem" ? "active" : "")"
+                           asp-page="/Ecosystem">Ecosystem</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/history">History</a>
+                        <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "History" ? "active" : "")"
+                           asp-page="/History">History</a>
                     </li>
                 </ul>
                 <div class="d-none align-items-center gap-2 me-3" id="workflow-nav-controls">
