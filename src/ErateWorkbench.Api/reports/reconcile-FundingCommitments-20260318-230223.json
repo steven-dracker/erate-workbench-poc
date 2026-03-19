@@ -1,0 +1,386 @@
+﻿{
+  "datasetName": "FundingCommitments",
+  "runAtUtc": "2026-03-18T23:02:23.5383484Z",
+  "sourceTotalRowCount": 19772233,
+  "localRawTotalRowCount": 2074631,
+  "rows": [
+    {
+      "fundingYear": 2016,
+      "sourceRowCount": 2084840,
+      "sourceDistinctApplicants": 23899,
+      "sourceAmounts": {
+        "TotalEligibleAmount": 339962472251.32,
+        "CommittedAmount": 241313868718.4307
+      },
+      "localRawRowCount": 284832,
+      "localRawDistinctApplicants": 23401,
+      "localRawAmounts": {
+        "TotalEligibleAmount": 4609249726.94053,
+        "CommittedAmount": 3171111705.1554
+      },
+      "rowCountVariance": -1800008,
+      "rowCountVariancePct": -86.34,
+      "applicantCountVariance": -498,
+      "amountVariances": {
+        "TotalEligibleAmount": -335353222524.37947,
+        "CommittedAmount": -238142757013.2753
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2017,
+      "sourceRowCount": 1694752,
+      "sourceDistinctApplicants": 22909,
+      "sourceAmounts": {
+        "TotalEligibleAmount": 303189672389.60,
+        "CommittedAmount": 212261723096.5484
+      },
+      "localRawRowCount": 212656,
+      "localRawDistinctApplicants": 22460,
+      "localRawAmounts": {
+        "TotalEligibleAmount": 4162728493.58036,
+        "CommittedAmount": 2869211904.56362
+      },
+      "rowCountVariance": -1482096,
+      "rowCountVariancePct": -87.45,
+      "applicantCountVariance": -449,
+      "amountVariances": {
+        "TotalEligibleAmount": -299026943896.01964,
+        "CommittedAmount": -209392511191.98478
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2018,
+      "sourceRowCount": 1639720,
+      "sourceDistinctApplicants": 21294,
+      "sourceAmounts": {
+        "TotalEligibleAmount": 299892464870.20,
+        "CommittedAmount": 212811608425.0093
+      },
+      "localRawRowCount": 185076,
+      "localRawDistinctApplicants": 20855,
+      "localRawAmounts": {
+        "TotalEligibleAmount": 3586730734.22019,
+        "CommittedAmount": 2571284849.66696
+      },
+      "rowCountVariance": -1454644,
+      "rowCountVariancePct": -88.71,
+      "applicantCountVariance": -439,
+      "amountVariances": {
+        "TotalEligibleAmount": -296305734135.97981,
+        "CommittedAmount": -210240323575.34234
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2019,
+      "sourceRowCount": 1439485,
+      "sourceDistinctApplicants": 21511,
+      "sourceAmounts": {
+        "TotalEligibleAmount": 188667476849.39,
+        "CommittedAmount": 153414324527.4537
+      },
+      "localRawRowCount": 216531,
+      "localRawDistinctApplicants": 20935,
+      "localRawAmounts": {
+        "TotalEligibleAmount": 3411695741.60024,
+        "CommittedAmount": 2585811117.93489
+      },
+      "rowCountVariance": -1222954,
+      "rowCountVariancePct": -84.96,
+      "applicantCountVariance": -576,
+      "amountVariances": {
+        "TotalEligibleAmount": -185255781107.78976,
+        "CommittedAmount": -150828513409.51881
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2020,
+      "sourceRowCount": 1702938,
+      "sourceDistinctApplicants": 21659,
+      "sourceAmounts": {
+        "TotalEligibleAmount": 201546105709.76,
+        "CommittedAmount": 164647840987.8573
+      },
+      "localRawRowCount": 266432,
+      "localRawDistinctApplicants": 21393,
+      "localRawAmounts": {
+        "TotalEligibleAmount": 3563543026.6804,
+        "CommittedAmount": 2701161212.6946
+      },
+      "localSummaryRowCount": 20287,
+      "localSummaryDistinctApplicants": 20287,
+      "localSummaryAmounts": {
+        "TotalEligibleAmount": 3400688443.28011,
+        "CommittedAmount": 2581897957.02391
+      },
+      "rowCountVariance": -1436506,
+      "rowCountVariancePct": -84.35,
+      "applicantCountVariance": -266,
+      "amountVariances": {
+        "TotalEligibleAmount": -197982562683.0796,
+        "CommittedAmount": -161946679775.1627
+      },
+      "rawVsSummaryRowCountVariance": -246145,
+      "rawVsSummaryApplicantVariance": -1106,
+      "rawVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -162854583.40029,
+        "CommittedAmount": -119263255.67069
+      },
+      "sourceVsSummaryRowCountVariance": -1682651,
+      "sourceVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -198145417266.47989,
+        "CommittedAmount": -162065943030.83339
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2021,
+      "sourceRowCount": 2116248,
+      "sourceDistinctApplicants": 21364,
+      "sourceAmounts": {
+        "TotalEligibleAmount": 228883719029.87,
+        "CommittedAmount": 188457032899.3042
+      },
+      "localRawRowCount": 171977,
+      "localRawDistinctApplicants": 19637,
+      "localRawAmounts": {
+        "TotalEligibleAmount": 3484915998.36027,
+        "CommittedAmount": 2661056209.90607
+      },
+      "localSummaryRowCount": 19637,
+      "localSummaryDistinctApplicants": 19637,
+      "localSummaryAmounts": {
+        "TotalEligibleAmount": 3484915998.36013,
+        "CommittedAmount": 2661056209.90608
+      },
+      "rowCountVariance": -1944271,
+      "rowCountVariancePct": -91.87,
+      "applicantCountVariance": -1727,
+      "amountVariances": {
+        "TotalEligibleAmount": -225398803031.50973,
+        "CommittedAmount": -185795976689.39813
+      },
+      "rawVsSummaryRowCountVariance": -152340,
+      "rawVsSummaryApplicantVariance": 0,
+      "rawVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -0.00014,
+        "CommittedAmount": 0.00001
+      },
+      "sourceVsSummaryRowCountVariance": -2096611,
+      "sourceVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -225398803031.50987,
+        "CommittedAmount": -185795976689.39812
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2022,
+      "sourceRowCount": 2185316,
+      "sourceDistinctApplicants": 21292,
+      "sourceAmounts": {
+        "TotalEligibleAmount": 347863958801.91,
+        "CommittedAmount": 288496742606.6631
+      },
+      "localRawRowCount": 172933,
+      "localRawDistinctApplicants": 21204,
+      "localRawAmounts": {
+        "TotalEligibleAmount": 3824245250.58019,
+        "CommittedAmount": 2883896346.67982
+      },
+      "localSummaryRowCount": 21126,
+      "localSummaryDistinctApplicants": 21126,
+      "localSummaryAmounts": {
+        "TotalEligibleAmount": 3784705507.53003,
+        "CommittedAmount": 2855536686.85962
+      },
+      "rowCountVariance": -2012383,
+      "rowCountVariancePct": -92.09,
+      "applicantCountVariance": -88,
+      "amountVariances": {
+        "TotalEligibleAmount": -344039713551.32981,
+        "CommittedAmount": -285612846259.98328
+      },
+      "rawVsSummaryRowCountVariance": -151807,
+      "rawVsSummaryApplicantVariance": -78,
+      "rawVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -39539743.05016,
+        "CommittedAmount": -28359659.82020
+      },
+      "sourceVsSummaryRowCountVariance": -2164190,
+      "sourceVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -344079253294.37997,
+        "CommittedAmount": -285641205919.80348
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2023,
+      "sourceRowCount": 2369338,
+      "sourceDistinctApplicants": 21155,
+      "sourceAmounts": {
+        "TotalEligibleAmount": 313683327455.43,
+        "CommittedAmount": 258972272474.4851
+      },
+      "localRawRowCount": 161030,
+      "localRawDistinctApplicants": 20991,
+      "localRawAmounts": {
+        "TotalEligibleAmount": 3609830149.83024,
+        "CommittedAmount": 2716489759.91385
+      },
+      "localSummaryRowCount": 20657,
+      "localSummaryDistinctApplicants": 20657,
+      "localSummaryAmounts": {
+        "TotalEligibleAmount": 3525401311.81007,
+        "CommittedAmount": 2654568901.6291
+      },
+      "rowCountVariance": -2208308,
+      "rowCountVariancePct": -93.2,
+      "applicantCountVariance": -164,
+      "amountVariances": {
+        "TotalEligibleAmount": -310073497305.59976,
+        "CommittedAmount": -256255782714.57125
+      },
+      "rawVsSummaryRowCountVariance": -140373,
+      "rawVsSummaryApplicantVariance": -334,
+      "rawVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -84428838.02017,
+        "CommittedAmount": -61920858.28475
+      },
+      "sourceVsSummaryRowCountVariance": -2348681,
+      "sourceVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -310157926143.61993,
+        "CommittedAmount": -256317703572.8560
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2024,
+      "sourceRowCount": 2004155,
+      "sourceDistinctApplicants": 21306,
+      "sourceAmounts": {
+        "TotalEligibleAmount": 534857664809.91,
+        "CommittedAmount": 450808737290.2379
+      },
+      "localRawRowCount": 163329,
+      "localRawDistinctApplicants": 20593,
+      "localRawAmounts": {
+        "TotalEligibleAmount": 3991803148.17027,
+        "CommittedAmount": 3088732519.6493
+      },
+      "localSummaryRowCount": 20086,
+      "localSummaryDistinctApplicants": 20086,
+      "localSummaryAmounts": {
+        "TotalEligibleAmount": 3801344673.58009,
+        "CommittedAmount": 2936497870.23536
+      },
+      "rowCountVariance": -1840826,
+      "rowCountVariancePct": -91.85,
+      "applicantCountVariance": -713,
+      "amountVariances": {
+        "TotalEligibleAmount": -530865861661.73973,
+        "CommittedAmount": -447720004770.5886
+      },
+      "rawVsSummaryRowCountVariance": -143243,
+      "rawVsSummaryApplicantVariance": -507,
+      "rawVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -190458474.59018,
+        "CommittedAmount": -152234649.41394
+      },
+      "sourceVsSummaryRowCountVariance": -1984069,
+      "sourceVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -531056320136.32991,
+        "CommittedAmount": -447872239420.00254
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2025,
+      "sourceRowCount": 1977465,
+      "sourceDistinctApplicants": 21542,
+      "sourceAmounts": {
+        "TotalEligibleAmount": 427777552879.96,
+        "CommittedAmount": 361455280516.4810
+      },
+      "localRawRowCount": 170207,
+      "localRawDistinctApplicants": 20511,
+      "localRawAmounts": {
+        "TotalEligibleAmount": 3887927989.88029,
+        "CommittedAmount": 3023544841.96981
+      },
+      "localSummaryRowCount": 19125,
+      "localSummaryDistinctApplicants": 19125,
+      "localSummaryAmounts": {
+        "TotalEligibleAmount": 3727494256.82012,
+        "CommittedAmount": 2901839322.16647
+      },
+      "rowCountVariance": -1807258,
+      "rowCountVariancePct": -91.39,
+      "applicantCountVariance": -1031,
+      "amountVariances": {
+        "TotalEligibleAmount": -423889624890.07971,
+        "CommittedAmount": -358431735674.51119
+      },
+      "rawVsSummaryRowCountVariance": -151082,
+      "rawVsSummaryApplicantVariance": -1386,
+      "rawVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -160433733.06017,
+        "CommittedAmount": -121705519.80334
+      },
+      "sourceVsSummaryRowCountVariance": -1958340,
+      "sourceVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -424050058623.13988,
+        "CommittedAmount": -358553441194.31453
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2026,
+      "sourceRowCount": 557976,
+      "sourceDistinctApplicants": 12728,
+      "sourceAmounts": {
+        "TotalEligibleAmount": 41292013739.30,
+        "CommittedAmount": 32864322944.2607
+      },
+      "localRawRowCount": 69628,
+      "localRawDistinctApplicants": 12466,
+      "localRawAmounts": {
+        "TotalEligibleAmount": 1552580064.27002,
+        "CommittedAmount": 1202371473.0119
+      },
+      "localSummaryRowCount": 12023,
+      "localSummaryDistinctApplicants": 12023,
+      "localSummaryAmounts": {
+        "TotalEligibleAmount": 1460514036.05001,
+        "CommittedAmount": 1130622095.76601
+      },
+      "rowCountVariance": -488348,
+      "rowCountVariancePct": -87.52,
+      "applicantCountVariance": -262,
+      "amountVariances": {
+        "TotalEligibleAmount": -39739433675.02998,
+        "CommittedAmount": -31661951471.2488
+      },
+      "rawVsSummaryRowCountVariance": -57605,
+      "rawVsSummaryApplicantVariance": -443,
+      "rawVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -92066028.22001,
+        "CommittedAmount": -71749377.24589
+      },
+      "sourceVsSummaryRowCountVariance": -545953,
+      "sourceVsSummaryAmountVariances": {
+        "TotalEligibleAmount": -39831499703.24999,
+        "CommittedAmount": -31733700848.49469
+      },
+      "hasVariance": true
+    }
+  ],
+  "amountDisplayNames": {
+    "TotalEligibleAmount": "Total Eligible Amount",
+    "CommittedAmount": "Committed Amount"
+  },
+  "notes": "USAC Open Data avi8-svp9. All commitment statuses included in source row count and sums. Source row count is ~10-15x local raw count (one source row per ROS per FRN line item; local deduplicates by FRN). Amount comparison uses sum of per-ROS costs across all rows.",
+  "hasAnyVariance": true
+}

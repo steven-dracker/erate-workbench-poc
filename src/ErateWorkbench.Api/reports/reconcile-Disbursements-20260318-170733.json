@@ -1,0 +1,760 @@
+﻿{
+  "datasetName": "Disbursements",
+  "runAtUtc": "2026-03-18T17:07:33.0809231Z",
+  "sourceTotalRowCount": 3259999,
+  "localRawTotalRowCount": 3250106,
+  "rows": [
+    {
+      "fundingYear": 1998,
+      "sourceRowCount": 39,
+      "sourceDistinctApplicants": 23,
+      "sourceAmounts": {
+        "RequestedAmount": 795004.17,
+        "ApprovedAmount": 0
+      },
+      "localRawRowCount": 39,
+      "localRawDistinctApplicants": 23,
+      "localRawAmounts": {
+        "RequestedAmount": 795004.17,
+        "ApprovedAmount": 0
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 1999,
+      "sourceRowCount": 109,
+      "sourceDistinctApplicants": 56,
+      "sourceAmounts": {
+        "RequestedAmount": 2469756.50,
+        "ApprovedAmount": 0
+      },
+      "localRawRowCount": 109,
+      "localRawDistinctApplicants": 56,
+      "localRawAmounts": {
+        "RequestedAmount": 2469756.5,
+        "ApprovedAmount": 0
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2000,
+      "sourceRowCount": 26,
+      "sourceDistinctApplicants": 21,
+      "sourceAmounts": {
+        "RequestedAmount": 123532.83,
+        "ApprovedAmount": 0
+      },
+      "localRawRowCount": 26,
+      "localRawDistinctApplicants": 21,
+      "localRawAmounts": {
+        "RequestedAmount": 123532.83,
+        "ApprovedAmount": 0
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2001,
+      "sourceRowCount": 9,
+      "sourceDistinctApplicants": 5,
+      "sourceAmounts": {
+        "RequestedAmount": 684472.04,
+        "ApprovedAmount": 129743.56
+      },
+      "localRawRowCount": 9,
+      "localRawDistinctApplicants": 5,
+      "localRawAmounts": {
+        "RequestedAmount": 684472.04,
+        "ApprovedAmount": 129743.56
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0.00
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2002,
+      "sourceRowCount": 32,
+      "sourceDistinctApplicants": 6,
+      "sourceAmounts": {
+        "RequestedAmount": 945396.81,
+        "ApprovedAmount": 415978.81
+      },
+      "localRawRowCount": 32,
+      "localRawDistinctApplicants": 6,
+      "localRawAmounts": {
+        "RequestedAmount": 945396.81,
+        "ApprovedAmount": 415978.81
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0.00
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2003,
+      "sourceRowCount": 7,
+      "sourceDistinctApplicants": 3,
+      "sourceAmounts": {
+        "RequestedAmount": 271612.23,
+        "ApprovedAmount": 183034.44
+      },
+      "localRawRowCount": 7,
+      "localRawDistinctApplicants": 3,
+      "localRawAmounts": {
+        "RequestedAmount": 271612.23,
+        "ApprovedAmount": 183034.44
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0.00
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2004,
+      "sourceRowCount": 20,
+      "sourceDistinctApplicants": 4,
+      "sourceAmounts": {
+        "RequestedAmount": 295476.67,
+        "ApprovedAmount": 245094.05
+      },
+      "localRawRowCount": 20,
+      "localRawDistinctApplicants": 4,
+      "localRawAmounts": {
+        "RequestedAmount": 295476.67,
+        "ApprovedAmount": 245094.05
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0.00
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2005,
+      "sourceRowCount": 51,
+      "sourceDistinctApplicants": 9,
+      "sourceAmounts": {
+        "RequestedAmount": 1466430.86,
+        "ApprovedAmount": 1163343.58
+      },
+      "localRawRowCount": 51,
+      "localRawDistinctApplicants": 9,
+      "localRawAmounts": {
+        "RequestedAmount": 1466430.86,
+        "ApprovedAmount": 1163343.58
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0.00
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2006,
+      "sourceRowCount": 32,
+      "sourceDistinctApplicants": 19,
+      "sourceAmounts": {
+        "RequestedAmount": 1179393.83,
+        "ApprovedAmount": 671557.09
+      },
+      "localRawRowCount": 32,
+      "localRawDistinctApplicants": 19,
+      "localRawAmounts": {
+        "RequestedAmount": 1179393.83,
+        "ApprovedAmount": 671557.09
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0.00
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2007,
+      "sourceRowCount": 29,
+      "sourceDistinctApplicants": 6,
+      "sourceAmounts": {
+        "RequestedAmount": 1082222.09,
+        "ApprovedAmount": 261028.97
+      },
+      "localRawRowCount": 29,
+      "localRawDistinctApplicants": 6,
+      "localRawAmounts": {
+        "RequestedAmount": 1082222.09,
+        "ApprovedAmount": 261028.97
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0.00
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2008,
+      "sourceRowCount": 87,
+      "sourceDistinctApplicants": 9,
+      "sourceAmounts": {
+        "RequestedAmount": 15322976.43,
+        "ApprovedAmount": 13784358.59
+      },
+      "localRawRowCount": 87,
+      "localRawDistinctApplicants": 9,
+      "localRawAmounts": {
+        "RequestedAmount": 15322976.43,
+        "ApprovedAmount": 13784358.59
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0.00
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2009,
+      "sourceRowCount": 623,
+      "sourceDistinctApplicants": 23,
+      "sourceAmounts": {
+        "RequestedAmount": 42125807.01,
+        "ApprovedAmount": 28456630.12
+      },
+      "localRawRowCount": 623,
+      "localRawDistinctApplicants": 23,
+      "localRawAmounts": {
+        "RequestedAmount": 42125807.0100001,
+        "ApprovedAmount": 28456630.12
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.0000001,
+        "ApprovedAmount": 0.00
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2010,
+      "sourceRowCount": 854,
+      "sourceDistinctApplicants": 148,
+      "sourceAmounts": {
+        "RequestedAmount": 50790579.12,
+        "ApprovedAmount": 31533823.09
+      },
+      "localRawRowCount": 854,
+      "localRawDistinctApplicants": 148,
+      "localRawAmounts": {
+        "RequestedAmount": 50790579.12,
+        "ApprovedAmount": 31533823.09
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0.00
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2011,
+      "sourceRowCount": 1503,
+      "sourceDistinctApplicants": 180,
+      "sourceAmounts": {
+        "RequestedAmount": 49126661.59,
+        "ApprovedAmount": 32860140.86
+      },
+      "localRawRowCount": 1503,
+      "localRawDistinctApplicants": 180,
+      "localRawAmounts": {
+        "RequestedAmount": 49126661.59,
+        "ApprovedAmount": 32860140.86
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00,
+        "ApprovedAmount": 0.00
+      },
+      "hasVariance": false
+    },
+    {
+      "fundingYear": 2012,
+      "sourceRowCount": 5966,
+      "sourceDistinctApplicants": 2595,
+      "sourceAmounts": {
+        "RequestedAmount": 177475339.31,
+        "ApprovedAmount": 130579736.65
+      },
+      "localRawRowCount": 5954,
+      "localRawDistinctApplicants": 2595,
+      "localRawAmounts": {
+        "RequestedAmount": 173297120.82,
+        "ApprovedAmount": 130559209.97
+      },
+      "rowCountVariance": -12,
+      "rowCountVariancePct": -0.2,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": -4178218.49,
+        "ApprovedAmount": -20526.68
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2013,
+      "sourceRowCount": 3009,
+      "sourceDistinctApplicants": 456,
+      "sourceAmounts": {
+        "RequestedAmount": 48206621.96,
+        "ApprovedAmount": 38682818.64
+      },
+      "localRawRowCount": 3009,
+      "localRawDistinctApplicants": 456,
+      "localRawAmounts": {
+        "RequestedAmount": 48206621.9600001,
+        "ApprovedAmount": 38682818.6400002
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.0000001,
+        "ApprovedAmount": 0.0000002
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2014,
+      "sourceRowCount": 5036,
+      "sourceDistinctApplicants": 937,
+      "sourceAmounts": {
+        "RequestedAmount": 101650352.78,
+        "ApprovedAmount": 89065491.98
+      },
+      "localRawRowCount": 5030,
+      "localRawDistinctApplicants": 937,
+      "localRawAmounts": {
+        "RequestedAmount": 101625054.57,
+        "ApprovedAmount": 89052198.0300001
+      },
+      "rowCountVariance": -6,
+      "rowCountVariancePct": -0.12,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": -25298.21,
+        "ApprovedAmount": -13293.9499999
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2015,
+      "sourceRowCount": 236836,
+      "sourceDistinctApplicants": 22949,
+      "sourceAmounts": {
+        "RequestedAmount": 1801560013.36,
+        "ApprovedAmount": 1460499518.42
+      },
+      "localRawRowCount": 236835,
+      "localRawDistinctApplicants": 22949,
+      "localRawAmounts": {
+        "RequestedAmount": 1801559869.5601,
+        "ApprovedAmount": 1460499374.62007
+      },
+      "rowCountVariance": -1,
+      "rowCountVariancePct": -0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": -143.7999,
+        "ApprovedAmount": -143.79993
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2016,
+      "sourceRowCount": 496300,
+      "sourceDistinctApplicants": 22336,
+      "sourceAmounts": {
+        "RequestedAmount": 2912326423.02,
+        "ApprovedAmount": 2370601543.32
+      },
+      "localRawRowCount": 496136,
+      "localRawDistinctApplicants": 22336,
+      "localRawAmounts": {
+        "RequestedAmount": 2912064819.52031,
+        "ApprovedAmount": 2370364382.98021
+      },
+      "rowCountVariance": -164,
+      "rowCountVariancePct": -0.03,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": -261603.49969,
+        "ApprovedAmount": -237160.33979
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2017,
+      "sourceRowCount": 424299,
+      "sourceDistinctApplicants": 21424,
+      "sourceAmounts": {
+        "RequestedAmount": 2395677493.06,
+        "ApprovedAmount": 2015251683.61
+      },
+      "localRawRowCount": 424013,
+      "localRawDistinctApplicants": 21423,
+      "localRawAmounts": {
+        "RequestedAmount": 2393621828.92022,
+        "ApprovedAmount": 2014665328.8204
+      },
+      "rowCountVariance": -286,
+      "rowCountVariancePct": -0.07,
+      "applicantCountVariance": -1,
+      "amountVariances": {
+        "RequestedAmount": -2055664.13978,
+        "ApprovedAmount": -586354.7896
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2018,
+      "sourceRowCount": 303876,
+      "sourceDistinctApplicants": 20185,
+      "sourceAmounts": {
+        "RequestedAmount": 2354963467.32,
+        "ApprovedAmount": 2009738824.62
+      },
+      "localRawRowCount": 303560,
+      "localRawDistinctApplicants": 20183,
+      "localRawAmounts": {
+        "RequestedAmount": 2351722824.54026,
+        "ApprovedAmount": 2006735465.09032
+      },
+      "rowCountVariance": -316,
+      "rowCountVariancePct": -0.1,
+      "applicantCountVariance": -2,
+      "amountVariances": {
+        "RequestedAmount": -3240642.77974,
+        "ApprovedAmount": -3003359.52968
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2019,
+      "sourceRowCount": 265852,
+      "sourceDistinctApplicants": 20462,
+      "sourceAmounts": {
+        "RequestedAmount": 2408914299.12,
+        "ApprovedAmount": 2036930437.11
+      },
+      "localRawRowCount": 265277,
+      "localRawDistinctApplicants": 20447,
+      "localRawAmounts": {
+        "RequestedAmount": 2403729768.2702,
+        "ApprovedAmount": 2032429108.2903
+      },
+      "rowCountVariance": -575,
+      "rowCountVariancePct": -0.22,
+      "applicantCountVariance": -15,
+      "amountVariances": {
+        "RequestedAmount": -5184530.8498,
+        "ApprovedAmount": -4501328.8197
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2020,
+      "sourceRowCount": 279421,
+      "sourceDistinctApplicants": 20610,
+      "sourceAmounts": {
+        "RequestedAmount": 2396383477.52,
+        "ApprovedAmount": 2054592796.92
+      },
+      "localRawRowCount": 279421,
+      "localRawDistinctApplicants": 20610,
+      "localRawAmounts": {
+        "RequestedAmount": 2396383477.52013,
+        "ApprovedAmount": 2054592796.92023
+      },
+      "localSummaryRowCount": 20413,
+      "localSummaryDistinctApplicants": 20413,
+      "localSummaryAmounts": {
+        "RequestedAmount": 2080176362.39004,
+        "ApprovedAmount": 2056261920.32003
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": 0.00013,
+        "ApprovedAmount": 0.00023
+      },
+      "rawVsSummaryRowCountVariance": -259008,
+      "rawVsSummaryApplicantVariance": -197,
+      "rawVsSummaryAmountVariances": {
+        "RequestedAmount": -316207115.13009,
+        "ApprovedAmount": 1669123.39980
+      },
+      "sourceVsSummaryRowCountVariance": -259008,
+      "sourceVsSummaryAmountVariances": {
+        "RequestedAmount": -316207115.12996,
+        "ApprovedAmount": 1669123.40003
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2021,
+      "sourceRowCount": 273936,
+      "sourceDistinctApplicants": 20457,
+      "sourceAmounts": {
+        "RequestedAmount": 2612950655.45,
+        "ApprovedAmount": 2260496592.06
+      },
+      "localRawRowCount": 273564,
+      "localRawDistinctApplicants": 20445,
+      "localRawAmounts": {
+        "RequestedAmount": 2607330236.23024,
+        "ApprovedAmount": 2255696344.56022
+      },
+      "localSummaryRowCount": 20254,
+      "localSummaryDistinctApplicants": 20254,
+      "localSummaryAmounts": {
+        "RequestedAmount": 2282509812.18004,
+        "ApprovedAmount": 2256273216.12005
+      },
+      "rowCountVariance": -372,
+      "rowCountVariancePct": -0.14,
+      "applicantCountVariance": -12,
+      "amountVariances": {
+        "RequestedAmount": -5620419.21976,
+        "ApprovedAmount": -4800247.49978
+      },
+      "rawVsSummaryRowCountVariance": -253310,
+      "rawVsSummaryApplicantVariance": -191,
+      "rawVsSummaryAmountVariances": {
+        "RequestedAmount": -324820424.05020,
+        "ApprovedAmount": 576871.55983
+      },
+      "sourceVsSummaryRowCountVariance": -253682,
+      "sourceVsSummaryAmountVariances": {
+        "RequestedAmount": -330440843.26996,
+        "ApprovedAmount": -4223375.93995
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2022,
+      "sourceRowCount": 274905,
+      "sourceDistinctApplicants": 20430,
+      "sourceAmounts": {
+        "RequestedAmount": 2736313045.40,
+        "ApprovedAmount": 2342734161.67
+      },
+      "localRawRowCount": 274905,
+      "localRawDistinctApplicants": 20430,
+      "localRawAmounts": {
+        "RequestedAmount": 2736313045.39993,
+        "ApprovedAmount": 2342734161.67
+      },
+      "localSummaryRowCount": 20284,
+      "localSummaryDistinctApplicants": 20284,
+      "localSummaryAmounts": {
+        "RequestedAmount": 2382430290.60001,
+        "ApprovedAmount": 2343152004.00002
+      },
+      "rowCountVariance": 0,
+      "rowCountVariancePct": 0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": -0.00007,
+        "ApprovedAmount": 0.00
+      },
+      "rawVsSummaryRowCountVariance": -254621,
+      "rawVsSummaryApplicantVariance": -146,
+      "rawVsSummaryAmountVariances": {
+        "RequestedAmount": -353882754.79992,
+        "ApprovedAmount": 417842.33002
+      },
+      "sourceVsSummaryRowCountVariance": -254621,
+      "sourceVsSummaryAmountVariances": {
+        "RequestedAmount": -353882754.79999,
+        "ApprovedAmount": 417842.33002
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2023,
+      "sourceRowCount": 266410,
+      "sourceDistinctApplicants": 20368,
+      "sourceAmounts": {
+        "RequestedAmount": 2518728435.12,
+        "ApprovedAmount": 2199848200.38
+      },
+      "localRawRowCount": 266409,
+      "localRawDistinctApplicants": 20368,
+      "localRawAmounts": {
+        "RequestedAmount": 2518726805.67,
+        "ApprovedAmount": 2199846570.92996
+      },
+      "localSummaryRowCount": 20291,
+      "localSummaryDistinctApplicants": 20291,
+      "localSummaryAmounts": {
+        "RequestedAmount": 2227855094.18001,
+        "ApprovedAmount": 2199832208.93002
+      },
+      "rowCountVariance": -1,
+      "rowCountVariancePct": -0,
+      "applicantCountVariance": 0,
+      "amountVariances": {
+        "RequestedAmount": -1629.45,
+        "ApprovedAmount": -1629.45004
+      },
+      "rawVsSummaryRowCountVariance": -246118,
+      "rawVsSummaryApplicantVariance": -77,
+      "rawVsSummaryAmountVariances": {
+        "RequestedAmount": -290871711.48999,
+        "ApprovedAmount": -14361.99994
+      },
+      "sourceVsSummaryRowCountVariance": -246119,
+      "sourceVsSummaryAmountVariances": {
+        "RequestedAmount": -290873340.93999,
+        "ApprovedAmount": -15991.44998
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2024,
+      "sourceRowCount": 270319,
+      "sourceDistinctApplicants": 20581,
+      "sourceAmounts": {
+        "RequestedAmount": 2377523638.87,
+        "ApprovedAmount": 2184011068.99
+      },
+      "localRawRowCount": 270132,
+      "localRawDistinctApplicants": 20575,
+      "localRawAmounts": {
+        "RequestedAmount": 2374568598.09012,
+        "ApprovedAmount": 2181098523.41021
+      },
+      "localSummaryRowCount": 20503,
+      "localSummaryDistinctApplicants": 20503,
+      "localSummaryAmounts": {
+        "RequestedAmount": 2200265998.48,
+        "ApprovedAmount": 2181098523.41
+      },
+      "rowCountVariance": -187,
+      "rowCountVariancePct": -0.07,
+      "applicantCountVariance": -6,
+      "amountVariances": {
+        "RequestedAmount": -2955040.77988,
+        "ApprovedAmount": -2912545.57979
+      },
+      "rawVsSummaryRowCountVariance": -249629,
+      "rawVsSummaryApplicantVariance": -72,
+      "rawVsSummaryAmountVariances": {
+        "RequestedAmount": -174302599.61012,
+        "ApprovedAmount": -0.00021
+      },
+      "sourceVsSummaryRowCountVariance": -249816,
+      "sourceVsSummaryAmountVariances": {
+        "RequestedAmount": -177257640.39,
+        "ApprovedAmount": -2912545.58
+      },
+      "hasVariance": true
+    },
+    {
+      "fundingYear": 2025,
+      "sourceRowCount": 142514,
+      "sourceDistinctApplicants": 16340,
+      "sourceAmounts": {
+        "RequestedAmount": 1005936999.99,
+        "ApprovedAmount": 935225832.06
+      },
+      "localRawRowCount": 142440,
+      "localRawDistinctApplicants": 16339,
+      "localRawAmounts": {
+        "RequestedAmount": 1005802249.31011,
+        "ApprovedAmount": 935091081.380096
+      },
+      "localSummaryRowCount": 16231,
+      "localSummaryDistinctApplicants": 16231,
+      "localSummaryAmounts": {
+        "RequestedAmount": 937416074.939994,
+        "ApprovedAmount": 935091081.379994
+      },
+      "rowCountVariance": -74,
+      "rowCountVariancePct": -0.05,
+      "applicantCountVariance": -1,
+      "amountVariances": {
+        "RequestedAmount": -134750.67989,
+        "ApprovedAmount": -134750.679904
+      },
+      "rawVsSummaryRowCountVariance": -126209,
+      "rawVsSummaryApplicantVariance": -108,
+      "rawVsSummaryAmountVariances": {
+        "RequestedAmount": -68386174.370116,
+        "ApprovedAmount": -0.000102
+      },
+      "sourceVsSummaryRowCountVariance": -126283,
+      "sourceVsSummaryAmountVariances": {
+        "RequestedAmount": -68520925.050006,
+        "ApprovedAmount": -134750.680006
+      },
+      "hasVariance": true
+    }
+  ],
+  "amountDisplayNames": {
+    "RequestedAmount": "Requested Invoice Line Amount",
+    "ApprovedAmount": "Approved Invoice Line Amount"
+  },
+  "notes": "USAC Open Data jpiu-tj8h. All InvoiceLineStatus values included in source/raw comparison. Summary totals reflect only rows where ApprovedAmount \u003E 0 (inclusion rule).",
+  "hasAnyVariance": true
+}
