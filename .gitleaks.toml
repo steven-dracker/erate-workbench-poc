@@ -1,0 +1,17 @@
+title = "ERATE Workbench — Gitleaks Configuration"
+
+# Minimal allowlist for known false-positive paths.
+# The default gitleaks rule set covers common secret patterns (AWS keys,
+# GitHub tokens, private keys, etc.). No custom rules are needed for this repo.
+
+[allowlist]
+description = "Paths excluded from secrets scanning"
+paths = [
+    # SQLite binary database file — binary content, not scannable as text.
+    # This file is tracked in git but contains no credentials.
+    '''erate-workbench\.db''',
+
+    # Legacy working-directory snapshot retained as a source artifact.
+    # Contains a nested .git and the same source code — not an independent secret source.
+    '''erate-workbench/''',
+]
