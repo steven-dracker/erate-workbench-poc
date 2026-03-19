@@ -487,3 +487,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Local workspace artifacts
+docs/context/.obsidian/
+erate-workbench/
