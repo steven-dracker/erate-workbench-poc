@@ -22,7 +22,7 @@ public class FundingCommitmentCsvParser(ILogger<FundingCommitmentCsvParser>? log
         // DIAGNOSTIC: log actual CSV headers so we can verify column name mapping
         csv.Read();
         csv.ReadHeader();
-        var headers = csv.Context.Reader.HeaderRecord ?? Array.Empty<string>();
+        var headers = csv.Context.Reader?.HeaderRecord ?? Array.Empty<string>();
         logger?.LogWarning("[DIAG] CSV headers ({Count}): {Headers}",
             headers.Length, string.Join(" | ", headers));
 
