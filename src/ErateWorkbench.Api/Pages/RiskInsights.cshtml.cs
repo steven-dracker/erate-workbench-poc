@@ -1,3 +1,4 @@
+using ErateWorkbench.Domain;
 using ErateWorkbench.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -15,6 +16,9 @@ public class RiskInsightsModel(RiskInsightsRepository repo) : PageModel
     public List<int> AvailableYears { get; private set; } = [];
     public bool HasFilters => Year.HasValue || !string.IsNullOrEmpty(Severity);
 
+    public bool ShowPartialYearBanner { get; private set; }
+    public string PartialYearMessage { get; private set; } = string.Empty;
+
     public RiskSnapshot Snapshot { get; private set; } = new(0, 0, 0, 0, 0);
     public List<ApplicantRiskRow> TopRiskApplicants { get; private set; } = [];
     public List<CommitmentGapRow> TopGaps { get; private set; } = [];
@@ -29,5 +33,9 @@ public class RiskInsightsModel(RiskInsightsRepository repo) : PageModel
         TopGaps            = await repo.GetTopCommitmentDisbursementGapsAsync(15, Year, ct);
         TopReductions      = await repo.GetTopReductionRatesAsync(15, Year, ct);
         AdvisorySignals    = await repo.GetAdvisorySignalsAsync(Year, 25, ct);
+
+        ShowPartialYearBanner = PartialYearDetector.IsPartialYear(AvailableYears, Year);
+        if (ShowPartialYearBanner)
+            PartialYearMessage = $"FY{Year} is a partial year — advisory signals are preliminary and may overstate anomalies.";
     }
 }
