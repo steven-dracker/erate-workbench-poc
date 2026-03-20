@@ -138,9 +138,32 @@ A self-contained linux-x64 binary. No .NET runtime required on the target host �
 For a POC with no assumed deployment infrastructure, self-contained is the simplest path to a runnable artifact. Future deploy stages can unpack it and execute directly. If containerization is added later, the publish output is a natural `COPY` source for a Dockerfile.
 
 **Future extensions:**
-- `release` job: trigger on git tag → download artifact → create GitHub Release with binary
-- `deploy` job: download artifact → copy to target host via SSH or cloud provider CLI
+- `deploy` job: download release asset → copy to target host via SSH or cloud provider CLI
 - Switch to framework-dependent publish if a .NET runtime is guaranteed on the target host
+
+---
+
+## Release workflow (`release.yml`)
+
+Releases are separate from CI and are triggered manually. See [`docs/devops/release.md`](release.md) for the full process.
+
+**Shape:**
+
+```
+(operator) → workflow_dispatch (version input)
+                  └─ publish API (self-contained linux-x64, version stamped)
+                  └─ package as erate-workbench-api-v{version}-linux-x64.tar.gz
+                  └─ gh release create v{version} --generate-notes + attach asset
+```
+
+**Key differences from CI `publish` job:**
+
+| | CI `publish` | Release workflow |
+|---|---|---|
+| Trigger | Every push/PR (after all gates pass) | Manual — operator triggered |
+| Version | `0.1.0+{sha}` from `.csproj` | `{input}+{sha}` — stamped at build time |
+| Output | 14-day Actions artifact | Permanent GitHub Release + asset |
+| Notes | None | Auto-generated from merged PRs |
 
 ---
 
@@ -165,9 +188,10 @@ Future stages slot in cleanly after the existing jobs:
 build → test → ui-smoke
              → security
              → secrets-scan
-                   └──────── publish
-                                └─── release  (future: tag-triggered, GitHub Release)
-                                └─── deploy   (future: environment-specific deployment)
+                   └──────── publish        (ci.yml — every push)
+
+(operator) → release.yml → publish → GitHub Release  (manual, on-demand)
+                                └─── deploy           (future: env-specific deployment)
 ```
 
-Add new jobs to `.github/workflows/ci.yml`. Use `needs:` to express dependencies. Keep each job focused on a single concern.
+Add new CI jobs to `.github/workflows/ci.yml`. Use `needs:` to express dependencies. Keep each job focused on a single concern. Deploy automation belongs in a separate workflow file.

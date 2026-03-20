@@ -85,6 +85,12 @@ build → test → ui-smoke      (Playwright, headless Chromium)
 
 Runs on every push and pull request. See [`docs/devops/pipeline.md`](docs/devops/pipeline.md) for details.
 
+## Releases
+
+Releases are created manually via **Actions → Release → Run workflow**. The operator provides a version string; the workflow builds, packages, and publishes a GitHub Release with a self-contained linux-x64 binary attached.
+
+See [`docs/devops/release.md`](docs/devops/release.md) for the full release process.
+
 ## DevSecOps controls
 
 | Control | Tool | Behavior |
