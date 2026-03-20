@@ -1,28 +1,38 @@
+ERATE Workbench POC — Architect Handoff
 
-ERATE Workbench POC — Architect Handoff 3-18-2026 9:30 PM ET
-1. Project Overview
+Last updated: 2026-03-19
+
+1. PROJECT OVERVIEW
 What we are building and why
 
-ERATE Workbench POC is a C# / ASP.NET Core analytics and workflow platform built around USAC E-Rate open data. It began as interview preparation and evolved into a credible mini-platform demonstrating:
+ERATE Workbench POC is a .NET 8 / ASP.NET Core / SQLite analytics and workflow platform built around USAC E-Rate open data.
 
-data engineering
+It started as a domain-rich interview/demo artifact and has evolved into a credible miniature platform demonstrating:
 
-analytics engineering
+real-source data ingestion
+
+analytics and advisory-oriented product thinking
 
 backend architecture
 
-product thinking
+test discipline
 
-quality / validation discipline
+validation/reconciliation discipline
 
-The core product thesis is:
+DevOps / DevSecOps maturity
+
+The product thesis is:
 
 Most E-Rate dashboards stop at requested or committed dollars.
 ERATE Workbench aims to show where execution breaks down, where advisors should focus, and how to reason about the E-Rate lifecycle operationally.
 
-The app now includes both analytics surfaces and reference/product surfaces:
+The application currently includes:
 
-Dashboard / Search / Analytics
+Dashboard
+
+Search
+
+Analytics
 
 Risk Insights
 
@@ -32,53 +42,144 @@ Ecosystem
 
 History
 
-It also includes a quality system with reconciliation, runbooks, evidence logs, regression strategy, and test inventory.
+It also now includes an increasingly mature engineering backbone:
+
+local developer workflow scripts
+
+GitHub Actions CI
+
+Playwright UI smoke tests
+
+dependency vulnerability scanning
+
+secrets scanning
+
+build artifact publishing
+
+operational documentation
+
+basic local observability/logging
 
 Core technical stack and why it was chosen
-
-Language / Runtime
+Language / runtime
 
 C# / .NET 8
-Chosen for strong typing, mature tooling, performance, and relevance to senior/architect-level discussions.
+
+Why:
+
+strong typing
+
+mature ecosystem
+
+good architectural credibility
+
+good testability and runtime performance
+
+appropriate for senior/architect-level discussion
 
 Web framework
 
-ASP.NET Core + Razor Pages
-Chosen for fast full-stack iteration, simple routing, and production-style structure without frontend complexity.
+ASP.NET Core with Razor Pages + Minimal API
+
+Why:
+
+fast full-stack iteration
+
+clean server-rendered UI for a POC
+
+simple routing and layout inheritance
+
+avoids unnecessary frontend framework complexity
+
+supports both pages and data endpoints cleanly
 
 Database
 
 SQLite
-Chosen for local portability, zero infrastructure burden, easy demo setup, and fast iteration.
+
+Why:
+
+zero infrastructure burden
+
+portable, local-first demo setup
+
+fast iteration
+
+good fit for a POC with summary-layer architecture
+
+easy migration path later to Postgres if needed
 
 ORM / data access
 
 Entity Framework Core
-Chosen for maintainable schema evolution, typed querying, and migrations.
 
-Testing
+Why:
 
-xUnit
-Used for extensive automated coverage; current status is 347/347 tests passing.
+schema evolution with migrations
+
+typed queries
+
+maintainable code-first/data-access story
 
 Source ingestion
 
-Socrata HTTP + CSV parsing via CsvHelper
-Supports paginated ingestion, retries, import resilience, and large public datasets.
+Socrata API + CSV parsing
 
-Environment
+Why:
 
-Windows 11 + WSL2 Ubuntu 24.04 + VS Code Remote WSL
-Chosen for practical .NET development, Linux tooling, and easy local operations.
+real public USAC E-Rate data
 
-2. Architectural Decisions
+supports both ingestion and reconciliation
+
+makes the app analytically credible
+
+Testing
+
+xUnit for unit/integration-style tests
+Playwright (C#) for UI smoke tests
+
+Why:
+
+consistent .NET-centered test stack
+
+Playwright provides modern browser automation without Selenium/Grid complexity
+
+simple CI integration
+
+DevOps / CI
+
+GitHub Actions
+
+Why:
+
+native to the current repo hosting platform
+
+sufficient for build/test/security/artifact needs
+
+easy incremental growth into a DevSecOps pipeline
+
+Security / dependency hygiene
+
+dotnet list package --vulnerable
+
+gitleaks
+
+Dependabot
+
+Why:
+
+lightweight but credible early-stage DevSecOps controls
+
+no paid tooling or heavy infrastructure required
+
+2. ARCHITECTURAL DECISIONS
 
 Below are the major decisions in effect as of this handoff.
 
-Decision 1 — Use a layered .NET architecture
+ADR-001 — Use a layered .NET solution structure
 
 What
-Projects are split into:
+The codebase is organized into:
 
 ErateWorkbench.Api
 
@@ -88,731 +189,827 @@ ErateWorkbench.Infrastructure
 
 ErateWorkbench.Tests
 
+ErateWorkbench.UITests
+
 Why
 
 separation of concerns
 
-testability
-
 clearer architectural story
+
+testability
 
 maintainability
 
 Rejected alternatives
 
-single-project MVC app
+single-project MVC-style app
 
-heavy DDD-style overhead for a POC
+heavier DDD ceremony for a POC
 
 Assumptions
 
-The artifact should feel like a real platform, not a throwaway demo.
+the project should feel like a real platform, not a throwaway demo
 
-Decision 2 — Use SQLite as the primary datastore
+ADR-002 — SQLite as primary datastore
 
 What
-SQLite is the local database used for imports, summaries, analytics, and validation workflows.
+SQLite is the local database for imports, summaries, analytics, and validation workflows.
 
 Why
 
-zero infrastructure
+zero infra
 
 portable demo setup
 
-fast iteration
+fast local iteration
 
-adequate for POC with summary-layer architecture
+sufficient for current POC scale
 
 Rejected alternatives
 
-Postgres / SQL Server
+Postgres / SQL Server as initial datastore
 
-file-only analytics without a database
+file-only analytics without a DB
 
 Assumptions
 
-Local/demo-first operation is the primary mode.
+local/demo-first operation is primary
 
-Decision 3 — Ingest real USAC open datasets, not mock data
+current data size remains practical in SQLite
+
+ADR-003 — Real USAC open data, not mock/demo data
 
 What
-The system imports real USAC open data, primarily:
+The system imports real USAC open datasets, especially:
 
 Funding Commitments
 
 Disbursements
 
-entity/supporting datasets
-
 Why
 
-stronger credibility
+domain credibility
 
-realistic domain behavior
+realistic data behavior
 
-enables true reconciliation and caveat surfacing
+true reconciliation/validation possible
+
+stronger product story
 
 Rejected alternatives
 
-seed/demo data
+seed/demo data only
 
-small static CSV extracts only
+static mini CSV extracts only
 
 Assumptions
 
-Public data inconsistencies are acceptable and analytically valuable.
+public data inconsistency is acceptable and analytically valuable
 
-Decision 4 — Use paged/streaming ingestion with idempotent upserts
+ADR-004 — Idempotent imports via stable raw keys
 
 What
-Import services page source data and upsert into SQLite using a stable raw key.
+Import services upsert by RawSourceKey instead of truncate/reload.
 
 Why
 
-handles large source volume
+safe re-runs
 
-avoids full in-memory loads
+resilient to killed/failed imports
 
-safe reruns
+preserves partial progress
 
-supports partial failure without full rollback
+simpler recovery
 
 Rejected alternatives
 
-full download then parse
+truncate-and-reload
 
-truncate/reload every time
-
-naive insert-only import
+complex hash-based change tracking
 
 Assumptions
 
-repeated imports during development are normal
+source keys are sufficiently stable
 
-source keys are stable enough for idempotent behavior
+delete detection can be deferred
 
-Decision 5 — Make analytics run off summary tables, not raw tables
+ADR-005 — Three-layer data model: Raw → Summary → Risk
 
 What
-Core analytics use:
 
-ApplicantYearCommitmentSummary
+Raw tables for source-level data
 
-ApplicantYearDisbursementSummary
+Summary tables for applicant/year aggregation
 
-ApplicantYearRiskSummary
+Risk tables for advisory/risk logic
 
 Why
 
-performance
+reconciliation against source remains possible
 
-consistency
+analytics queries can be fast
 
-easier debugging
-
-easier reconciliation
-
-simpler repository logic
+advisory logic has a curated derived layer
 
 Rejected alternatives
 
-raw-table aggregations everywhere
+raw-only analytics
 
-SQL views only
+SQLite materialized views (not native)
 
-caching before fixing data model
+pure query-on-read model
 
 Assumptions
 
-analytics should be driven by curated aggregates, not transactional/raw tables
+summary rebuilds are acceptable
 
-Decision 6 — Build Risk Insights as a dedicated product area
+year-scoped processing is a useful unit of work
+
+ADR-006 — Full-dataset imports instead of source-side year-scoped imports
 
 What
-Risk Insights is a top-level area rather than a subsection of generic analytics.
+Imports page the entire Socrata dataset; ?year=YYYY on import endpoints is not truly year-scoped.
 
 Why
 
-execution risk is a distinct product capability
+Socrata year-filtered bulk behavior proved slow/unreliable
 
-aligns to advisory use cases
-
-demonstrates product thinking beyond charts
+full-dataset paging was the simplest reliable implementation
 
 Rejected alternatives
 
-fold into generic analytics
+optimistic year-filtered import path
 
-treat as just another chart section
+more complex restartable background import system
 
 Assumptions
 
-interviewers and users care about operational insight, not just totals
+full imports are acceptable in a POC
 
-Decision 7 — Keep semantic honesty explicit in UI
+targeted repairs can tolerate longer runtimes
+
+ADR-007 — Reconciliation via SoQL grouped source queries
 
 What
-UI language explicitly frames cross-dataset comparisons honestly:
-
-“Approved Invoice Amount”
-
-“Invoice / Commitment Ratio”
-
-partial-year caution
-
-advisory signals as prioritization aids, not definitive judgments
+Reconciliation compares local state against grouped source aggregates from Socrata.
 
 Why
 
-source datasets are not strictly like-for-like
+efficient validation
 
-misleading “clean” dashboard semantics would be false
+enough trust signal without full source replay
 
-Rejected alternatives
-
-hide >100% values
-
-force “completion” framing
-
-suppress caveats
-
-Assumptions
-
-trustworthiness matters more than neat visuals
-
-Decision 8 — Use reconciliation as a first-class validation feature
-
-What
-Built reconciliation against Socrata source aggregates comparing:
-
-source vs local raw
-
-source vs summary
-
-raw vs summary
-
-Why
-
-summary layers should not be trusted blindly
-
-catches source-mapping and completeness issues
-
-supports confidence before demos
+supports auditability
 
 Rejected alternatives
+
+trusting imports blindly
 
 manual SQL spot checks only
 
-trusting imports without source validation
-
 Assumptions
 
-aggregate source validation is enough for directional trust
+grouped source reconciliation is sufficient for demo confidence
 
-Decision 9 — Add year-scoped summary rebuilds and validation workflows
+ADR-008 — Reference content integrated into the app
 
 What
-Summary rebuilds and reconciliation support ?year=YYYY, and runbooks/logs are organized by year.
+Program Workflow, Ecosystem, and History exist as integrated app pages rather than disconnected artifacts.
 
 Why
 
-better debugging
+improves product narrative
 
-targeted validation
+helps technical and non-technical demo audiences
 
-lower blast radius
+keeps reference content “in product”
 
 Rejected alternatives
 
-always full-dataset rebuild/validation with no year slicing
+keep those as external docs only
+
+keep standalone static HTML forever
 
 Assumptions
 
-year-level operational checks are a useful unit of work
+reference content is part of product understanding, not just repo docs
 
-Important nuance learned later
-
-summary/reconciliation paths became year-oriented, but import behavior was not truly year-scoped in the way originally assumed.
-
-Decision 10 — Keep static explanatory/reference pages inside the app
+ADR-009 — Shared-layout Razor Pages for integrated reference pages
 
 What
-Added app-integrated reference pages:
-
-Program Workflow
-
-Ecosystem
-
-History
+Ecosystem and History were converted from standalone/static serving into shared-layout Razor Pages.
 
 Why
 
-strengthens narrative and domain explanation
+consistent navigation
 
-helps both technical and non-technical demo audiences
+avoids duplicate nav shells
 
-turns standalone artifacts into productized content
-
-Rejected alternatives
-
-keep them as external docs only
-
-leave them as disconnected static HTML
-
-Assumptions
-
-reference content belongs in-product if it supports the story and user understanding
-
-Decision 11 — Convert static reference pages to shared-layout Razor Pages
-
-What
-Ecosystem and History were initially served as static HTML via MapGet(... Results.File(...)), then converted to Razor Pages using the shared _Layout.cshtml.
-
-Why
-
-consistent shared navigation
-
-no duplicated nav/header maintenance
-
-cleaner long-term integration
+better long-term maintainability
 
 Rejected alternatives
 
-keep separate standalone static nav forever
+permanent static-file routes with custom nav
 
 Assumptions
 
-shared layout consistency is worth a small conversion effort
+shared layout consistency is more valuable than preserving the original standalone HTML structure
 
-Decision 12 — Build a formal quality system, not just tests
+ADR-010 — Formal quality system, not just tests
 
 What
-Created docs/quality/ with:
+docs/quality/ exists to separate:
 
-taxonomy
-
-regression strategy
-
-lifecycle
-
-test inventory
+tests
 
 runbooks
 
-yearly quality evidence log
+evidence logs
 
-test suite audit
+audit findings
+
+validation lifecycle
 
 Why
 
-separate manual smoke checks from regression tests, data validation, semantics, and future security/performance work
+data-heavy app needs runtime/data validation beyond code tests
 
-make quality durable and extensible
+supports credible demo readiness
 
 Rejected alternatives
 
 ad hoc QA notes
 
-only automated tests with no manual evidence trail
+tests only, no evidence trail
 
 Assumptions
 
-this POC should demonstrate engineering discipline, not just functionality
+demonstrating engineering discipline is part of the product value
 
-Decision 13 — Adopt prompt traceability IDs for Claude Code work
+ADR-011 — Prompt/task traceability with CC-ERATE IDs
 
 What
-Claude prompts use IDs like CC-ERATE-0000XX, and outputs/commits reference them.
+Claude work is tracked with IDs like CC-ERATE-0000XX.
 
 Why
 
 traceability
 
-clean mapping from task → implementation → validation
+better mapping between ask → implementation → validation
 
 easier multi-AI workflow management
 
 Rejected alternatives
 
-untracked prompting
-
-generic commit messages with no task linkage
+informal prompting only
 
 Assumptions
 
-lightweight traceability is worth the small process overhead
+lightweight process overhead is worth the clarity
 
-3. Active Work & Open Items
-What is currently in progress
+ADR-012 — WSL-first development environment is canonical
 
-Current state of the project:
+What
+The repo was reset so the WSL working copy became the canonical source of truth. A new GitHub repo was created:
 
-2020–present data has been imported and validated sufficiently for demo confidence
+steven-dracker/erate-workbench-poc
 
-Ecosystem page has been integrated
+Why
 
-History page has been integrated
+Windows pathing/data issues caused confusion
 
-Both are now shared-layout Razor Pages
+the populated SQLite/data setup and dev behavior were more stable in WSL
 
-Nullable warning in FundingCommitmentCsvParser was fixed
+clean reset removed ambiguity from earlier Windows-local changes
 
-Build is clean
+Rejected alternatives
 
-Tests are green
+continue using Windows-local repo as primary
 
-Current repo status at handoff:
+keep mixed WSL/Windows workflow
 
-local main is ahead of origin/main by 13 commits
+Assumptions
 
-working tree is clean
+WSL remains the main local development environment going forward
 
-stale local branches were cleaned up
+ADR-013 — Short-lived feature branches + PR workflow
 
-current local branches:
+What
+Going forward, new work should happen on feature branches, not directly on main.
 
-main
+Why
 
-feature/import-resilience
+cleaner PR review units
 
-What has been handed to Claude Code most recently
+easier rollback/isolation
 
-Recent Claude work included:
+better GitHub workflow discipline
 
-CC-ERATE-000011
+avoids branch/PR confusion
 
-Update yearly quality log with FY2021 full import validation context
+Rejected alternatives
 
-Commit: 16ac22a
+continuing direct-to-main workflow
 
-CC-ERATE-000012
+Assumptions
 
-Integrate Ecosystem page initially as static route
+every material change can be represented as a coherent task branch
 
-Commit: a956cc4
+Note: some work during transition was still committed directly to main; this should not continue.
 
-CC-ERATE-000013
+ADR-014 — Lightweight CI pipeline first, then DevSecOps layers
 
-Integrate History page initially as static route
+What
+The GitHub Actions pipeline was built incrementally:
 
-Commit: 8939e03
+build
 
-CC-ERATE-000014
+test
 
-Convert Ecosystem and History to shared-layout Razor Pages
-
-Remove MapGet routes
-
-Use _Layout.cshtml shared nav
-
-Commit: d985bfe
-
-CC-ERATE-000015
-
-Fix nullable warning in FundingCommitmentCsvParser
-
-One-character null-conditional fix
-
-0 warnings / 347 tests passing
-
-Commit: 0d73c64
-
-Current confirmed data-validation conclusions
-
-The project owner wanted confidence specifically for 2020–present data.
-
-Final checks showed:
-
-Funding Commitments local validation
-
-2020–2025 row counts are internally consistent
-
-2026 is lower as expected for a partial year
-
-distinct applicants are stable across mature years
-
-committed/eligible amounts are in consistent year-over-year ranges
-
-FY2021 was investigated deeply and is now considered valid for demo use
-
-Important lesson learned:
-
-Source/raw exact parity is not expected because the source model is ROS-expanded and the local model is normalized/deduplicated.
-
-Reconciliation is directional and structural, not row-for-row equality.
-
-Import-job system
-
-Import job status tracking was found to be unreliable
-
-multiple stale jobs were marked status = 1 even though no true work was ongoing
-
-stale jobs were manually cleared in SQLite by setting them to failed/completed state
-
-/imports is now trustworthy again, but this remains technical debt
-
-Open questions / pending decisions
-
-Security pipeline
-
-The next likely major work item
-
-Repo is private
-
-GitHub Pro limitations mean:
-
-Dependabot works
-
-code-scanning/SARIF Security-tab workflows do not behave like public repos
-
-Snyk Free has been installed/evaluated and may be the best fit for private repo scanning
-
-Git/GitHub / GitLab workflow
-
-User indicated desire to commit and merge through remote workflow rather than keep working directly on main
-
-Current recommendation is to move to short-lived feature branches for future Claude tasks
-
-Import observability
-
-Current data is trusted, but the import job UX is weak
-
-no trustworthy progress reporting
-
-no reliable records processed metrics
-
-stale job states required manual cleanup
-
-Performance
-
-Potential watchpoints still exist:
-
-Risk Insights gap sorting previously loaded full result sets into memory
-
-Analytics page historically used raw-table grouping
-
-No major blocking issue was established in this session, but performance hardening remains a valid next step
-
-Security / quality domain expansion
-
-docs/quality/ was designed to support:
-
-smoke tests
-
-regression tests
-
-data validation
-
-semantic review
+ui-smoke
 
 security
 
-performance
+secrets-scan
 
-security and performance are still early compared to validation and regression work
+publish
 
-4. Known Technical Debt
-1. Import job lifecycle / observability is incomplete
+Why
+
+incremental maturity
+
+easier debugging and adoption
+
+clearer architecture story
+
+Rejected alternatives
+
+giant monolithic pipeline from day one
+
+immediate deploy/release complexity
+
+Assumptions
+
+foundational validation/security/artifact generation are more valuable than early deployment automation
+
+ADR-015 — Playwright over Selenium/Grid for UI smoke automation
+
+What
+UI smoke tests use Playwright in C#.
+
+Why
+
+modern runner + browser engine in one tool
+
+strong local and GitHub Actions support
+
+avoids Selenium server/grid complexity
+
+fits .NET repo well
+
+Rejected alternatives
+
+Cypress as first implementation
+
+Selenium/Grid/BrowserStack integration up front
+
+Assumptions
+
+for this POC, small happy-path smoke tests are enough
+
+cloud-browser execution can be a future extension if desired
+
+ADR-016 — Dependency vulnerability scanning as first security control
+
+What
+CI includes dotnet list package --vulnerable.
+
+Why
+
+zero credentials
+
+authoritative NuGet advisory source
+
+practical for private repo
+
+quick and actionable
+
+Rejected alternatives
+
+larger security suite immediately
+
+paid/private-repo advanced tooling as first step
+
+Assumptions
+
+dependency risk is the highest-value first security signal
+
+ADR-017 — Secrets scanning with gitleaks CLI
+
+What
+CI includes gitleaks run directly via CLI, not the gitleaks GitHub Action.
+
+Why
+
+avoids license requirement on private repos
+
+simple, effective, GitHub-friendly
+
+scans history when used with full checkout depth
+
+Rejected alternatives
+
+gitleaks GitHub Action requiring license
+
+TruffleHog as initial implementation
+
+Assumptions
+
+repository-content/history scanning is sufficient as an early secrets control
+
+ADR-018 — Produce publishable CI artifacts
+
+What
+CI now includes a publish stage that produces a self-contained linux-x64 publish artifact for the API project.
+
+Why
+
+moves pipeline beyond validation into deliverable output
+
+clean handoff point for future release/deploy
+
+appropriate next maturity step
+
+Rejected alternatives
+
+no artifact stage
+
+immediate containerization/deployment
+
+Assumptions
+
+artifact-first is the right next evolution before deploy automation
+
+ADR-019 — In-memory caching for Analytics page demo performance
+
+What
+The expensive Analytics queries are cached via IMemoryCache with 24-hour absolute expiration.
+
+Why
+
+Analytics page was too slow for demo use
+
+underlying data is mostly static
+
+built-in cache yields huge warm-path improvement with very low complexity
+
+Rejected alternatives
+
+immediate broad analytics architecture rewrite
+
+naive parallel query fan-out on same EF context
+
+Assumptions
+
+slow cold request is acceptable
+
+fast warm-path is more important for demo quality
+
+data freshness is not critical on every request
+
+ADR-020 — Built-in logging / observability baseline, no external logging stack
+
+What
+Logging was improved using built-in Microsoft.Extensions.Logging + SimpleConsole, with documentation and local log capture via script teeing.
+
+Why
+
+enough capability for local diagnostics
+
+zero new packages
+
+works with existing ILogger<T> usage
+
+low operational complexity
+
+Rejected alternatives
+
+immediate Serilog or external observability stack
+
+leaving logging in its weak prior state
+
+Assumptions
+
+local developer observability is the current need, not centralized production telemetry
+
+3. ACTIVE WORK & OPEN ITEMS
+What is currently in progress
+
+As of this handoff, the major platform foundation work completed recently includes:
+
+DevOps baseline
+
+UI smoke automation
+
+dependency vulnerability scanning
+
+secrets scanning
+
+pipeline documentation
+
+artifact publishing
+
+analytics performance optimization
+
+logging / observability baseline
+
+Most recent active implementation completed:
+
+CC-ERATE-000027 — Structured logging and observability baseline
+
+Status of that work:
+
+implemented on feature/logging-observability
+
+delivered summary includes commit:
+
+9beae64
+
+next step was to push/open PR/merge using normal process loop
+
+What has been handed to Claude Code most recently
+
+Recent Claude tasks in order:
+
+CC-ERATE-000018 — local validation script + initial CI foundation
+
+CC-ERATE-000019 — hardened startup behavior and /health
+
+CC-ERATE-000020 — Playwright UI smoke automation
+
+CC-ERATE-000021 — dependency vulnerability scanning + Dependabot
+
+CC-ERATE-000022 — smoke test hardening for brittle History page assertion
+
+CC-ERATE-000023 — secrets scanning via gitleaks
+
+CC-ERATE-000024 — pipeline/local workflow documentation
+
+CC-ERATE-000025 — publish/artifact stage
+
+CC-ERATE-000026 — Analytics page performance optimization
+
+CC-ERATE-000027 — structured logging / observability baseline
+
+Current open questions / pending decisions
+1. Merge / PR process discipline
+
+The team/user should continue enforcing:
+
+feature branch
+
+push
+
+PR
+
+CI
+
+merge
+
+delete branch
+
+sync main
+
+This process still occasionally needs active reminder.
+
+2. Next product/platform priority
+
+The likely next candidate areas discussed were:
+
+Help/About/Release Notes navigation
+
+UI/theme/rebranding polish
+
+further operational/logging improvements
+
+release/versioning/publish polish
+
+The architect recommendation after logging was:
+
+Help/About/Release Notes next
+because it is low-risk and improves the demo/product story
+
+3. Logging usage validation
+
+Before moving on, the user wanted to:
+
+run the app
+
+access the logs
+
+use the app while reviewing logs in real time
+
+This is not a design blocker, but it was a practical usage step the user wanted to perform.
+
+4. Dependabot governance
+
+The repo now has a working maintenance pattern, but there are ongoing decisions about:
+
+which Dependabot PRs are safe to merge routinely
+
+which should be deferred as major upgrade work
+
+Current policy established:
+
+GitHub Actions updates: usually safe after green CI
+
+test/tooling updates: one at a time after green CI
+
+major runtime/data-layer upgrades: deliberate engineering work, not routine merges
+
+5. Release/deploy direction
+
+The pipeline now publishes artifacts, but no deployment stage exists yet. A future decision will be needed on:
+
+whether to add release workflow only
+
+whether to add actual deployment automation
+
+whether to keep it artifact-only for the POC
+
+4. KNOWN TECHNICAL DEBT
+
+Below is the current debt picture combining original app debt plus new platform/developer-workflow debt.
+
+TD-001 — HttpClient default timeout on long imports
 
 What was deferred
-
-reliable progress tracking
-
-heartbeat/last-updated state
-
-cancellation support
-
-auto-cleanup of stale jobs
-
-meaningful recordsProcessed during long imports
+Long-running import operations can still hit default client timeout behavior.
 
 Why deferred
-
-data correctness and validation mattered more immediately than import UX
+Data correctness and repair work were higher priority.
 
 Risk
-
 Medium
 
 Recommended path
+Increase/import-client timeout explicitly in DI and validate long-running import behavior.
 
-add import progress tracking
-
-add explicit job terminal states
-
-add stale-job detection and/or cancellation
-
-surface trustworthy progress in the UI or API
-
-2. Import endpoint year parameter semantics are misleading
+TD-002 — Import observability and progress reporting remain weak
 
 What was deferred
 
-true year-scoped import behavior
+reliable import progress updates
+
+RecordsProcessed fidelity during failures
+
+better job lifecycle reporting
 
 Why deferred
-
-full 2020–present data is now imported once and validated
-
-the immediate need for targeted repair/import was removed after data confidence was established
+Validation and data correctness mattered more than import UX/observability.
 
 Risk
-
 Medium
 
 Recommended path
+Add batch-level progress persistence, better terminal state handling, and clearer /imports health semantics.
 
-either implement true year-scoped import
-
-or remove misleading year-scoped import expectations from API semantics and documentation
-
-3. Reconciliation is a dev/admin tool, not productized UI
+TD-003 — No true year-scoped import behavior
 
 What was deferred
-
-end-user-facing data-health/admin experience
-
-Why deferred
-
-validation trust was the priority, not surfacing ops tooling
-
-Risk
-
-Low
-
-Recommended path
-
-add lightweight admin/data-health page later
-
-4. Summary rebuilds are rebuild-oriented, not incremental
-
-What was deferred
-
-incremental summary refresh
-
-summary job metadata
-
-resumability/failure metadata
+Import endpoints still do not support true year-scoped re-import.
 
 Why deferred
-
-delete/rebuild by year is simpler and more trustworthy for POC validation
+Full imports are acceptable for current POC use, and data confidence is already established.
 
 Risk
-
 Low to Medium
 
 Recommended path
+If targeted repair becomes important again, design a real year-scoped import path.
 
-keep current design unless this becomes a more production-like system
-
-5. Canonical applicant/entity dimension still does not exist
+TD-004 — Summary rebuild order is manual discipline
 
 What was deferred
-
-explicit dimension model for canonical applicant/entity identity
+Risk summary still depends on commitment/disbursement summary rebuild order, with no enforced orchestration.
 
 Why deferred
-
-current risk-focused path was able to proceed without it
+Acceptable for a single-operator POC.
 
 Risk
-
-Medium
+Low to Medium
 
 Recommended path
+Add an ordered rebuild endpoint or equivalent orchestration.
 
-introduce later if name drift, join complexity, or multi-year identity modeling starts to hurt
-
-6. Some analytics paths may still deserve further summary-layer hardening
+TD-005 — Some analytics still conceptually rely on expensive query patterns
 
 What was deferred
-
-complete audit/refactor of every remaining analytics query path
+The Analytics page is now warm-path fast due to caching, but cold-path performance remains slow and the underlying expensive query shape still exists.
 
 Why deferred
-
-Risk Insights and the core validation path were higher priority
+Caching provided the highest-value fix with minimal complexity.
 
 Risk
-
-Medium
+Low for demo use, Medium if data freshness or frequent restarts become important
 
 Recommended path
+If needed later, move the heaviest analytics slices to precomputed/materialized summary paths rather than raw aggregations.
 
-audit remaining raw-table analytics paths and materialize additional summary tables only where clearly justified
-
-7. Security pipeline is not fully established yet
+TD-006 — Logging is practical but still local/dev oriented
 
 What was deferred
 
-final private-repo-compatible CI scanning baseline
+centralized log aggregation
+
+richer structured fields/enrichment
+
+rolling app-managed file sink
+
+production-style observability
 
 Why deferred
-
-focus was on data trust, validation, and product integration first
+Local developer diagnostics were the immediate need.
 
 Risk
-
-Medium
+Low for POC
 
 Recommended path
+Only add more if a stronger operational story is needed; otherwise keep it light.
 
-establish private-repo-safe security baseline with:
-
-Dependabot
-
-Snyk
-
-secrets scanning in CI
-
-branch protection
-
-8. Performance guardrails are not yet formalized
+TD-007 — Playwright local setup requires WSL browser dependencies
 
 What was deferred
-
-structured performance baselines or automated performance checks
-
-Why deferred
-
-data correctness and product completeness were higher priority
-
-Risk
-
-Medium
-
-Recommended path
-
-add lightweight timing benchmarks for key pages
-
-document acceptable page load ranges
-
-move performance watchpoints into docs/quality/
-
-9. Original source HTML files for Ecosystem and History are now archival artifacts
-
-What was deferred
-
-deciding whether to keep or remove wwwroot/erate_ecosystem.html and wwwroot/erate_timeline.html
+Local Playwright use in WSL depends on system packages being installed.
 
 Why deferred
-
-they are harmless and preserve source artifacts
-
-current priority was integrating the pages into shared layout
+CI path works; local fix is straightforward and documented.
 
 Risk
-
 Low
 
 Recommended path
+Potential future bootstrap/setup script for local environment prerequisites.
 
-keep if they are useful as source artifacts; otherwise remove later once comfortable with Razor-page versions
+TD-008 — Dependabot PR queue management can be noisy/confusing
 
-5. Context Restore Instructions
-One-paragraph opening prompt for a new ChatGPT session
+What was deferred
+No special automation exists to manage or group PRs beyond current Dependabot config and human triage.
 
-Paste this into a new session:
+Why deferred
+Current manual governance is acceptable.
 
-You are my project architect for ERATE Workbench POC, a .NET 8 / ASP.NET Core / SQLite analytics and workflow platform built around USAC E-Rate open data. The system now includes real-source ingestion, reconciliation, summary-layer analytics (ApplicantYearCommitmentSummary, ApplicantYearDisbursementSummary, ApplicantYearRiskSummary), Risk Insights, and a formal quality system under docs/quality/ with taxonomy, regression strategy, runbooks, inventory, audit logs, and yearly validation evidence. 2020–present data has been imported and validated to a demo-safe level, FY2021 was investigated and is considered valid, Ecosystem and History pages were integrated as shared-layout Razor Pages, and the build is clean with 347/347 tests passing. Your role is to continue as technical architect: preserve architectural coherence, guide next decisions, generate Claude Code prompts with CC-ERATE-xxxxxx IDs, and help me move next into the highest-value work such as security pipeline, performance hardening, or additional product polish without re-litigating already validated ingestion work.
+Risk
+Low
+
+Recommended path
+Keep queue small, close deliberate-deferral PRs, and avoid over-automating unless it becomes a recurring pain point.
+
+TD-009 — Artifact stage exists, but no release/deploy consumption yet
+
+What was deferred
+Artifact publishing is in place, but there is no downstream release/deploy automation.
+
+Why deferred
+Artifact generation was the correct next maturity step before release/deploy complexity.
+
+Risk
+Low
+
+Recommended path
+Add release workflow or deployment path only when there is a clear target environment/story.
+
+TD-010 — UI/theme polish remains behind engineering maturity
+
+What was deferred
+The app is now much stronger operationally than visually in some places.
+
+Why deferred
+Performance, pipeline, and operational maturity had higher value.
+
+Risk
+Low
+
+Recommended path
+Do theme/rebranding/footer polish after the next low-risk product/storytelling work, not before.
+
+TD-011 — Help/About/Release Notes navigation not yet implemented
+
+What was deferred
+The user wanted:
+
+Help icon in navigation
+
+About page linking to GitHub wiki
+
+Release Notes page linking to GitHub release notes
+
+Why deferred
+More foundational engineering/platform work took precedence.
+
+Risk
+Low
+
+Recommended path
+Likely the best next feature/storytelling task after logging is merged.
