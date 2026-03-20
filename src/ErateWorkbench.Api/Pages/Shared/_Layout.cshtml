@@ -62,6 +62,22 @@
                         <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "History" ? "active" : "")"
                            asp-page="/History">History</a>
                     </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle @(ViewData["ActivePage"]?.ToString() is "About" or "Releases" ? "active" : "")"
+                           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Help
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li>
+                                <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "About" ? "active" : "")"
+                                   asp-page="/About">About</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "Releases" ? "active" : "")"
+                                   asp-page="/Releases">Release Notes</a>
+                            </li>
+                        </ul>
+                    </li>
                 </ul>
                 <div class="d-none align-items-center gap-2 me-3" id="workflow-nav-controls">
                     <span id="workflow-nav-saved"

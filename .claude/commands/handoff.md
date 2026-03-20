@@ -1,6 +1,4 @@
-Generate a session handoff document for the architect (ChatGPT). This is used to hand off from Claude Code back to the architecture conversation.
-
-Output EXACTLY this format with no preamble or extra commentary:
+Generate a session handoff document for the architect (ChatGPT). Output EXACTLY this format with no preamble or extra commentary:
 
 ---
 
@@ -23,11 +21,6 @@ Output EXACTLY this format with no preamble or extra commentary:
 - [any architectural or design choices Claude made without explicit instruction]
 - [write NONE if all work was explicitly directed]
 
-### WHAT THE NEXT PROMPT SHOULD DO
-- Recommended next CC-ERATE ID: [increment by 1]
-- Recommended task: [one sentence description]
-- Why: [one sentence rationale]
-
 ### BOOT BLOCK FIELDS TO UPDATE IN CLAUDE.md
 - [ ] Boot Block ID (increment to next CC-ERATE ID)
 - [ ] CURRENT STATE — Last completed
@@ -39,7 +32,59 @@ Output EXACTLY this format with no preamble or extra commentary:
 
 ---
 
+## NEXT PROMPT DRAFT ([next CC-ERATE ID])
+
+Read the ACTIVE TASK section of CLAUDE.md. Using that task, generate a complete, copy-paste ready Claude Code prompt following the CC-ERATE schema exactly. Do not invent a new task — use only what is already specified in ACTIVE TASK.
+
+The prompt MUST follow this exact structure:
+
+---
+
+Before starting this task:
+git checkout main
+git pull
+git checkout -b feature/[branch-name]
+
+[CC-ERATE-ID] — [Task title]
+
+You are working in the erate-workbench-poc repo on branch feature/[branch-name].
+
+## Objective
+[One paragraph — what this task accomplishes and why]
+
+## Context
+The repo already includes:
+[List verified stable items from CLAUDE.md CURRENT STATE — Works section]
+
+## Primary Goals
+1. [Goal 1]
+2. [Goal 2]
+3. [Goal 3]
+
+## Requirements
+[Numbered requirements — specific and implementable]
+
+## Constraints
+[What NOT to do — pulled from ARCHITECTURAL LAWS and NON-GOALS in CLAUDE.md]
+
+## Validation
+[How to verify the work is complete and correct]
+
+## Deliverable
+Return:
+- Summary of changes
+- Files changed
+- Approach chosen and rationale
+- Validation performed
+- Commit hash if committed
+
+Use this exact prompt ID in your response: [CC-ERATE-ID]
+
+---
+
 After outputting the handoff, remind the user:
-1. Copy this into ChatGPT to resume the architecture conversation
-2. Update CLAUDE.md boot block fields listed above before the next Claude Code session
-3. Archive this handoff to docs/context/boot-blocks/[CC-ERATE-ID]-handoff.md
+1. Review the NEXT PROMPT DRAFT above — verify it matches intent before using
+2. Paste handoff to ChatGPT for architect review
+3. Update CLAUDE.md boot block fields listed above
+4. Archive this handoff to docs/context/boot-blocks/[CC-ERATE-ID]-handoff.md
+5. ChatGPT may refine the NEXT PROMPT DRAFT — always use ChatGPT's version as final
