@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using ErateWorkbench.Infrastructure;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -9,7 +10,8 @@ public class AnalyticsModel(
     EpcEntityRepository repo,
     ImportJobService importJobService,
     FundingCommitmentRepository fundingRepo,
-    IMemoryCache cache) : PageModel
+    IMemoryCache cache,
+    ILogger<AnalyticsModel> logger) : PageModel
 {
     // Analytics data is derived from imports that are triggered explicitly.
     // Cache for 24 hours — a new import will not invalidate the cache mid-session,
@@ -26,6 +28,11 @@ public class AnalyticsModel(
 
     public async Task OnGetAsync(CancellationToken ct)
     {
+        // Determine cache status before the first GetOrCreate so we can log it accurately.
+        // All six keys are populated together, so checking one is sufficient.
+        bool cacheHit = cache.TryGetValue("analytics:by-state", out _);
+        var sw = Stopwatch.StartNew();
+
         // Each query is wrapped in cache-aside. On a cache hit the DB is not touched.
         // Queries remain sequential to avoid concurrent-operation exceptions on the
         // shared scoped AppDbContext (SQLite EF Core does not support parallel ops).
@@ -68,6 +75,12 @@ public class AnalyticsModel(
 
         // Import summary reflects live job state — not cached
         var (total, succeeded, failed, last) = await importJobService.GetSummaryAsync(ct);
+
+        sw.Stop();
+        logger.LogInformation(
+            "Analytics page rendered in {ElapsedMs}ms ({CacheStatus})",
+            sw.ElapsedMilliseconds,
+            cacheHit ? "cache hit" : "cache miss — queries executed");
 
         EntitiesByStateJson = JsonSerializer.Serialize(
             byState!.Take(15)
