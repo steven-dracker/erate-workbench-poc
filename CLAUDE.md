@@ -5,7 +5,7 @@
 ---
 
 ## BOOT BLOCK 
-— # Last updated: 2026-03-20 | Boot Block: CC-ERATE-000028
+— # Last updated: 2026-03-20 | Boot Block: CC-ERATE-000030
 
 ### PROJECT IDENTITY
 - App: **ERATE Workbench** — E-Rate lifecycle analytics POC showing where execution breaks down, where advisors should focus, and how to reason about the E-Rate program operationally
@@ -27,7 +27,7 @@ These are immutable. Never violate without explicit architect approval.
 - No frontend framework — Razor Pages only, no React/Vue/Angular (ADR-001)
 
 ### CURRENT STATE (as of CC-ERATE-000027)
-- **Last completed:** CC-ERATE-000028 — Add release-oriented pipeline polish and lightweight release workflow concept
+- **Last completed:** CC-ERATE-000029 — Update Works/Completed state to include Help/About/Release Notes navigation
 - **Branch:** - Branch: clean, on main
 - **Works (verified stable):**
   - Full CI pipeline: build → test → ui-smoke → security → secrets-scan → publish
@@ -39,15 +39,11 @@ These are immutable. Never violate without explicit architect approval.
   - Artifact publishing (linux-x64 self-contained)
   - Logging baseline (SimpleConsole + ILogger<T>)
 - **Pending (not yet done):**
-  - User wants to run app and observe logs in real-time before moving on — not a blocker
-  - PR for CC-ERATE-000027 not yet opened
+  - nothing at this time
 
 ### ACTIVE TASK
-- Next prompt: CC-ERATE-000029
-- Recommended: Help/About/Release Notes navigation (TD-011)
-  - Help icon in nav
-  - About page linking to GitHub wiki
-  - Release Notes page linking to GitHub releases
+- Next prompt: CC-ERATE-000030 — Add partial-year advisory banner to Risk Insights
+- Recommended: 
 - Status: Prompt not yet written — pending ChatGPT architecture session
 - Why this next: Low-risk, improves demo/product story, architect-approved priority
 
@@ -62,7 +58,6 @@ These are immutable. Never violate without explicit architect approval.
 - TD-008: Dependabot PR queue management (Low)
 - TD-009: Lightweight release workflow added in CC-ERATE-000028 — no full deploy yet (Low)
 - TD-010: UI/theme polish behind engineering maturity (Low)
-- TD-011: Help/About/Release Notes not implemented ← current target (prompt pending)
 
 ### WHAT TO IGNORE
 - `erate-workbench/` subdirectory — this is a legacy/duplicate artifact, not the canonical source
