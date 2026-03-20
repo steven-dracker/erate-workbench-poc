@@ -4,6 +4,118 @@ _Most recent entry first._
 
 ---
 
+## 2026-03-19 — Multi-prompt session: CI pipeline, DevOps hardening, analytics performance, logging
+
+### What was accomplished
+
+#### CC-ERATE-000018 — Local validation script and initial CI foundation
+- Created `scripts/dev-run.sh` with `--validate` mode (restore → build → test, no launch)
+- Created `.github/workflows/ci.yml` with `build` and `test` jobs on every push/PR
+- Targets `ErateWorkbench.Tests` only (not `UITests`) — critical decision to avoid running browser tests without a running app
+
+#### CC-ERATE-000019 — Hardened dev script and deterministic startup
+- Added `--start-for-tests` and default foreground run modes to `dev-run.sh`
+- Added graceful stop: SIGTERM → 5-second wait → SIGKILL
+- Added health poll loop (30-second timeout) in background start mode
+- Added `GET /health → {"status":"ok"}` endpoint to `Program.cs` as readiness gate
+
+#### CC-ERATE-000020 — Playwright UI smoke tests
+- Created `tests/ErateWorkbench.UITests/` project with `SmokeTests.cs` (5 tests)
+- Tests cover: `/health` 200, dashboard title/nav, 8 nav links, Ecosystem h1, History h1
+- Created `scripts/ui-test.sh` with full (start+test+stop) and `--app-running` modes
+- Extended CI with `ui-smoke` job: installs `libnss3/libnspr4/libasound2t64`, Playwright Chromium, starts app, polls `/health`, runs UITests, uploads failure artifacts
+
+#### CC-ERATE-000021 — Security CI stage
+- Fixed xunit 2.4.2 → 2.9.0 in `ErateWorkbench.Tests` to eliminate transitive CVEs (System.Net.Http 4.3.0, System.Text.RegularExpressions 4.3.0)
+- Fixed `Assert.Equal([0,1,2,3,4,5,6,7], numbers)` ambiguity under xunit 2.9 → `Assert.Equal(new[] {...}, numbers)`
+- Added `security` CI job: two-tier NuGet vuln scan (fail on direct, warn on transitive)
+- Added `.github/dependabot.yml`: weekly NuGet + GitHub Actions, 5-PR limit per ecosystem
+
+#### CC-ERATE-000022 — Fix History smoke test
+- History page title is `"E-Rate Central — Historical Timeline — ERATE Workbench"` — does not contain bare `"History"`
+- Fixed: `Assert.Contains("ERATE Workbench", title)` + heading locator `GetByRole(Heading, "E-Rate Central")`
+
+#### CC-ERATE-000023 — Secrets scanning CI stage
+- Added `secrets-scan` CI job using gitleaks CLI v8.30.0 (pinned), not the GitHub Action (requires license for private repos)
+- `fetch-depth: 0` — scans full git history against 170+ default secret patterns
+- Created `.gitleaks.toml` with two path exclusions: SQLite binary (`erate-workbench.db`) and legacy working-directory snapshot (`erate-workbench/`)
+- Validated locally: 50+ commits, 0 leaks detected
+
+#### CC-ERATE-000024 — DevOps documentation
+- Rewrote `README.md`: prerequisites, dev-run.sh modes, ui-test.sh, Playwright WSL setup, import table, CI pipeline diagram, DevSecOps controls, Dependabot strategy, tech stack
+- Created `docs/devops/pipeline.md`: per-job breakdown, failure interpretation table, extension path
+- Created `docs/devops/local-workflow.md`: script reference, one-time Playwright setup, developer loop, manual split-terminal flow
+
+#### CC-ERATE-000025 — Publish/artifact CI stage
+- Added `publish` CI job: `dotnet publish --self-contained --runtime linux-x64 --configuration Release`
+- Uploads artifact `erate-workbench-api` with 14-day retention, `if-no-files-found: error`
+- `needs: [ui-smoke, security, secrets-scan]` — only runs after all validation gates pass
+- **Key fix:** `--no-restore` intentionally omitted — RID-aware restore needed so `linux-x64` native assets resolve correctly (NETSDK1047 error if omitted restore with RID)
+- Updated `docs/devops/pipeline.md` with publish job documentation
+
+#### CC-ERATE-000026 — Analytics page performance (caching)
+- Baseline measured: cold 17.5s, warm 2.1s (7 sequential full-table scans per request)
+- Registered `IMemoryCache` in `Program.cs`
+- Wrapped 6 expensive queries in `Analytics.cshtml.cs` with `GetOrCreateAsync`, 24-hour absolute expiry
+- Import summary left uncached (live state, fast — small table)
+- **Why not parallelized:** All repos share one scoped `AppDbContext`; SQLite EF Core forbids concurrent ops on the same context
+- **Result:** warm latency 2.1s → ~10ms (~200× improvement); cold unchanged
+
+#### CC-ERATE-000027 — Structured logging and observability baseline
+- `Program.cs`: `ClearProviders()` + `AddSimpleConsole(TimestampFormat = "HH:mm:ss ", SingleLine = true)`
+- `appsettings.json`: `ErateWorkbench→Information`, `Microsoft.EntityFrameworkCore→Warning`, `Microsoft.AspNetCore→Warning`, `System→Warning`
+- `Analytics.cshtml.cs`: injected `ILogger<AnalyticsModel>` + `Stopwatch` — logs `"Analytics page rendered in {ms}ms (cache hit|miss)"` on every request
+- `scripts/dev-run.sh`: foreground mode now `tee`s to `/tmp/erate-workbench-app.log`
+- Created `docs/devops/logging.md`: format, levels, adjusting verbosity, grep patterns, file growth
+- **Validated live:**
+  ```
+  21:30:35 info: ErateWorkbench.Api.Pages.AnalyticsModel[0] Analytics page rendered in 2613ms (cache miss — queries executed)
+  21:30:35 info: ErateWorkbench.Api.Pages.AnalyticsModel[0] Analytics page rendered in 42ms (cache hit)
+  ```
+
+#### Dependabot merges (all CI-green, no manual review required)
+- `actions/checkout@v4 → v6`
+- `actions/setup-dotnet@v4 → v5`
+- `actions/upload-artifact@v4 → v7`
+- `Microsoft.Playwright 1.49.0 → 1.58.0`
+- `xunit 2.9.0 → 2.9.3`
+- `Microsoft.NET.Test.Sdk 17.8.0 → 18.3.0` (both test projects)
+
+---
+
+### Files created this session
+- `scripts/dev-run.sh`
+- `scripts/ui-test.sh`
+- `.github/workflows/ci.yml`
+- `.github/dependabot.yml`
+- `.gitleaks.toml`
+- `tests/ErateWorkbench.UITests/` (full project: `SmokeTests.cs`, `.csproj`, `playwright-artifacts/`)
+- `docs/devops/pipeline.md`
+- `docs/devops/local-workflow.md`
+- `docs/devops/logging.md`
+
+### Files modified this session
+- `src/ErateWorkbench.Api/Program.cs` — `/health` endpoint, `AddMemoryCache()`, `ClearProviders()` + `AddSimpleConsole()`
+- `src/ErateWorkbench.Api/Pages/Analytics.cshtml.cs` — `IMemoryCache` cache-aside, `ILogger` timing
+- `src/ErateWorkbench.Api/appsettings.json` — structured log levels
+- `src/ErateWorkbench.Api/appsettings.Development.json` — structured log levels
+- `tests/ErateWorkbench.Tests/ErateWorkbench.Tests.csproj` — xunit 2.4.2 → 2.9.0, runner + SDK version bumps
+- `tests/ErateWorkbench.Tests/ProgramWorkflowModelTests.cs` — `Assert.Equal([...])` ambiguity fix
+- `README.md` — full rewrite
+
+### Important outputs and test results
+- **Tests:** 347/347 passing throughout entire session (no regressions introduced)
+- **Build:** 0 errors, 1 pre-existing xUnit2013 warning (`ReconciliationTests.cs:394`)
+- **gitleaks:** 0 leaks across 50+ commits
+- **Analytics cache validation:** cold 17.5s (unchanged), warm 10ms (from 2.1s)
+- **Log format validated live:** timestamp + level + category confirmed on every line
+- **Dependabot:** All 6 dependency update PRs merged without incident
+
+### Decisions escalated to architect
+- None. All decisions within the DevOps, observability, and performance improvement scope of the session.
+
+---
+
 ## 2026-03-18 — Multi-prompt session: data repair, page integration, code quality
 
 ### What was accomplished

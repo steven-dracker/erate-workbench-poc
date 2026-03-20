@@ -1,6 +1,6 @@
 # Technical Debt — ERATE Workbench POC
 
-_Last updated: 2026-03-18_
+_Last updated: 2026-03-19_
 
 ---
 
@@ -128,3 +128,40 @@ One-line fix in `Program.cs`. The per-page retry logic (4 attempts, delays 3s/10
 **Recommended resolution:** No action needed. The fix is purely defensive and the null path is not reachable in practice.
 
 ---
+
+## TD-011 — Analytics cache has no invalidation on import
+
+**What:** `AnalyticsModel` caches all 6 query results in `IMemoryCache` with a 24-hour absolute expiry (CC-ERATE-000026). If an import runs and loads new data, the Analytics page continues serving stale cached data until the cache expires or the app restarts.
+
+**Why accepted:** For a demo tool with infrequent imports, 24-hour staleness is acceptable. Cache invalidation adds coupling between import services and the page model.
+
+**Risk:** Low for POC. If a stakeholder runs an import immediately before a demo, the Analytics charts will show pre-import data until restart.
+
+**Recommended resolution:** Add a `POST /admin/cache/clear` endpoint that evicts all analytics cache keys, or publish a domain event from import services that triggers cache eviction.
+
+---
+
+## TD-012 — `[DIAG]` log lines still active in FundingCommitmentCsvParser
+
+**What:** `FundingCommitmentCsvParser` emits `LogWarning("[DIAG]...")` for CSV headers and the first 5 rows of every parsed page. Added for debugging; now more visible because CC-ERATE-000027 improved the logging baseline.
+
+**Why accepted:** Useful during active debugging; removal was deferred.
+
+**Risk:** Low. Noisy logs during imports (~5 extra warning lines per page, ~2,000 lines for a full import). Could mask real warnings in filtered log output.
+
+**Recommended resolution:** Remove the `[DIAG]` lines or demote to `LogDebug`. One is suppressed by default with `ErateWorkbench: Information` config.
+
+---
+
+## TD-013 — xUnit2013 analyzer warning in ReconciliationTests.cs
+
+**What:** `ReconciliationTests.cs` line 394 uses `Assert.Equal(expected, collection.Count)` to check collection size. xUnit 2.9 recommends `Assert.Single()` or `Assert.Empty()` for single-element assertions. The warning (`xUnit2013`) is suppressed via `NoWarn` but surfaces in build output.
+
+**Why accepted:** Not a functional issue; test is correct. Fix is cosmetic.
+
+**Risk:** Negligible.
+
+**Recommended resolution:** Change to `Assert.Single(collection)` to eliminate the warning. One-line change.
+
+---
+

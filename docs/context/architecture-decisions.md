@@ -1,6 +1,6 @@
 # Architecture Decisions — ERATE Workbench POC
 
-_Last updated: 2026-03-18_
+_Last updated: 2026-03-19_
 
 ---
 
@@ -159,5 +159,73 @@ _Last updated: 2026-03-18_
 - POC data loaded from external sources requires explicit validation records separate from test results
 - Enables repeatable validation cycles and audit trail for stakeholder demos
 - Distinguishes code-verified findings from runtime-required confirmations
+
+---
+
+## ADR-010 — GitHub Actions CI pipeline with multi-job parallel validation
+
+**Decision:** Implement a GitHub Actions CI pipeline with these jobs: `build → test → (ui-smoke ‖ security ‖ secrets-scan) → publish`
+
+**Why chosen:**
+- Every push and PR is validated before reaching `main`
+- Parallel jobs after `test` keep total pipeline time reasonable despite 5 distinct validation concerns
+- Each job has a single concern: compile / unit test / browser smoke / NuGet vulns / secrets / artifact
+- `publish` job only runs after all validation gates pass — artifact is always clean
+
+**Key implementation choices:**
+- `ui-smoke`: Playwright headless Chromium (`Microsoft.Playwright` for .NET) — 5 smoke tests covering nav, headings, health endpoint
+- `security`: `dotnet list package --vulnerable` two-tier (fail on direct deps, warn on transitive) — no GitHub Advanced Security license required
+- `secrets-scan`: gitleaks CLI v8.30.0 pinned — CLI (not the gitleaks GitHub Action, which requires a license for private repos); CLI has no such restriction
+- `publish`: `dotnet publish --self-contained --runtime linux-x64` — runtime bundled, no .NET required on target host; `--no-restore` intentionally omitted (RID-aware restore needed for native assets to resolve correctly)
+- Dependabot configured for weekly NuGet + GitHub Actions updates with 5-PR open limit per ecosystem
+
+**Alternatives rejected:**
+- Azure DevOps / Jenkins: unnecessary complexity for a GitHub-hosted repo
+- GitHub Advanced Security features (CodeQL, secret scanning): require paid license for private repos; avoided in favor of open-source equivalents (gitleaks, NuGet advisory DB)
+- Monolithic single-job CI: would not allow parallel validation or clear per-concern failure attribution
+
+---
+
+## ADR-011 — IMemoryCache for Analytics page with 24-hour expiry
+
+**Decision:** Cache all 6 expensive Analytics page queries in `IMemoryCache` with a 24-hour absolute expiry. Import summary is not cached (live state).
+
+**Why chosen:**
+- Analytics data only changes when an explicit import is run — 24-hour caching is safe for demo use
+- `IMemoryCache` is built into ASP.NET Core (`builder.Services.AddMemoryCache()`) — no new packages
+- Warm latency improved: ~2.1s → ~10ms (~200× improvement); cold latency unchanged at ~17.5s
+- Simple cache-aside pattern: `GetOrCreateAsync` with key per query
+
+**Why not `Task.WhenAll()` parallelization:**
+- All repositories share one scoped `AppDbContext` per request
+- SQLite EF Core throws `InvalidOperationException` if a second async op starts before the first completes on the same context
+- Sequential + cache is the correct pattern; parallelization would require `IDbContextFactory<AppDbContext>` and is not worth the complexity for a POC
+
+**Cache invalidation:** None automatic — cache expires after 24 hours or on app restart. Acceptable for a demo tool. If fresh data is needed immediately after an import, restart the app.
+
+**Alternatives rejected:**
+- `IDistributedCache` / Redis: overkill for single-process POC
+- Manual cache invalidation on import completion: adds coupling between import services and the page model layer
+
+---
+
+## ADR-012 — Built-in SimpleConsole formatter for structured logging (no Serilog)
+
+**Decision:** Configure `Microsoft.Extensions.Logging` with `AddSimpleConsole(TimestampFormat = "HH:mm:ss ", SingleLine = true)`. No external logging library.
+
+**Why chosen:**
+- Infrastructure services already had `ILogger<T>` throughout — only the formatter was missing timestamps
+- `ClearProviders()` + `AddSimpleConsole()` gives timestamp + level + category on every line with zero new packages
+- `dev-run.sh` foreground mode `tee`s to `/tmp/erate-workbench-app.log` — file capture without a file-logging library
+- EF Core SQL query logging available on-demand: set `"Microsoft.EntityFrameworkCore.Database.Command": "Information"` in appsettings — no code change
+
+**Log level defaults:** `ErateWorkbench→Information` (all app events), `Microsoft.AspNetCore→Warning` (suppresses per-request 200 noise), `Microsoft.EntityFrameworkCore→Warning` (suppresses EF internal chatter), `System→Warning`.
+
+**Targeted instrumentation added:** `AnalyticsModel.OnGetAsync()` logs elapsed ms and cache hit/miss on every request.
+
+**Alternatives rejected:**
+- Serilog: meaningful for file sinks, structured JSON output, log enrichment; none of these are needed for a POC where `grep` on a flat log file is sufficient
+- NLog / log4net: same — heavyweight for this context
+- OpenTelemetry / `dotnet-trace`: appropriate for distributed tracing; single-process POC does not need it
 
 ---
