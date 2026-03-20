@@ -7,7 +7,6 @@ ERATE Workbench is a proof-of-concept analytics platform for exploring USAC E-Ra
 > It is intended for exploration, prototyping, and engineering discussion.
 
 ---
-
 ## Quick start
 
 ### Prerequisites
@@ -173,9 +172,57 @@ See [`docs/devops/release.md`](docs/devops/release.md).
 
 ---
 
-## License
+## Screenshots
 
-(Add a LICENSE file and reference it here)
+A few views from the current ERATE Workbench UI:
+
+### Analytics Dashboard
+<p>
+  <img src="docs/images/analytics-dashboard.png" alt="Funding analytics dashboard showing trends and top entities" width="900">
+</p>
+Explore funding commitments over time, compare entities, and analyze program-wide trends.
+
+---
+
+### Risk Insights
+<p>
+  <img src="docs/images/risk-insights.png" alt="Risk insights with advisory indicators and signals" width="900">
+</p>
+Review applicant-level advisory signals designed to highlight potential execution risks, including safeguards for partial-year data interpretation.
+
+---
+
+### Advisory Playbook
+<p>
+  <img src="docs/images/advisory-playbook.png" alt="Advisory playbook for interpreting risk signals" width="900">
+</p>
+Translate risk signals into actionable guidance using structured advisory context.
+
+---
+
+### Program Workflow
+<p>
+  <img src="docs/images/program-workflow.png" alt="E-Rate program workflow visualization" width="900">
+</p>
+Understand the end-to-end E-Rate process from application through funding and disbursement.
+
+---
+
+### E-Rate Ecosystem
+<p>
+  <img src="docs/images/erate-ecosystem.png" alt="E-Rate ecosystem map of stakeholders and relationships" width="900">
+</p>
+Visual overview of the stakeholders, systems, and relationships that make up the E-Rate program.
+
+---
+
+### Historical Timeline
+<p>
+  <img src="docs/images/historical-timeline.png" alt="Historical timeline of the E-Rate program" width="900">
+</p>
+Browse the evolution of the E-Rate program through key milestones and policy changes.
+
+---
 
 ---
 
