@@ -1,11 +1,11 @@
 # ERATE WORKBENCH — Claude Code Project Brain
 # Auto-loaded by Claude Code at session start. Do not delete.
-# Last updated: 2026-03-20 | Boot Block: CC-ERATE-000027
+# Last updated: 2026-03-20 | Boot Block: CC-ERATE-000031
 
 ---
 
-## BOOT BLOCK 
-— # Last updated: 2026-03-20 | Boot Block: CC-ERATE-000028
+## BOOT BLOCK
+— # Last updated: 2026-03-20 | Boot Block: CC-ERATE-000031
 
 ### PROJECT IDENTITY
 - App: **ERATE Workbench** — E-Rate lifecycle analytics POC showing where execution breaks down, where advisors should focus, and how to reason about the E-Rate program operationally
@@ -26,8 +26,8 @@ These are immutable. Never violate without explicit architect approval.
 - No external logging stack — use built-in `Microsoft.Extensions.Logging` only (ADR-020)
 - No frontend framework — Razor Pages only, no React/Vue/Angular (ADR-001)
 
-### CURRENT STATE (as of CC-ERATE-000027)
-- **Last completed:** CC-ERATE-000028 — Add release-oriented pipeline polish and lightweight release workflow concept
+### CURRENT STATE (as of CC-ERATE-000030)
+- **Last completed:** CC-ERATE-000030 — Add partial-year advisory banner to Risk Insights (TD-009)
 - **Branch:** - Branch: clean, on main
 - **Works (verified stable):**
   - Full CI pipeline: build → test → ui-smoke → security → secrets-scan → publish
@@ -38,6 +38,7 @@ These are immutable. Never violate without explicit architect approval.
   - Dependency vulnerability scanning + Dependabot + gitleaks
   - Artifact publishing (linux-x64 self-contained)
   - Logging baseline (SimpleConsole + ILogger<T>)
+  - Partial-year advisory banner on Risk Insights
 - **Pending (not yet done):**
   - User wants to run app and observe logs in real-time before moving on — not a blocker
   - PR for CC-ERATE-000027 not yet opened
@@ -60,7 +61,6 @@ These are immutable. Never violate without explicit architect approval.
 - TD-006: Logging is dev/local only (Low for POC)
 - TD-007: Playwright local WSL browser deps (Low)
 - TD-008: Dependabot PR queue management (Low)
-- TD-009: Lightweight release workflow added in CC-ERATE-000028 — no full deploy yet (Low)
 - TD-010: UI/theme polish behind engineering maturity (Low)
 - TD-011: Help/About/Release Notes not implemented ← current target (prompt pending)
 
