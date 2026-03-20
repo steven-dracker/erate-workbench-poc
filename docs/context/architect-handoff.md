@@ -802,15 +802,244 @@ because it is low-risk and improves the demo/product story
 
 3. Logging usage validation
 
-Before moving on, the user wanted to:
+## 3A. COMPLETED PROMPT HISTORY
 
-run the app
+Below is the recent Claude Code / architect-guided implementation history that should be treated as part of current project context.
 
-access the logs
+### CC-ERATE-000018 — Establish local validation script and initial GitHub Actions CI foundation
+**Outcome**
+- Added local bash-driven validation/run workflow
+- Added initial GitHub Actions CI pipeline
+- Established repo CI baseline
 
-use the app while reviewing logs in real time
+**Key results**
+- Local script for restore/build/test/run
+- Initial CI workflow for push + pull_request
+- Foundation designed to grow into a DevSecOps pipeline
 
-This is not a design blocker, but it was a practical usage step the user wanted to perform.
+---
+
+### CC-ERATE-000019 — Harden local dev script and make app startup deterministic
+**Outcome**
+- Reworked local script behavior for explicit modes
+- Added deterministic app startup and health checking
+
+**Key results**
+- `dev-run.sh` supports:
+  - default run mode
+  - `--validate`
+  - `--start-for-tests`
+- App binds to a known port
+- Added `GET /health`
+- Safer stop behavior (SIGTERM → SIGKILL fallback)
+
+---
+
+### CC-ERATE-000020 — Add minimal Playwright UI smoke automation
+**Outcome**
+- Added Playwright-based UI smoke tests in C#
+- Added CI `ui-smoke` stage
+
+**Key results**
+- New `ErateWorkbench.UITests` project
+- Small happy-path browser suite
+- Local UI test runner script
+- CI browser automation stage added after core validation
+
+---
+
+### CC-ERATE-000021 — Add initial security stage to CI
+**Outcome**
+- Added dependency vulnerability scanning
+- Added Dependabot hygiene baseline
+
+**Key results**
+- CI `security` job using `dotnet list package --vulnerable`
+- Direct vulnerable deps fail; transitive surfaced with less noise
+- Added `dependabot.yml`
+- Updated xUnit-related dependencies to eliminate discovered CVEs
+
+---
+
+### CC-ERATE-000022 — Make UI smoke tests resilient to actual rendered page content
+**Outcome**
+- Hardened brittle History page smoke test
+
+**Key results**
+- Replaced incorrect title assertion
+- Used more stable semantic heading-based assertion
+- Improved UI smoke reliability without changing application behavior
+
+---
+
+### CC-ERATE-000023 — Add secrets scanning stage to CI
+**Outcome**
+- Added secrets scanning to pipeline
+
+**Key results**
+- Added `gitleaks`-based `secrets-scan` job
+- Added minimal `.gitleaks.toml`
+- Full history scanning enabled in CI
+- Established second meaningful security control after dependency scanning
+
+---
+
+### CC-ERATE-000024 — Document local workflow, CI pipeline, and DevSecOps operating model
+**Outcome**
+- Added clear operating documentation for the repo
+
+**Key results**
+- Reworked `README.md`
+- Added:
+  - `docs/devops/pipeline.md`
+  - `docs/devops/local-workflow.md`
+- Documented local commands, CI stages, and Dependabot handling model
+
+---
+
+### CC-ERATE-000025 — Add publish/artifact stage to CI
+**Outcome**
+- Added build artifact publishing to pipeline
+
+**Key results**
+- New `publish` job in GitHub Actions
+- Published self-contained `linux-x64` API artifact
+- Artifact uploaded as GitHub workflow output
+- Documentation updated to reflect artifact stage
+
+---
+
+### CC-ERATE-000026 — Investigate and improve Analytics page performance
+**Outcome**
+- Added in-memory caching to expensive Analytics page queries
+
+**Key results**
+- Registered `AddMemoryCache()`
+- Cached 6 expensive analytics queries with 24-hour absolute expiration
+- Left import summary uncached because it is already fast and more live-state oriented
+- Warm-path performance improved from ~2.1s to ~10ms
+- Cold-path remained ~17.5s, which was accepted for this demo/static-data scenario
+
+**Architectural note**
+- `Task.WhenAll()` was intentionally not used because the queries share the same scoped EF Core `AppDbContext`, and concurrent async operations on the same context would throw `InvalidOperationException`
+
+---
+
+### CC-ERATE-000027 — Add structured logging and observability baseline
+**Outcome**
+- Added practical local logging/observability improvements
+
+**Key results**
+- Built-in `Microsoft.Extensions.Logging` + `SimpleConsole`
+- Timestamps, levels, categories, single-line formatting
+- Log-level defaults tuned:
+  - app logs visible
+  - framework/EF noise reduced by default
+- Added Analytics timing/cache hit-miss logs
+- `dev-run.sh` now tees logs to `/tmp/erate-workbench-app.log`
+- Added `docs/devops/logging.md`
+
+---
+
+## 3B. CURRENT RECOMMENDED NEXT WORK
+
+The following items were explicitly discussed as likely next priorities after the logging work.
+
+### Priority order recommended by architect
+
+#### 1. Help / About / Release Notes navigation
+**Why this is next**
+- Low-risk feature
+- Strong product/demo storytelling value
+- Connects the app to GitHub wiki and release history
+- Good polish without destabilizing core platform work
+
+**Desired scope**
+- Add Help icon or Help entry in navigation
+- Add About page that links to the GitHub wiki
+- Add Release Notes page that links to GitHub release notes
+- Keep implementation simple and integrated with current site layout
+
+---
+
+#### 2. UI theme / rebranding polish
+**Why**
+- The platform is now operationally much stronger
+- Visual refinement will now land better because the product performs well and has stronger engineering credibility
+
+**Ideas already discussed**
+- Better footer presentation
+- Improved palette/color combinations
+- Sharper overall UI theme
+- Keep it tasteful and avoid a large design rabbit hole
+
+---
+
+#### 3. Further logging / observability refinement
+**Why**
+- Useful after the new baseline is in place
+- Could improve local diagnostics and performance analysis further
+
+**Possible follow-up directions**
+- more targeted timing logs
+- request/endpoint timing refinement
+- optional richer local file logging behavior
+- better documented local log workflow
+
+---
+
+#### 4. Release / artifact / packaging polish
+**Why**
+- The publish stage now exists
+- A future step could formalize the release story further
+
+**Possible follow-up directions**
+- release notes integration
+- versioning polish around published artifact
+- clearer artifact consumption path
+- future deployment design, if desired
+
+---
+
+## 3C. ITEMS THE USER EXPLICITLY IDENTIFIED AS IMPORTANT
+
+The user raised the following as active areas of interest, in this order of discussion:
+
+1. **Logging quality and local log usability**
+   - timestamps
+   - log levels
+   - filtering
+   - manageable size
+   - good local viewing experience
+
+2. **Analytics page performance**
+   - this was implemented in CC-ERATE-000026 and is considered fixed for current demo use
+
+3. **Rebranding and style changes**
+   - sharper UI theme
+   - improved footer
+   - more intentional palette choices
+
+4. **Help icon + About page + Release Notes page**
+   - About should link to GitHub wiki
+   - Release Notes should map back to GitHub release notes
+
+At this point, the best architect recommendation was:
+- **do Help/About/Release Notes next**
+- then consider UI/theme polish
+
+---
+
+## 3D. WORKFLOW / PROCESS DISCIPLINE TO PRESERVE
+
+A major part of recent progress has been enforcing clean Git/GitHub workflow discipline. This should be treated as part of architectural context, not just incidental process.
+
+### Standard workflow loop
+
+Every new task should follow this pattern:
+
+```text
+main synced → create feature branch → implement → commit → push → open PR → wait for CI → merge → delete branch → sync main
 
 4. Dependabot governance
 

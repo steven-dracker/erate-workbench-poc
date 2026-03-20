@@ -1,0 +1,132 @@
+# ERATE WORKBENCH — Claude Code Project Brain
+# Auto-loaded by Claude Code at session start. Do not delete.
+# Last updated: 2026-03-20 | Boot Block: CC-ERATE-000027
+
+---
+
+## BOOT BLOCK 
+— # Last updated: 2026-03-20 | Boot Block: CC-ERATE-000028
+
+### PROJECT IDENTITY
+- App: **ERATE Workbench** — E-Rate lifecycle analytics POC showing where execution breaks down, where advisors should focus, and how to reason about the E-Rate program operationally
+- Repo: `steven-dracker/erate-workbench-poc`
+- Stack: C# / .NET 8, ASP.NET Core Razor Pages + Minimal API, SQLite, Entity Framework Core, xUnit, Playwright (C#), GitHub Actions
+- Dev env: **WSL-first** (canonical). Windows local is not the source of truth.
+- Solution: `ErateWorkbench.sln`
+- Projects: `ErateWorkbench.Api` | `ErateWorkbench.Domain` | `ErateWorkbench.Infrastructure` | `ErateWorkbench.Tests` | `ErateWorkbench.UITests`
+
+### ARCHITECTURAL LAWS
+These are immutable. Never violate without explicit architect approval.
+- WSL is the canonical dev environment — no Windows-local assumptions
+- Three-layer data model only: Raw → Summary → Risk (never skip layers)
+- Idempotent imports via `RawSourceKey` upsert — never truncate/reload
+- Feature branches only — never commit directly to `main`
+- PR process is mandatory: branch → push → PR → CI green → merge → delete branch → sync main
+- Prompt/task IDs (CC-ERATE-XXXXXX) are required on all Claude work for traceability (ADR-011)
+- No external logging stack — use built-in `Microsoft.Extensions.Logging` only (ADR-020)
+- No frontend framework — Razor Pages only, no React/Vue/Angular (ADR-001)
+
+### CURRENT STATE (as of CC-ERATE-000027)
+- **Last completed:** CC-ERATE-000028 — Add release-oriented pipeline polish and lightweight release workflow concept
+- **Branch:** - Branch: clean, on main
+- **Works (verified stable):**
+  - Full CI pipeline: build → test → ui-smoke → security → secrets-scan → publish
+  - Playwright UI smoke tests
+  - Analytics page with IMemoryCache (24hr expiration)
+  - Socrata import + reconciliation
+  - All 20 ADRs implemented
+  - Dependency vulnerability scanning + Dependabot + gitleaks
+  - Artifact publishing (linux-x64 self-contained)
+  - Logging baseline (SimpleConsole + ILogger<T>)
+- **Pending (not yet done):**
+  - User wants to run app and observe logs in real-time before moving on — not a blocker
+  - PR for CC-ERATE-000027 not yet opened
+
+### ACTIVE TASK
+- Next prompt: CC-ERATE-000029
+- Recommended: Help/About/Release Notes navigation (TD-011)
+  - Help icon in nav
+  - About page linking to GitHub wiki
+  - Release Notes page linking to GitHub releases
+- Status: Prompt not yet written — pending ChatGPT architecture session
+- Why this next: Low-risk, improves demo/product story, architect-approved priority
+
+### KNOWN DEBT (summary — see docs/context/technical-debt.md for full detail)
+- TD-001: HttpClient default timeout on long imports (Medium)
+- TD-002: Import observability/progress reporting weak (Medium)
+- TD-003: No true year-scoped import (Low-Medium)
+- TD-004: Summary rebuild order is manual (Low-Medium)
+- TD-005: Analytics cold-path still slow (Low for demo)
+- TD-006: Logging is dev/local only (Low for POC)
+- TD-007: Playwright local WSL browser deps (Low)
+- TD-008: Dependabot PR queue management (Low)
+- TD-009: Lightweight release workflow added in CC-ERATE-000028 — no full deploy yet (Low)
+- TD-010: UI/theme polish behind engineering maturity (Low)
+- TD-011: Help/About/Release Notes not implemented ← current target (prompt pending)
+
+### WHAT TO IGNORE
+- `erate-workbench/` subdirectory — this is a legacy/duplicate artifact, not the canonical source
+- `src/ErateWorkbench.Api/reports/` — reconciliation output files, not source code
+- `tests/ErateWorkbench.UITests/bin/` — build artifacts, never edit
+- Any Windows-local path assumptions
+
+---
+
+## COMMON COMMANDS
+
+```bash
+# Build
+dotnet build ErateWorkbench.sln
+
+# Run tests
+dotnet test ErateWorkbench.sln
+
+# Run app
+cd src/ErateWorkbench.Api && dotnet run
+
+# Run with log capture
+./scripts/run-with-logs.sh   # if exists, otherwise: dotnet run | tee app.log
+
+# UI smoke tests
+cd tests/ErateWorkbench.UITests && dotnet test
+
+# Vulnerability scan
+dotnet list package --vulnerable
+
+# Secrets scan
+gitleaks git --log-level warn
+
+# New feature branch
+git checkout main && git pull && git checkout -b feature/[task-name]
+
+# PR process after work
+git push -u origin feature/[branch-name]
+# Then open PR on GitHub, wait for CI green, merge, delete branch, git checkout main && git pull
+```
+
+## KEY FILE PATHS
+- Solution root: `~/projects/erate-workbench/`
+- API project: `src/ErateWorkbench.Api/`
+- Domain: `src/ErateWorkbench.Domain/`
+- Infrastructure: `src/ErateWorkbench.Infrastructure/`
+- Unit tests: `tests/ErateWorkbench.Tests/`
+- UI tests: `tests/ErateWorkbench.UITests/`
+- CI pipeline: `.github/workflows/`
+- Scripts: `scripts/`
+- Architecture decisions: `docs/context/architecture-decisions.md`
+- Technical debt: `docs/context/technical-debt.md`
+- Quality docs: `docs/quality/`
+- DevOps docs: `docs/devops/`
+
+## CODE STYLE
+- C# / .NET 8 idioms — no legacy patterns
+- Dependency injection everywhere — no service locator
+- Typed queries via EF Core — no raw SQL unless performance-justified and documented
+- Minimal API for data endpoints, Razor Pages for UI
+- ILogger<T> for all logging — no Console.WriteLine in production paths
+- xUnit for all tests — no MSTest or NUnit
+
+## DEPENDABOT GOVERNANCE
+- GitHub Actions updates: safe to merge after green CI
+- Test/tooling updates: one at a time after green CI
+- Major runtime/data-layer upgrades: deliberate engineering work, not routine merges
