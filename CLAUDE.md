@@ -39,30 +39,25 @@ These are immutable. Never violate without explicit architect approval.
   - Artifact publishing (linux-x64 self-contained)
   - Logging baseline (SimpleConsole + ILogger<T>)
   - Partial-year advisory banner on Risk Insights
-- **Pending (not yet done):**
-  - User wants to run app and observe logs in real-time before moving on — not a blocker
-  - PR for CC-ERATE-000027 not yet opened
 
 ### ACTIVE TASK
-- Next prompt: CC-ERATE-000029
-- Recommended: Help/About/Release Notes navigation (TD-011)
-  - Help icon in nav
-  - About page linking to GitHub wiki
-  - Release Notes page linking to GitHub releases
-- Status: Prompt not yet written — pending ChatGPT architecture session
-- Why this next: Low-risk, improves demo/product story, architect-approved priority
+- Next prompt: CC-ERATE-000032
+- Status: Pending — architect session required to define next task
 
 ### KNOWN DEBT (summary — see docs/context/technical-debt.md for full detail)
 - TD-001: HttpClient default timeout on long imports (Medium)
 - TD-002: Import observability/progress reporting weak (Medium)
 - TD-003: No true year-scoped import (Low-Medium)
 - TD-004: Summary rebuild order is manual (Low-Medium)
-- TD-005: Analytics cold-path still slow (Low for demo)
-- TD-006: Logging is dev/local only (Low for POC)
-- TD-007: Playwright local WSL browser deps (Low)
-- TD-008: Dependabot PR queue management (Low)
-- TD-010: UI/theme polish behind engineering maturity (Low)
-- TD-011: Help/About/Release Notes not implemented ← current target (prompt pending)
+- TD-006: Full outer join in-memory for Risk summary (Low, SQLite limitation)
+- TD-007: Analytics queries on raw tables, not summaries (Low-Medium)
+- TD-008: No deletion detection against Socrata source (Low)
+- TD-011: Analytics cache has no invalidation on import (Low)
+- TD-012: [DIAG] log lines still active in FundingCommitmentCsvParser (Low)
+- TD-013: xUnit2013 analyzer warning in ReconciliationTests.cs (Negligible)
+- TD-014: Playwright local WSL browser deps (Low)
+- TD-015: Dependabot PR queue management (Low)
+- TD-016: UI/theme polish behind engineering maturity (Low)
 
 ### WHAT TO IGNORE
 - `erate-workbench/` subdirectory — this is a legacy/duplicate artifact, not the canonical source

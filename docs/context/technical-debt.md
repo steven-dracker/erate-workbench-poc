@@ -1,6 +1,6 @@
 # Technical Debt — ERATE Workbench POC
 
-_Last updated: 2026-03-19_
+_Last updated: 2026-03-20_
 
 ---
 
@@ -105,18 +105,6 @@ One-line fix in `Program.cs`. The per-page retry logic (4 attempts, delays 3s/10
 
 ---
 
-## TD-009 — No partial-year disclaimer in UI
-
-**What:** The Risk Insights page displays advisory signals for FY2026 (a partial year) with the same presentation as complete years. Advisory signals for a partial year may overstate anomalies (e.g., "No Disbursement" is normal early in the year).
-
-**Why accepted:** Known gap documented in watchlist. Low-effort UI label not yet implemented.
-
-**Risk:** Low-Medium. Could mislead stakeholders at a demo if FY2026 is selected.
-
-**Recommended resolution:** Add a visible "Partial year — signals preliminary" banner when the selected year is the most recent/partial year.
-
----
-
 ## TD-010 — No test for `.Reader?.HeaderRecord` null path
 
 **What:** The CC-ERATE-000015 fix (`FundingCommitmentCsvParser.cs` line 25) added a null-conditional for `csv.Context.Reader?.HeaderRecord`. The null path (where `Reader` is null after `ReadHeader()`) is not exercised by any test.
@@ -162,6 +150,42 @@ One-line fix in `Program.cs`. The per-page retry logic (4 attempts, delays 3s/10
 **Risk:** Negligible.
 
 **Recommended resolution:** Change to `Assert.Single(collection)` to eliminate the warning. One-line change.
+
+---
+
+## TD-014 — Playwright browser not installed in local WSL environment
+
+**What:** The Playwright Chromium browser is not installed in the WSL dev environment. Running `dotnet test ErateWorkbench.sln` always fails the 5 UI smoke tests locally with "Executable doesn't exist at …/chrome-headless-shell." The `pwsh playwright.ps1 install` step has not been run.
+
+**Why accepted:** UI smoke tests run successfully in CI (GitHub Actions) where browsers are installed automatically. Local dev relies on CI for UI test validation.
+
+**Risk:** Low. UI smoke tests always fail locally — developers must either run `playwright.ps1 install` or exclude `ErateWorkbench.UITests` from local test runs. Could mask genuine UI regressions if CI is not consulted before merge.
+
+**Recommended resolution:** Document the one-time `pwsh playwright.ps1 install` setup step in dev onboarding docs. Alternatively, add a `scripts/install-playwright.sh` wrapper for WSL.
+
+---
+
+## TD-015 — Dependabot PR queue management
+
+**What:** Dependabot generates automated dependency update PRs on a regular cadence. Without a management process these accumulate, become stale, conflict with each other, or get merged without adequate review of downstream impact.
+
+**Why accepted:** Low PR volume for a POC. Merge policy is documented in the DEPENDABOT GOVERNANCE section of CLAUDE.md.
+
+**Risk:** Low. Stale PRs cause merge conflicts; unreviewed major upgrades could introduce breaking changes.
+
+**Recommended resolution:** Review and process Dependabot PRs on a regular cadence (weekly or per-session). Follow DEPENDABOT GOVERNANCE rules: GitHub Actions updates are safe to auto-merge after green CI; major runtime/data-layer upgrades require deliberate engineering review.
+
+---
+
+## TD-016 — UI/theme polish behind engineering maturity
+
+**What:** The application's visual design (typography, spacing, color consistency, mobile responsiveness) lags behind the engineering quality. Pages use a mix of inline styles and Bootstrap utilities applied inconsistently across views.
+
+**Why accepted:** POC focus has been on data correctness, pipeline stability, and feature completeness. Visual polish is explicitly deferred.
+
+**Risk:** Low for POC. Could affect stakeholder impression during demos. Not a functional concern.
+
+**Recommended resolution:** After core analytics and risk features stabilize, do a dedicated UI/UX pass to normalize styling, extract shared CSS classes, and improve mobile responsiveness.
 
 ---
 
