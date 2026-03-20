@@ -9,9 +9,13 @@
 #                → secrets-scan  (parallel)
 #                        └─────────────────── publish  (after all validation passes)
 #
-# Future extension points:
-#   release:    tag-triggered release workflow consuming the publish artifact
-#   deploy:     environment-specific deployment jobs consuming the publish artifact
+# Release:
+#   Handled by release.yml (workflow_dispatch). The operator triggers a release
+#   manually from the GitHub Actions UI after CI passes on the target commit.
+#   See docs/devops/release.md for the full release process.
+#
+# Future extension point:
+#   deploy:     environment-specific deployment jobs consuming the release asset
 
 name: CI
 

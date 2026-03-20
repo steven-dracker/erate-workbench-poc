@@ -1,0 +1,106 @@
+# .github/workflows/release.yml
+#
+# Release — Create a GitHub Release from a manually triggered build
+#
+# Triggered manually from the GitHub Actions UI (Actions → Release → Run workflow).
+# The operator provides the version string; the workflow builds, packages, and
+# publishes a GitHub Release with the self-contained linux-x64 binary attached.
+#
+# Pipeline relationship:
+#   CI (ci.yml) validates every push and PR — it does NOT create releases.
+#   This workflow is run deliberately, on code that CI has already validated.
+#   The operator is responsible for only triggering a release from a commit
+#   that is green on CI.
+#
+# Release identity:
+#   - GitHub Release tag:    v{version}  (e.g. v0.2.0)
+#   - Release asset:         erate-workbench-api-v{version}-linux-x64.tar.gz
+#   - Binary version:        {version}+{git-sha} (stamped into the assembly)
+#
+# Future extensions:
+#   - deploy: download release asset → copy to target host or container image
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 0.2.0 — omit the v prefix)"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark as pre-release"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  # ── Release ─────────────────────────────────────────────────────────────────
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to create a GitHub Release and tag
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          # Full history so --generate-notes can find the previous release tag
+          # and GitHub can produce accurate PR-based release notes.
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore ErateWorkbench.sln
+
+      # Publish with the release version stamped into the binary.
+      # -p:Version overrides the version in the .csproj for this build only.
+      # The SDK appends +{git-sha} automatically via SourceRevisionId, giving
+      # a full InformationalVersion of e.g. "0.2.0+a1b2c3d" in the binary.
+      # Note: --no-restore is intentionally omitted — dotnet publish must restore
+      # with the linux-x64 RID to resolve runtime-specific native assets.
+      - name: Publish API (self-contained linux-x64)
+        run: >
+          dotnet publish src/ErateWorkbench.Api/ErateWorkbench.Api.csproj
+          --configuration Release
+          --runtime linux-x64
+          --self-contained true
+          --output publish/
+          -p:Version=${{ inputs.version }}
+
+      # Package the publish directory as a single named archive.
+      # The archive can be unpacked on any linux-x64 host and run directly —
+      # no .NET runtime required on the target.
+      - name: Create release archive
+        run: |
+          VERSION="${{ inputs.version }}"
+          ARCHIVE="erate-workbench-api-v${VERSION}-linux-x64.tar.gz"
+          tar -czf "${ARCHIVE}" -C publish .
+          echo "Release archive: ${ARCHIVE} ($(du -sh ${ARCHIVE} | cut -f1))"
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+          echo "VERSION=${VERSION}"  >> "$GITHUB_ENV"
+
+      # Create the GitHub Release and attach the archive as a release asset.
+      # --generate-notes auto-generates release notes from merged PR titles
+      # since the previous release tag — no manual changelog editing required.
+      # The release tag (v{version}) is created by this step.
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [ "${{ inputs.prerelease }}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "v${VERSION}" "${ARCHIVE}" \
+            --title "ERATE Workbench v${VERSION}" \
+            --generate-notes \
+            ${PRERELEASE_FLAG} \
+            --repo "${{ github.repository }}"
