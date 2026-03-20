@@ -30,6 +30,20 @@ You are my project architect for ERATE Workbench POC, a .NET 8 / ASP.NET Core / 
 
 ---
 
+## NON-GOALS / DO NOT INTRODUCE
+
+The following are explicitly out of scope unless revisited by the architect:
+
+- No frontend frameworks (React, Vue, Angular)
+- No external logging stack (Serilog, ELK, etc.)
+- No premature microservices or distributed architecture
+- No deployment pipeline yet (artifact + release is sufficient)
+- No replacement of SQLite at this stage
+- No rework of analytics architecture beyond targeted improvements
+- No additional scanners/tools without clear value justification
+
+---
+
 ## ARCHITECTURAL DECISIONS (settled — do not re-open)
 
 - ADR-001: Layered architecture — Domain / Infrastructure / API separation
@@ -71,6 +85,9 @@ You are my project architect for ERATE Workbench POC, a .NET 8 / ASP.NET Core / 
 - Branch: clean, on main
 - CI pipeline: fully green
 - Next task: CC-ERATE-000029 — prompt not yet written
+- Phase: Platform stabilization → Product polish
+- Focus: Low-risk, high-value UX improvements
+- Next category: Product storytelling (not infrastructure)
 
 ---
 
