@@ -1,82 +1,100 @@
 # Active Work — ERATE Workbench POC
 
-_Last updated: 2026-03-18_
+_Last updated: 2026-03-19_
 
 ---
 
 ## Current state summary
 
-All CC-ERATE-000009 through CC-ERATE-000016 work items are **complete and committed**. No work items are currently in flight. The branch is `feature/import-resilience`, ahead of `main` by all commits since the analytics refactor merge.
+All CC-ERATE-000018 through CC-ERATE-000027 work items are **complete and merged to `main`**. No work items are currently in flight. The repo is in a clean, stable state with a full CI pipeline, observability baseline, analytics caching, and complete DevOps documentation.
+
+**Branch:** `main`
+**Tests:** 347/347 passing
+**Build:** Clean (0 errors, 1 pre-existing xUnit2013 analyzer warning in `ReconciliationTests.cs`)
 
 ---
 
-## Completed this session (2026-03-18)
+## Completed since last context snapshot (2026-03-18)
 
-| Prompt ID | Description | Commit | Status |
-|---|---|---|---|
-| CC-ERATE-000009 | Fix FundingCommitments SoQL column names; fix 3 failing tests | `3897db2` | ✅ Complete |
-| CC-ERATE-000010 | FY2021 FC repair: full idempotent re-import (3h41m, 19.7M rows) | (background job) | ✅ Complete |
-| CC-ERATE-000010D | Root-cause investigation: killed imports, no year-filter, offset ordering | `fb1ec29` | ✅ Complete |
-| CC-ERATE-000011 | FY2021 quality log update: row confirmed at 171,977, Raw→Sum ~$0 | `16ac22a` | ✅ Complete |
-| CC-ERATE-000012 | Add Ecosystem page at /ecosystem | `a956cc4` | ✅ Complete (superseded by 000014) |
-| CC-ERATE-000013 | Add History page at /history | `8939e03` | ✅ Complete (superseded by 000014) |
-| CC-ERATE-000014 | Convert Ecosystem + History to shared-layout Razor Pages | `d985bfe` | ✅ Complete |
-| CC-ERATE-000015 | Fix CS8602 nullable warning in FundingCommitmentCsvParser | `0d73c64` | ✅ Complete |
-| CC-ERATE-000016 | Add reconciliation/validation report artifacts | `9a54fcd` | ✅ Complete |
+| Prompt ID | Description | Commit | Branch | Status |
+|---|---|---|---|---|
+| CC-ERATE-000018 | Local validation script + initial GitHub Actions CI (build + test jobs) | `015e2e0` | — | ✅ Merged |
+| CC-ERATE-000019 | Harden dev script: 3 modes, graceful stop, health poll, `/health` endpoint | `7d75afc` | — | ✅ Merged |
+| CC-ERATE-000020 | Playwright UI smoke tests + `ui-smoke` CI job + `scripts/ui-test.sh` | `39bfed6` | — | ✅ Merged |
+| CC-ERATE-000021 | Security CI job: NuGet vuln scan (2-tier) + Dependabot config | `24a1f22` | `feature/security-baseline` | ✅ Merged PR #1 |
+| CC-ERATE-000022 | Fix History smoke test: title assertion used wrong keyword | `0441228` | `feature/ui-smoke-hardening` | ✅ Merged PR #10 |
+| CC-ERATE-000023 | Secrets scanning CI job: gitleaks v8.30.0 CLI + `.gitleaks.toml` | `7b782f0` | `feature/secrets-scanning` | ✅ Merged PR #15 |
+| CC-ERATE-000024 | DevOps documentation: README rewrite, `pipeline.md`, `local-workflow.md` | `3210a39` | `feature/pipeline-documentation` | ✅ Merged PR #16 |
+| CC-ERATE-000025 | Publish CI job: self-contained linux-x64 artifact, 14-day retention | `f1f6e89` | `feature/build-artifacts` | ✅ Merged PR #17 |
+| CC-ERATE-000026 | Analytics page caching: `IMemoryCache`, 24-hour expiry, ~200× warm improvement | `c404a20` | `feature/analytics-performance` | ✅ Merged PR #18 |
+| CC-ERATE-000027 | Structured logging baseline: SimpleConsole timestamps, Analytics timing | `9beae64` | `feature/logging-observability` | ✅ Merged PR #19 |
 
----
-
-## Post-import validation: FY2021 (completed)
-
-All post-import steps executed and confirmed:
-
-- `POST /dev/summary/funding-commitments?year=2021` → 171,977 raw rows → 19,637 summary rows ✅
-- `POST /dev/summary/risk?year=2021` → 21,199 risk rows ✅
-- `POST /dev/reconcile/funding-commitments` → Source/Raw ratio 12.3× (within 10–15× expected) ✅
-- Raw→Summary amount variance: ~$0 (<0.001%) ✅ (was −9.6% before repair)
+**Dependabot merges (all CI-green):**
+- `actions/checkout@v4 → v6`, `actions/setup-dotnet@v4 → v5`, `actions/upload-artifact@v4 → v7`
+- `Microsoft.Playwright 1.49.0 → 1.58.0`
+- `xunit 2.9.0 → 2.9.3`, `Microsoft.NET.Test.Sdk 17.8.0 → 18.3.0` (both test projects)
 
 ---
 
-## Known open items (not blocking)
+## Open items (not blocking)
 
-### 1. HttpClient timeout on long imports
-**What:** The default `HttpClient.Timeout` of 100 seconds caused job 46 (the FY2021 repair import) to record `status=Failed` despite successfully writing all data. The timeout hit the final Socrata page fetch after ~3.7 hours.
+### 1. HttpClient default timeout kills long imports (TD-001)
+**Status:** Known. Not fixed.
+**What:** `UsacCsvClient` uses the default 100-second HttpClient timeout. A full FundingCommitments import takes ~3.5–4 hours; a slow Socrata response on any page will abort the job.
+**Fix:** One line in `Program.cs`:
+```csharp
+builder.Services.AddHttpClient<UsacCsvClient>(c => c.Timeout = TimeSpan.FromMinutes(5));
+```
 
-**Risk:** Medium. Future full re-imports will face the same timeout unless configured.
+### 2. `[DIAG]` logging in FundingCommitmentCsvParser (TD-005)
+**Status:** Known. Not fixed.
+**What:** `LogWarning("[DIAG]...")` lines still emit for CSV headers and first 5 rows on every parsed page during imports. Now more visible since logging is improved.
+**Fix:** Remove or demote to `LogDebug`.
 
-**Next step:** Set a longer timeout on the `UsacCsvClient` HTTP client in DI registration (e.g., `Timeout = TimeSpan.FromMinutes(5)`). One-line fix in `Program.cs`.
+### 3. No `POST /dev/rebuild-all` ordered endpoint (TD-004)
+**Status:** Known. Not blocking for POC.
+**What:** Risk summary must be rebuilt after commitment + disbursement summaries. No enforcement.
 
-### 2. No year-scoped import capability
-**What:** Import services always page the full Socrata dataset. `?year=YYYY` on import endpoints is silently ignored.
+### 4. Analytics cache has no invalidation on import (ADR-011)
+**Status:** Accepted for POC. Documented.
+**What:** After running an import, Analytics page continues serving stale cached data for up to 24 hours.
+**Workaround:** Restart the app. A `POST /admin/cache/clear` endpoint or `IHostedService` cache-busting hook could be added later.
 
-**Risk:** Low for POC. A partial-year fix (e.g., re-import only FY2021) requires a full 3.5-hour import.
-
-**Next step:** For production, implement a Socrata `$filter=funding_year=YYYY` page-scan import path.
-
-### 3. Full validation cycle not yet run
-**What:** The full `full-data-validation-runbook.md` (all 8 steps including UI smoke test) has not been run to completion.
-
-**Status:** FY2022 is the validated reference year. All other years are `validated-caveat` (row counts and reconciliation pass; no full smoke test completed).
-
-**Next step:** Run the full runbook against a fresh app instance before any stakeholder demo.
-
-### 4. Summary rebuild order is a manual discipline
-**What:** Risk summary must be rebuilt AFTER commitment and disbursement summaries. No enforcement exists.
-
-**Risk:** Stale input produces misleading Raw→Summary variance. Documented in watchlist.
-
-**Next step:** Either add an ordered rebuild endpoint (`POST /dev/rebuild-all`) or document it more prominently in the runbook.
-
-### 5. DIAGNOSTIC logging still active in FundingCommitmentCsvParser
-**What:** `[DIAG]` log lines (first 5 rows + parse summary) still emit as `LogWarning` in production. Added for debugging during import development.
-
-**Risk:** Low. Noisy logs during imports.
-
-**Next step:** Remove or gate behind a debug flag / `LogDebug` level.
+### 5. Full validation cycle not yet run on current data state
+**Status:** Deferred.
+**What:** The `full-data-validation-runbook.md` has not been run to completion on the current database state. FY2022 remains the reference validated year; all others are `validated-caveat`.
 
 ---
 
-## Data state (as of 2026-03-18)
+## Current navigation structure
+
+| Page | Route | Type |
+|---|---|---|
+| Dashboard | `/` | Razor Page |
+| School & Library Search | `/Search` | Razor Page |
+| Analytics | `/Analytics` | Razor Page (IMemoryCache, 24h expiry) |
+| Program Workflow | `/ProgramWorkflow` | Razor Page |
+| Advisor Playbook | `/AdvisorPlaybook` | Razor Page |
+| Risk Insights | `/RiskInsights` | Razor Page |
+| Ecosystem | `/Ecosystem` | Razor Page |
+| History | `/History` | Razor Page |
+
+---
+
+## CI pipeline state
+
+```
+build → test → ui-smoke      (Playwright, headless Chromium, 5 tests)
+             → security      (NuGet vuln scan, 2-tier)
+             → secrets-scan  (gitleaks v8.30.0, full history)
+                    └──────── publish  (self-contained linux-x64 artifact, 14-day retention)
+```
+
+All jobs passing on `main`. Dependabot active (weekly NuGet + GitHub Actions, 5-PR limit).
+
+---
+
+## Data state (as of 2026-03-18 — unchanged since last snapshot)
 
 ### FundingCommitments (avi8-svp9)
 
@@ -87,7 +105,7 @@ All post-import steps executed and confirmed:
 | 2018 | 169,179 | 1,639,720 | 9.7× | `validated-caveat` |
 | 2019 | 183,345 | 1,439,485 | 7.8× | `validated-caveat` |
 | 2020 | 250,037 | 1,702,938 | 6.8× | `validated-caveat` |
-| 2021 | **171,977** | 2,116,248 | **12.3×** | `pass` (repaired 2026-03-18) |
+| 2021 | 171,977 | 2,116,248 | 12.3× | `pass` (repaired 2026-03-18) |
 | 2022 | 169,458 | 2,185,316 | 12.9× | `validated` (reference year) |
 | 2023 | 155,537 | 2,369,338 | 15.2× | `validated-caveat` |
 | 2024 | 157,964 | 2,004,155 | 12.7× | `validated-caveat` |
@@ -104,20 +122,5 @@ All post-import steps executed and confirmed:
 | 2023 | ~266,000 | `validated-caveat` |
 | 2024 | ~270,000 | `validated-caveat` |
 | 2025 | ~142,000 | `partial` |
-
----
-
-## Current navigation structure
-
-| Page | Route | Type |
-|---|---|---|
-| Dashboard | `/` | Razor Page |
-| School & Library Search | `/Search` | Razor Page |
-| Analytics | `/Analytics` | Razor Page |
-| Program Workflow | `/ProgramWorkflow` | Razor Page |
-| Advisor Playbook | `/AdvisorPlaybook` | Razor Page |
-| Risk Insights | `/RiskInsights` | Razor Page |
-| Ecosystem | `/Ecosystem` | Razor Page (converted CC-ERATE-000014) |
-| History | `/History` | Razor Page (converted CC-ERATE-000014) |
 
 ---
