@@ -7,6 +7,17 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ── Logging ─────────────────────────────────────────────────────────────────
+// Replace the default console provider with SimpleConsole so every line
+// includes a timestamp and level. SingleLine keeps output compact.
+// Log levels are controlled via appsettings.json — no code change needed.
+builder.Logging.ClearProviders();
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.TimestampFormat = "HH:mm:ss ";
+    options.SingleLine = true;
+});
+
 builder.Services.AddMemoryCache();
 builder.Services.AddControllers();
 builder.Services.AddRazorPages();

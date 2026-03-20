@@ -139,7 +139,10 @@ if [ "$MODE" = "start-for-tests" ]; then
 fi
 
 # Foreground mode (default): run interactively.
-echo "  Press Ctrl+C to stop."
+# stdout/stderr are tee'd to the log file so you can review them after Ctrl+C.
+APP_LOG="/tmp/erate-workbench-app.log"
+echo "  Press Ctrl+C to stop. Log: $APP_LOG"
 echo ""
 ASPNETCORE_URLS="$APP_URL" \
-  dotnet run --project "$API_PROJECT" --no-build --no-launch-profile
+  dotnet run --project "$API_PROJECT" --no-build --no-launch-profile \
+  2>&1 | tee "$APP_LOG"
