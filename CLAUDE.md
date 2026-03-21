@@ -1,11 +1,11 @@
 # ERATE WORKBENCH — Claude Code Project Brain
 # Auto-loaded by Claude Code at session start. Do not delete.
-# Last updated: 2026-03-21 | Boot Block: CC-ERATE-000036
+# Last updated: 2026-03-21 | Boot Block: CC-ERATE-000037
 
 ---
 
 ## BOOT BLOCK
-— # Last updated: 2026-03-21 | Boot Block: CC-ERATE-000036
+— # Last updated: 2026-03-21 | Boot Block: CC-ERATE-000037
 
 ### PROJECT IDENTITY
 - App: **ERATE Workbench** — E-Rate lifecycle analytics POC showing where execution breaks down, where advisors should focus, and how to reason about the E-Rate program operationally
@@ -26,9 +26,9 @@ These are immutable. Never violate without explicit architect approval.
 - No external logging stack — use built-in `Microsoft.Extensions.Logging` only (ADR-020)
 - No frontend framework — Razor Pages only, no React/Vue/Angular (ADR-001)
 
-### CURRENT STATE (as of CC-ERATE-000036)
-- **Last completed:** CC-ERATE-000036 — Filing Window Analytics dashboard
-- **Branch:** feature/filing-window-analytics — completed locally, PR not yet opened
+### CURRENT STATE (as of CC-ERATE-000037)
+- **Last completed:** CC-ERATE-000037 — Desktop navigation UX refresh (grouped dropdowns)
+- **Branch:** feature/desktop-nav-refresh — completed locally, PR not yet opened
 - **Works (verified stable):**
   - Full CI pipeline: build → test → ui-smoke → security → secrets-scan → publish
   - Playwright UI smoke tests
@@ -43,18 +43,25 @@ These are immutable. Never violate without explicit architect approval.
   - Filing Window Analytics dashboard at /FilingWindow — Chart.js visualizations for
     cumulative certification timing, requested vs committed by year, commitment rate,
     and application status breakdown; FY2026 progress cards; FY2020 COVID annotation
+  - Desktop navigation reorganized into grouped dropdowns (Dashboard, Explore, Insights,
+    Reference, Help); Swagger UI moved under Help; mobile hamburger behavior unchanged
 - **Caveats (data quality):**
   - FY2020 contains a COVID window extension spike (Sept–Oct 2020, ~2,317 records) — annotated in dashboard
   - Late-certification outliers (CertificationDate > FY+1 Jul 1) excluded from timing charts
   - ServiceType is null for all Form 471 records — not available in dataset 9s6i-myen
   - FY2026 is in-progress / partial — dashboard shows advisory banner
-- **Pending:**
-  - Desktop navigation UX refresh needed — top-level nav is crowded with Filing Window addition
+- **Merge dependency:**
+  - feature/filing-window-analytics and feature/desktop-nav-refresh must merge together —
+    the nav Explore dropdown links to /FilingWindow which does not exist on main until both land
+- **Nav groups (reference):**
+  - Explore → School & Library Search, Analytics, Filing Window
+  - Insights → Risk Insights, Advisor Playbook
+  - Reference → Program Workflow, Ecosystem, History
+  - Help → About, Release Notes, Swagger UI
 
 ### ACTIVE TASK
-- Next prompt: CC-ERATE-000037
-- Goal: Desktop navigation UX refresh — consolidate or reorganize top-level nav items to address crowding
-- Status: Pending — architect session required to define scope
+- Next prompt: CC-ERATE-000038
+- Status: Pending — architect session required to define next task
 
 ### KNOWN DEBT (summary — see docs/context/technical-debt.md for full detail)
 - TD-001: HttpClient default timeout on long imports (Medium)
@@ -69,7 +76,7 @@ These are immutable. Never violate without explicit architect approval.
 - TD-013: xUnit2013 analyzer warning in ReconciliationTests.cs (Negligible)
 - TD-014: Playwright local WSL browser deps (Low)
 - TD-015: Dependabot PR queue management (Low)
-- TD-016: UI/theme polish behind engineering maturity (Low)
+- TD-016: UI/theme polish behind engineering maturity (Low) — nav IA addressed in CC-ERATE-000037; visual polish remains
 
 ### WHAT TO IGNORE
 - `erate-workbench/` subdirectory — this is a legacy/duplicate artifact, not the canonical source
