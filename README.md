@@ -223,7 +223,42 @@ Visual overview of the stakeholders, systems, and relationships that make up the
 Browse the evolution of the E-Rate program through key milestones and policy changes.
 
 ---
+## Data Sources
 
+This project uses publicly available datasets published by the Universal Service Administrative Company (USAC) as part of the FCC E-Rate program.
+
+Primary datasets include:
+
+- **Form 471 Applications (Basic Information)**  
+  https://datahub.usac.org/E-rate/E-rate-Form-471-Application-Data/9s6i-myen
+
+- **Funding Commitments**  
+  https://datahub.usac.org/E-rate/E-rate-Funding-Commitments
+
+- **Entity Directory (EPC)**  
+  https://datahub.usac.org/E-rate/E-rate-Entity-Directory
+
+- **Service Providers (SPIN)**  
+  https://datahub.usac.org/E-rate/E-rate-Service-Providers
+
+These datasets are accessed via the Socrata Open Data API and ingested into a local SQLite database for analysis.
+
+---
+
+## Licensing & Data Use
+
+USAC datasets are publicly available and provided for transparency and analysis of the E-Rate program.
+
+This project:
+
+- Uses USAC data in accordance with its public/open data availability
+- Does not modify source records beyond normalization for analytics
+- Is intended for analytical and advisory exploration purposes only
+
+This repository is not affiliated with or endorsed by USAC or the FCC.
+
+Users should refer to USAC for official program data and guidance:
+https://www.usac.org/
 ---
 
 ## Contributing
