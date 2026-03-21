@@ -88,7 +88,12 @@ The following are explicitly out of scope unless revisited by the architect:
 | CC-ERATE-000028 | Release-oriented pipeline polish + lightweight release workflow |
 | CC-ERATE-000029 | Help/About/Release Notes navigation |
 | CC-ERATE-000030 | Partial-year advisory banner on Risk Insights |
-| CC-ERATE-000031 through CC-ERATE-000036 | Form 471 ingestion + Filing Window Analytics |
+| CC-ERATE-000031 | Technical debt numbering reconciliation |
+| CC-ERATE-000032 | Form 471 CertificationDate ingestion |
+| CC-ERATE-000033 | Form 471 historical backfill (FY2020–2026) |
+| CC-ERATE-000034 | Incremental FY2026 refresh strategy |
+| CC-ERATE-000035 | Form 471 data quality audit |
+| CC-ERATE-000036 | Filing Window Analytics dashboard |
 | CC-ERATE-000037 | Desktop navigation UX refresh (grouped dropdowns) |
 
 ---
