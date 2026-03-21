@@ -39,6 +39,7 @@ public class Form471Repository(AppDbContext db)
                 current.ServiceType = record.ServiceType;
                 current.RequestedAmount = record.RequestedAmount;
                 current.ApplicationStatus = record.ApplicationStatus;
+                current.CertificationDate = record.CertificationDate;
                 current.UpdatedAtUtc = DateTime.UtcNow;
                 updated++;
             }

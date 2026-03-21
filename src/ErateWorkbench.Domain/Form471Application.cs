@@ -32,6 +32,9 @@ public class Form471Application
 
     public string? ApplicationStatus { get; set; }
 
+    /// <summary>Date the application was certified by the applicant. Source: certified_datetime column.</summary>
+    public DateTime? CertificationDate { get; set; }
+
     public DateTime ImportedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 }

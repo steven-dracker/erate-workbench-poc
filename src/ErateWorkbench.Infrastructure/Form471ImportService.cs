@@ -14,13 +14,23 @@ public class Form471ImportService(
     private const string DatasetName = "form471-applications";
 
     /// <summary>
-    /// Downloads and imports the USAC FCC Form 471 dataset.
-    /// The default URL targets the full dataset export. Override for testing or year-specific exports.
+    /// Downloads and imports the USAC FCC Form 471 dataset (9s6i-myen).
+    ///
+    /// When <paramref name="fundingYear"/> is specified the import uses a year-scoped
+    /// resource URL so only that year's records are fetched and upserted — suitable for
+    /// incremental FY2026 refreshes. When null the full dataset is downloaded.
+    ///
+    /// Year-scoped strategy: full re-import of the target FY. This handles both new
+    /// applications and status changes on existing ones because all rows are upserted
+    /// by RawSourceKey. The Socrata resource endpoint supports $where filtering;
+    /// the bulk views endpoint does not.
     /// </summary>
     public async Task<FundingImportResult> RunAsync(
-        string datasetUrl = "https://datahub.usac.org/api/views/9s85-xeem/rows.csv?accessType=DOWNLOAD",
+        string? datasetUrl = null,
+        int? fundingYear = null,
         CancellationToken cancellationToken = default)
     {
+        var url = datasetUrl ?? BuildUrl(fundingYear);
         var started = DateTime.UtcNow;
 
         var job = new ImportJob
@@ -32,7 +42,7 @@ public class Form471ImportService(
         db.ImportJobs.Add(job);
         await db.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation("Form 471 import job {JobId} started", job.Id);
+        logger.LogInformation("Form 471 import job {JobId} started (url={Url})", job.Id, url);
 
         int totalInserted = 0;
         int totalUpdated = 0;
@@ -40,7 +50,7 @@ public class Form471ImportService(
 
         try
         {
-            await using var stream = await csvClient.DownloadStreamAsync(datasetUrl, cancellationToken);
+            await using var stream = await csvClient.DownloadStreamAsync(url, cancellationToken);
 
             var batch = new List<Form471Application>(500);
 
@@ -94,6 +104,15 @@ public class Form471ImportService(
                 totalInserted + totalUpdated, totalInserted, totalUpdated, totalFailed,
                 job.CompletedAt.Value - started, DatasetName, ImportJobStatus.Failed, ex.Message);
         }
+    }
+
+    private static string BuildUrl(int? fundingYear)
+    {
+        if (fundingYear.HasValue)
+            // Resource endpoint supports $where; funding_year is stored as TEXT in 9s6i-myen.
+            return $"https://datahub.usac.org/resource/9s6i-myen.csv?$where=funding_year='{fundingYear}'&$limit=50000";
+
+        return "https://datahub.usac.org/api/views/9s6i-myen/rows.csv?accessType=DOWNLOAD";
     }
 
     private async Task<(int inserted, int updated, int failed)> SaveBatchAsync(

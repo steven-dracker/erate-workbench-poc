@@ -59,6 +59,7 @@ builder.Services.AddScoped<DisbursementRepository>();
 builder.Services.AddScoped<DisbursementImportService>();
 builder.Services.AddScoped<AnalyticsRepository>();
 builder.Services.AddScoped<RiskInsightsRepository>();
+builder.Services.AddScoped<FilingWindowRepository>();
 
 // Reconciliation
 builder.Services.AddHttpClient<SocrataReconciliationService>();
@@ -209,8 +210,9 @@ app.MapPost("/import/form471", async (
     CancellationToken ct) =>
 {
     var result = await importService.RunAsync(
-        request?.DatasetUrl ?? "https://datahub.usac.org/api/views/9s85-xeem/rows.csv?accessType=DOWNLOAD",
-        ct);
+        datasetUrl: request?.DatasetUrl,
+        fundingYear: request?.FundingYear,
+        cancellationToken: ct);
 
     return Results.Ok(new FundingImportResultDto(
         result.RecordsProcessed,
@@ -479,6 +481,6 @@ record ImportRequest(string DatasetUrl, int FundingYear);
 record EpcEntityImportRequest(string? DatasetUrl);
 record FundingCommitmentsImportRequest(string? DatasetUrl);
 record ServiceProviderImportRequest(string? DatasetUrl);
-record Form471ImportRequest(string? DatasetUrl);
+record Form471ImportRequest(string? DatasetUrl, int? FundingYear);
 record EntityImportRequest(string? DatasetUrl);
 record DisbursementImportRequest(string? DatasetUrl);

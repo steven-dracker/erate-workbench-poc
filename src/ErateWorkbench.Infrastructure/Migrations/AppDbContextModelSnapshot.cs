@@ -503,6 +503,9 @@ namespace ErateWorkbench.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("CertificationDate")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("CategoryOfService")
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
