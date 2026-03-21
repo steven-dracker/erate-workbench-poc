@@ -30,38 +30,76 @@
             </button>
             <div class="collapse navbar-collapse" id="nav">
                 <ul class="navbar-nav me-auto">
+
+                    <!-- Dashboard -->
                     <li class="nav-item">
                         <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "Home" ? "active" : "")"
                            asp-page="/Index">Dashboard</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "Search" ? "active" : "")"
-                           asp-page="/Search">School &amp; Library Search</a>
+
+                    <!-- Explore: data discovery pages -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle @(ViewData["ActivePage"]?.ToString() is "Search" or "Analytics" or "FilingWindow" ? "active" : "")"
+                           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Explore
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li>
+                                <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "Search" ? "active" : "")"
+                                   asp-page="/Search">School &amp; Library Search</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "Analytics" ? "active" : "")"
+                                   asp-page="/Analytics">Analytics</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "FilingWindow" ? "active" : "")"
+                                   asp-page="/FilingWindow">Filing Window</a>
+                            </li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "Analytics" ? "active" : "")"
-                           asp-page="/Analytics">Analytics</a>
+
+                    <!-- Insights: advisory and risk pages -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle @(ViewData["ActivePage"]?.ToString() is "RiskInsights" or "AdvisorPlaybook" ? "active" : "")"
+                           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Insights
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li>
+                                <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "RiskInsights" ? "active" : "")"
+                                   asp-page="/RiskInsights">Risk Insights</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "AdvisorPlaybook" ? "active" : "")"
+                                   asp-page="/AdvisorPlaybook">Advisor Playbook</a>
+                            </li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "ProgramWorkflow" ? "active" : "")"
-                           asp-page="/ProgramWorkflow">Program Workflow</a>
+
+                    <!-- Reference: program context and background -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle @(ViewData["ActivePage"]?.ToString() is "ProgramWorkflow" or "Ecosystem" or "History" ? "active" : "")"
+                           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Reference
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark">
+                            <li>
+                                <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "ProgramWorkflow" ? "active" : "")"
+                                   asp-page="/ProgramWorkflow">Program Workflow</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "Ecosystem" ? "active" : "")"
+                                   asp-page="/Ecosystem">Ecosystem</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "History" ? "active" : "")"
+                                   asp-page="/History">History</a>
+                            </li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "AdvisorPlaybook" ? "active" : "")"
-                           asp-page="/AdvisorPlaybook">Advisor Playbook</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "RiskInsights" ? "active" : "")"
-                           asp-page="/RiskInsights">Risk Insights</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "Ecosystem" ? "active" : "")"
-                           asp-page="/Ecosystem">Ecosystem</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewData["ActivePage"]?.ToString() == "History" ? "active" : "")"
-                           asp-page="/History">History</a>
-                    </li>
+
+                    <!-- Help: meta / support -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle @(ViewData["ActivePage"]?.ToString() is "About" or "Releases" ? "active" : "")"
                            href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -76,8 +114,13 @@
                                 <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "Releases" ? "active" : "")"
                                    asp-page="/Releases">Release Notes</a>
                             </li>
+                            <li><hr class="dropdown-divider" style="border-color:#495057"></li>
+                            <li>
+                                <a class="dropdown-item text-secondary" href="/swagger" target="_blank">Swagger UI ↗</a>
+                            </li>
                         </ul>
                     </li>
+
                 </ul>
                 <div class="d-none align-items-center gap-2 me-3" id="workflow-nav-controls">
                     <span id="workflow-nav-saved"
@@ -92,9 +135,6 @@
                         Clear notes
                     </button>
                 </div>
-                <span class="navbar-text text-secondary small">
-                    <a href="/swagger" class="text-secondary" target="_blank">Swagger UI</a>
-                </span>
             </div>
         </div>
     </nav>
