@@ -35,6 +35,18 @@ public class EpcEntityImportService(
 
         try
         {
+            var probeUrl = BuildProbeUrl(datasetUrl);
+            if (!await csvClient.CheckAvailabilityAsync(probeUrl, cancellationToken))
+            {
+                const string unavailableMsg = "USAC data source is unavailable. Import aborted.";
+                logger.LogError("EPC entity import job {JobId} aborted — {Message}", job.Id, unavailableMsg);
+                job.Status = ImportJobStatus.Failed;
+                job.ErrorMessage = unavailableMsg;
+                job.CompletedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+                return job;
+            }
+
             await using var stream = await csvClient.DownloadStreamAsync(datasetUrl, cancellationToken);
 
             // Parse and batch-save in chunks to avoid holding the full dataset in memory
@@ -82,6 +94,13 @@ public class EpcEntityImportService(
 
         await db.SaveChangesAsync(cancellationToken);
         return job;
+    }
+
+    internal static string BuildProbeUrl(string datasetUrl)
+    {
+        var q = datasetUrl.IndexOf('?');
+        var baseUrl = q >= 0 ? datasetUrl[..q] : datasetUrl;
+        return baseUrl + "?$limit=1";
     }
 
     private async Task<(int saved, int errors)> SaveBatchAsync(

@@ -64,6 +64,20 @@ public class EntityImportService(
 
         try
         {
+            var probeUrl = $"{baseUrl}?$limit=1";
+            if (!await csvClient.CheckAvailabilityAsync(probeUrl, cancellationToken))
+            {
+                const string unavailableMsg = "USAC data source is unavailable. Import aborted.";
+                logger.LogError("[entity-import:{JobId}] {Message}", job.Id, unavailableMsg);
+                job.Status = ImportJobStatus.Failed;
+                job.ErrorMessage = unavailableMsg;
+                job.CompletedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+                return new FundingImportResult(
+                    0, 0, 0, 0, job.CompletedAt.Value - started,
+                    DatasetName, ImportJobStatus.Failed, unavailableMsg);
+            }
+
             while (!cancellationToken.IsCancellationRequested)
             {
                 var pageUrl = $"{baseUrl}?$limit={pageSize}&$offset={offset}";

@@ -115,6 +115,10 @@ public class FundingCommitmentImportServiceTests : IDisposable
     private static StringContent CsvContent(string csv) =>
         new(csv, Encoding.UTF8, "text/csv");
 
+    // Returns a successful 200 response with no body — used for pre-flight probe calls.
+    private static HttpResponseMessage ProbeOk() =>
+        new(HttpStatusCode.OK);
+
     [Fact]
     public async Task RunAsync_Succeeds_WhenImportCompletesNormally()
     {
@@ -128,7 +132,8 @@ public class FundingCommitmentImportServiceTests : IDisposable
         var handler = new StubHttpHandler(_ =>
         {
             callCount++;
-            var body = callCount == 1 ? page1 : EmptyPage;
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
+            var body = callCount == 2 ? page1 : EmptyPage;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = CsvContent(body)
@@ -143,7 +148,7 @@ public class FundingCommitmentImportServiceTests : IDisposable
         Assert.Equal(2, result.RecordsInserted);
         Assert.Equal(0, result.RecordsUpdated);
         Assert.Null(result.ErrorMessage);
-        Assert.Equal(2, callCount); // page 1 with rows + empty page terminator
+        Assert.Equal(3, callCount); // probe + page 1 + empty page terminator
     }
 
     [Fact]
@@ -155,9 +160,13 @@ public class FundingCommitmentImportServiceTests : IDisposable
             FRN2000002,2024,Washington Elementary
             """;
 
+        // Each run: probe (200) + page + empty
         var responses = new Queue<string>([page, EmptyPage, page, EmptyPage]);
+        var callCount = 0;
         var handler = new StubHttpHandler(_ =>
         {
+            callCount++;
+            if (callCount % 3 == 1) return Task.FromResult(ProbeOk()); // probe on calls 1 and 4
             var body = responses.Dequeue();
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -189,17 +198,49 @@ public class FundingCommitmentImportServiceTests : IDisposable
         // Simulate a Socrata JSON error payload returned with HTTP 200.
         // The service's first-byte sniff detects '{' and throws InvalidOperationException,
         // which is non-transient — no retries fire, and the job is immediately failed.
+        var callCount = 0;
         var handler = new StubHttpHandler(_ =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            callCount++;
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = CsvContent("{\"error\":true,\"message\":\"query timed out\"}")
-            }));
+            });
+        });
 
         var result = await BuildService(handler)
             .RunAsync("https://test.usac.org/resource/test.csv", pageSize: 100);
 
         Assert.Equal(ImportJobStatus.Failed, result.Status);
         Assert.NotNull(result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RunAsync_AbortsEarly_WhenUpstreamIsUnavailable()
+    {
+        // Probe returns 503 — import should abort before any paging begins.
+        // CheckAvailabilityAsync retries once on 503, so expect 2 HTTP calls total.
+        var callCount = 0;
+        var handler = new StubHttpHandler(_ =>
+        {
+            callCount++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        });
+
+        var result = await BuildService(handler)
+            .RunAsync("https://test.usac.org/resource/test.csv", pageSize: 100);
+
+        Assert.Equal(ImportJobStatus.Failed, result.Status);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("unavailable", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, result.RecordsProcessed);
+        Assert.True(callCount <= 2, $"Expected at most 2 probe calls, got {callCount}");
+
+        // A job record should exist in the DB with Failed status.
+        var job = _db.ImportJobs.SingleOrDefault();
+        Assert.NotNull(job);
+        Assert.Equal(ImportJobStatus.Failed, job.Status);
     }
 
     // ── URL construction tests (CC-ERATE-000007) ────────────────────────────
@@ -214,7 +255,8 @@ public class FundingCommitmentImportServiceTests : IDisposable
         {
             requestedUrls.Add(req.RequestUri!.ToString());
             callCount++;
-            var body = callCount == 1
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
+            var body = callCount == 2
                 ? "funding_request_number,funding_year\nFRN1,2024\n"
                 : EmptyPage;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -225,8 +267,10 @@ public class FundingCommitmentImportServiceTests : IDisposable
 
         await BuildService(handler).RunAsync("https://test.usac.org/resource/test.csv", pageSize: 500);
 
-        Assert.True(requestedUrls.Count >= 2, "Expected at least a data page and an empty-page terminator.");
-        foreach (var url in requestedUrls)
+        // Skip the probe URL (which has $limit=1 but no $offset); check only page URLs.
+        var pageUrls = requestedUrls.Skip(1).ToList();
+        Assert.True(pageUrls.Count >= 2, "Expected at least a data page and an empty-page terminator.");
+        foreach (var url in pageUrls)
         {
             Assert.Contains("$limit=", url);
             Assert.Contains("$offset=", url);
@@ -245,7 +289,8 @@ public class FundingCommitmentImportServiceTests : IDisposable
         {
             requestedUrls.Add(req.RequestUri!.ToString());
             callCount++;
-            var body = callCount == 1
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
+            var body = callCount == 2
                 ? "funding_request_number,funding_year\nFRN1,2024\n"
                 : EmptyPage;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -257,7 +302,8 @@ public class FundingCommitmentImportServiceTests : IDisposable
         await BuildService(handler).RunAsync("https://test.usac.org/resource/test.csv", pageSize: 500);
 
         Assert.True(requestedUrls.Count >= 1);
-        foreach (var url in requestedUrls)
+        // Skip probe URL; page URLs must not contain a year filter.
+        foreach (var url in requestedUrls.Skip(1))
             Assert.DoesNotContain("funding_year=", url);
     }
 }
