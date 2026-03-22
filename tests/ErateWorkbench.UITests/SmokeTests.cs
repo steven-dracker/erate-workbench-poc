@@ -38,9 +38,35 @@ public class SmokeTests : IAsyncLifetime
     private async Task<IPage> NewPageAsync()
     {
         var page = await _browser.NewPageAsync();
-        // Reasonable timeout for a local/CI app; avoids flaky long hangs.
-        page.SetDefaultTimeout(10_000);
+        // Increased modestly for CI: dropdown interaction requires JS execution after click.
+        page.SetDefaultTimeout(15_000);
         return page;
+    }
+
+    /// <summary>
+    /// Waits for a dropdown item link to become visible after its parent dropdown has been
+    /// opened. On failure, dumps the page HTML to the console to aid CI debugging.
+    /// </summary>
+    private static async Task VerifyDropdownLinkAsync(IPage page, string linkName)
+    {
+        // Scope to the navbar to avoid ambiguity with any matching text in page content.
+        var locator = page.Locator("nav.navbar")
+                          .GetByRole(AriaRole.Link, new() { Name = linkName, Exact = false });
+
+        try
+        {
+            await locator.WaitForAsync(new LocatorWaitForOptions
+            {
+                State   = WaitForSelectorState.Visible,
+                Timeout = 5_000,
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SMOKE] Dropdown link '{linkName}' not visible. {ex.Message}");
+            Console.WriteLine(await page.ContentAsync());
+            throw;
+        }
     }
 
     // ── tests ─────────────────────────────────────────────────────────────────
@@ -63,7 +89,8 @@ public class SmokeTests : IAsyncLifetime
     [Fact]
     public async Task Dashboard_Loads_With_Expected_Title_And_Nav()
     {
-        // Verifies the main entry point renders inside the shared layout.
+        // Verifies the main entry point renders inside the shared layout with the
+        // grouped navigation introduced in CC-ERATE-000037.
         var page = await NewPageAsync();
         var response = await page.GotoAsync(_baseUrl);
 
@@ -74,40 +101,78 @@ public class SmokeTests : IAsyncLifetime
         var title = await page.TitleAsync();
         Assert.Contains("ERATE Workbench", title, StringComparison.OrdinalIgnoreCase);
 
-        // Navbar should be present (Bootstrap .navbar class).
+        // Navbar container must be present.
         await page.WaitForSelectorAsync("nav.navbar");
 
-        // Key nav links should be rendered in the shared layout.
-        await page.WaitForSelectorAsync("text=Dashboard");
-        await page.WaitForSelectorAsync("text=Analytics");
-        await page.WaitForSelectorAsync("text=Risk Insights");
+        // Dashboard is a standalone top-level link (not inside a dropdown).
+        await page.GetByRole(AriaRole.Link, new() { Name = "Dashboard", Exact = true })
+                  .WaitForAsync(new LocatorWaitForOptions { Timeout = 5_000 });
+
+        // The four dropdown group toggles are rendered as <a role="button"> elements.
+        // They are always visible without interaction — verify each is present.
+        foreach (var toggle in new[] { "Explore", "Insights", "Reference", "Help" })
+        {
+            await page.GetByRole(AriaRole.Button, new() { Name = toggle, Exact = true })
+                      .WaitForAsync(new LocatorWaitForOptions { Timeout = 5_000 });
+        }
     }
 
     [Fact]
     public async Task Navigation_Links_Are_All_Present()
     {
-        // Verifies the full nav link set is rendered on any shared-layout page.
+        // Verifies the full nav link set across all grouped dropdowns (CC-ERATE-000037).
+        // Step 1 checks top-level visible items; Step 2 opens each dropdown and checks its links.
         var page = await NewPageAsync();
         await page.GotoAsync(_baseUrl);
         await page.WaitForSelectorAsync("nav.navbar");
 
-        var expectedLinks = new[]
-        {
-            "Dashboard",
-            "School & Library Search",
-            "Analytics",
-            "Program Workflow",
-            "Advisor Playbook",
-            "Risk Insights",
-            "Ecosystem",
-            "History",
-        };
+        // ── Step 1 — top-level nav items (always visible) ────────────────────
 
-        foreach (var link in expectedLinks)
+        await page.GetByRole(AriaRole.Link, new() { Name = "Dashboard", Exact = true })
+                  .WaitForAsync(new LocatorWaitForOptions { Timeout = 5_000 });
+
+        foreach (var toggle in new[] { "Explore", "Insights", "Reference", "Help" })
         {
-            var locator = page.GetByRole(AriaRole.Link, new() { Name = link, Exact = true });
-            await locator.WaitForAsync(new LocatorWaitForOptions { Timeout = 5_000 });
+            await page.GetByRole(AriaRole.Button, new() { Name = toggle, Exact = true })
+                      .WaitForAsync(new LocatorWaitForOptions { Timeout = 5_000 });
         }
+
+        // ── Step 2 — Explore dropdown ─────────────────────────────────────────
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Explore", Exact = true })
+                  .ClickAsync();
+
+        await VerifyDropdownLinkAsync(page, "School & Library Search");
+        await VerifyDropdownLinkAsync(page, "Analytics");
+        await VerifyDropdownLinkAsync(page, "Filing Window");
+
+        // ── Step 3 — Insights dropdown ────────────────────────────────────────
+
+        // Clicking a new toggle closes the previous dropdown (Bootstrap behaviour).
+        await page.GetByRole(AriaRole.Button, new() { Name = "Insights", Exact = true })
+                  .ClickAsync();
+
+        await VerifyDropdownLinkAsync(page, "Risk Insights");
+        await VerifyDropdownLinkAsync(page, "Advisor Playbook");
+
+        // ── Step 4 — Reference dropdown ───────────────────────────────────────
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Reference", Exact = true })
+                  .ClickAsync();
+
+        await VerifyDropdownLinkAsync(page, "Program Workflow");
+        await VerifyDropdownLinkAsync(page, "Ecosystem");
+        await VerifyDropdownLinkAsync(page, "History");
+
+        // ── Step 5 — Help dropdown ────────────────────────────────────────────
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "Help", Exact = true })
+                  .ClickAsync();
+
+        await VerifyDropdownLinkAsync(page, "About");
+        await VerifyDropdownLinkAsync(page, "Release Notes");
+        // "Swagger UI ↗" — matched with Exact = false to avoid arrow-character sensitivity.
+        await VerifyDropdownLinkAsync(page, "Swagger UI");
     }
 
     [Fact]
