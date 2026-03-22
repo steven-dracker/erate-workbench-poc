@@ -54,6 +54,9 @@ public class DisbursementImportServiceTests : IDisposable
     private static StringContent CsvContent(string csv) =>
         new(csv, Encoding.UTF8, "text/csv");
 
+    private static HttpResponseMessage ProbeOk() =>
+        new(HttpStatusCode.OK);
+
     [Fact]
     public async Task RunAsync_Succeeds_WhenImportCompletesNormally()
     {
@@ -67,7 +70,8 @@ public class DisbursementImportServiceTests : IDisposable
         var handler = new DisbursementStubHandler(_ =>
         {
             callCount++;
-            var body = callCount == 1 ? page1 : EmptyPage;
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
+            var body = callCount == 2 ? page1 : EmptyPage;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = CsvContent(body)
@@ -82,7 +86,7 @@ public class DisbursementImportServiceTests : IDisposable
         Assert.Equal(2, result.RecordsInserted);
         Assert.Equal(0, result.RecordsUpdated);
         Assert.Null(result.ErrorMessage);
-        Assert.Equal(2, callCount);
+        Assert.Equal(3, callCount); // probe + page 1 + empty page
 
         // Verify DB state
         Assert.Equal(2, _db.Disbursements.Count());
@@ -104,9 +108,13 @@ public class DisbursementImportServiceTests : IDisposable
             2390001235,INV20240002,1,SPI,2024,1900.00
             """;
 
+        // Each run: probe (200) + page + empty
         var responses = new Queue<string>([page, EmptyPage, page, EmptyPage]);
+        var callCount = 0;
         var handler = new DisbursementStubHandler(_ =>
         {
+            callCount++;
+            if (callCount % 3 == 1) return Task.FromResult(ProbeOk()); // probe on calls 1 and 4
             var body = responses.Dequeue();
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -141,8 +149,11 @@ public class DisbursementImportServiceTests : IDisposable
             """;
 
         var responses = new Queue<string>([page1, EmptyPage]);
+        var callCount = 0;
         var handler = new DisbursementStubHandler(_ =>
         {
+            callCount++;
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
             var body = responses.Dequeue();
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -163,17 +174,43 @@ public class DisbursementImportServiceTests : IDisposable
     {
         // JSON payload with HTTP 200 triggers the non-CSV detection — non-transient,
         // no retries, job is failed immediately.
+        var callCount = 0;
         var handler = new DisbursementStubHandler(_ =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            callCount++;
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = CsvContent("{\"error\":true,\"message\":\"query timed out\"}")
-            }));
+            });
+        });
 
         var result = await BuildService(handler)
             .RunAsync("https://test.usac.org/resource/test.csv", pageSize: 100);
 
         Assert.Equal(ImportJobStatus.Failed, result.Status);
         Assert.NotNull(result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RunAsync_AbortsEarly_WhenUpstreamIsUnavailable()
+    {
+        // Probe returns 503 — import should abort before paging begins.
+        var callCount = 0;
+        var handler = new DisbursementStubHandler(_ =>
+        {
+            callCount++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        });
+
+        var result = await BuildService(handler)
+            .RunAsync("https://test.usac.org/resource/test.csv", pageSize: 100);
+
+        Assert.Equal(ImportJobStatus.Failed, result.Status);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("unavailable", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, result.RecordsProcessed);
+        Assert.True(callCount <= 2, $"Expected at most 2 probe calls, got {callCount}");
     }
 
     // ── URL construction tests (CC-ERATE-000007) ────────────────────────────
@@ -188,7 +225,8 @@ public class DisbursementImportServiceTests : IDisposable
         {
             requestedUrls.Add(req.RequestUri!.ToString());
             callCount++;
-            var body = callCount == 1
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
+            var body = callCount == 2
                 ? "funding_request_number,invoice_id,inv_line_num,funding_year\nFRN1,INV1,1,2024\n"
                 : EmptyPage;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -199,8 +237,10 @@ public class DisbursementImportServiceTests : IDisposable
 
         await BuildService(handler).RunAsync("https://test.usac.org/resource/test.csv", pageSize: 500);
 
-        Assert.True(requestedUrls.Count >= 2, "Expected at least a data page and an empty-page terminator.");
-        foreach (var url in requestedUrls)
+        // Skip the probe URL (which has $limit=1 but no $offset); check only page URLs.
+        var pageUrls = requestedUrls.Skip(1).ToList();
+        Assert.True(pageUrls.Count >= 2, "Expected at least a data page and an empty-page terminator.");
+        foreach (var url in pageUrls)
         {
             Assert.Contains("$limit=", url);
             Assert.Contains("$offset=", url);
@@ -219,7 +259,8 @@ public class DisbursementImportServiceTests : IDisposable
         {
             requestedUrls.Add(req.RequestUri!.ToString());
             callCount++;
-            var body = callCount == 1
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
+            var body = callCount == 2
                 ? "funding_request_number,invoice_id,inv_line_num,funding_year\nFRN1,INV1,1,2024\n"
                 : EmptyPage;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
@@ -231,7 +272,8 @@ public class DisbursementImportServiceTests : IDisposable
         await BuildService(handler).RunAsync("https://test.usac.org/resource/test.csv", pageSize: 500);
 
         Assert.True(requestedUrls.Count >= 1);
-        foreach (var url in requestedUrls)
+        // Skip probe URL; page URLs must not contain a year filter.
+        foreach (var url in requestedUrls.Skip(1))
             Assert.DoesNotContain("funding_year=", url);
     }
 }

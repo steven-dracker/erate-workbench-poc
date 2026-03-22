@@ -40,6 +40,20 @@ public class ServiceProviderImportService(
 
         try
         {
+            var probeUrl = BuildProbeUrl(datasetUrl);
+            if (!await csvClient.CheckAvailabilityAsync(probeUrl, cancellationToken))
+            {
+                const string unavailableMsg = "USAC data source is unavailable. Import aborted.";
+                logger.LogError("Service provider import job {JobId} aborted — {Message}", job.Id, unavailableMsg);
+                job.Status = ImportJobStatus.Failed;
+                job.ErrorMessage = unavailableMsg;
+                job.CompletedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+                return new FundingImportResult(
+                    0, 0, 0, 0, job.CompletedAt.Value - started,
+                    DatasetName, ImportJobStatus.Failed, unavailableMsg);
+            }
+
             await using var stream = await csvClient.DownloadStreamAsync(datasetUrl, cancellationToken);
 
             var batch = new List<ServiceProvider>(500);
@@ -94,6 +108,13 @@ public class ServiceProviderImportService(
                 totalInserted + totalUpdated, totalInserted, totalUpdated, totalFailed,
                 job.CompletedAt.Value - started, DatasetName, ImportJobStatus.Failed, ex.Message);
         }
+    }
+
+    internal static string BuildProbeUrl(string datasetUrl)
+    {
+        var q = datasetUrl.IndexOf('?');
+        var baseUrl = q >= 0 ? datasetUrl[..q] : datasetUrl;
+        return baseUrl + "?$limit=1";
     }
 
     private async Task<(int inserted, int updated, int failed)> SaveBatchAsync(

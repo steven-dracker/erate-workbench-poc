@@ -50,6 +50,20 @@ public class Form471ImportService(
 
         try
         {
+            var probeUrl = BuildProbeUrl(url);
+            if (!await csvClient.CheckAvailabilityAsync(probeUrl, cancellationToken))
+            {
+                const string unavailableMsg = "USAC data source is unavailable. Import aborted.";
+                logger.LogError("Form 471 import job {JobId} aborted — {Message}", job.Id, unavailableMsg);
+                job.Status = ImportJobStatus.Failed;
+                job.ErrorMessage = unavailableMsg;
+                job.CompletedAt = DateTime.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+                return new FundingImportResult(
+                    0, 0, 0, 0, job.CompletedAt.Value - started,
+                    DatasetName, ImportJobStatus.Failed, unavailableMsg);
+            }
+
             await using var stream = await csvClient.DownloadStreamAsync(url, cancellationToken);
 
             var batch = new List<Form471Application>(500);
@@ -113,6 +127,17 @@ public class Form471ImportService(
             return $"https://datahub.usac.org/resource/9s6i-myen.csv?$where=funding_year='{fundingYear}'&$limit=50000";
 
         return "https://datahub.usac.org/api/views/9s6i-myen/rows.csv?accessType=DOWNLOAD";
+    }
+
+    /// <summary>
+    /// Builds a minimal probe URL from the dataset URL by stripping any existing query string
+    /// and appending <c>?$limit=1</c>. Works for both the resource API and views API.
+    /// </summary>
+    internal static string BuildProbeUrl(string datasetUrl)
+    {
+        var q = datasetUrl.IndexOf('?');
+        var baseUrl = q >= 0 ? datasetUrl[..q] : datasetUrl;
+        return baseUrl + "?$limit=1";
     }
 
     private async Task<(int inserted, int updated, int failed)> SaveBatchAsync(

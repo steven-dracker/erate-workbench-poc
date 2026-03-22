@@ -54,6 +54,9 @@ public class EntityImportServiceTests : IDisposable
     private static StringContent CsvContent(string csv) =>
         new(csv, Encoding.UTF8, "text/csv");
 
+    private static HttpResponseMessage ProbeOk() =>
+        new(HttpStatusCode.OK);
+
     [Fact]
     public async Task RunAsync_Succeeds_WhenImportCompletesNormally()
     {
@@ -67,7 +70,8 @@ public class EntityImportServiceTests : IDisposable
         var handler = new EntityStubHandler(_ =>
         {
             callCount++;
-            var body = callCount == 1 ? page1 : EmptyPage;
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
+            var body = callCount == 2 ? page1 : EmptyPage;
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = CsvContent(body)
@@ -82,7 +86,7 @@ public class EntityImportServiceTests : IDisposable
         Assert.Equal(2, result.RecordsInserted);
         Assert.Equal(0, result.RecordsUpdated);
         Assert.Null(result.ErrorMessage);
-        Assert.Equal(2, callCount);
+        Assert.Equal(3, callCount); // probe + page 1 + empty page
 
         // Verify DB state
         Assert.Equal(2, _db.Entities.Count());
@@ -102,9 +106,13 @@ public class EntityImportServiceTests : IDisposable
             200002,Washington Elementary,School,TX
             """;
 
+        // Each run: probe (200) + page + empty
         var responses = new Queue<string>([page, EmptyPage, page, EmptyPage]);
+        var callCount = 0;
         var handler = new EntityStubHandler(_ =>
         {
+            callCount++;
+            if (callCount % 3 == 1) return Task.FromResult(ProbeOk()); // probe on calls 1 and 4
             var body = responses.Dequeue();
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -140,8 +148,11 @@ public class EntityImportServiceTests : IDisposable
             """;
 
         var responses = new Queue<string>([page1, EmptyPage]);
+        var callCount = 0;
         var handler = new EntityStubHandler(_ =>
         {
+            callCount++;
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
             var body = responses.Dequeue();
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -160,17 +171,44 @@ public class EntityImportServiceTests : IDisposable
     {
         // JSON payload with HTTP 200 triggers the non-CSV detection — non-transient,
         // no retries, job is failed immediately.
+        var callCount = 0;
         var handler = new EntityStubHandler(_ =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            callCount++;
+            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = CsvContent("{\"error\":true,\"message\":\"query timed out\"}")
-            }));
+            });
+        });
 
         var result = await BuildService(handler)
             .RunAsync("https://test.usac.org/resource/test.csv", pageSize: 100);
 
         Assert.Equal(ImportJobStatus.Failed, result.Status);
         Assert.NotNull(result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RunAsync_AbortsEarly_WhenUpstreamIsUnavailable()
+    {
+        // Probe returns 503 — import should abort before paging begins.
+        // CheckAvailabilityAsync retries once on 503, so expect 2 HTTP calls total.
+        var callCount = 0;
+        var handler = new EntityStubHandler(_ =>
+        {
+            callCount++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        });
+
+        var result = await BuildService(handler)
+            .RunAsync("https://test.usac.org/resource/test.csv", pageSize: 100);
+
+        Assert.Equal(ImportJobStatus.Failed, result.Status);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("unavailable", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, result.RecordsProcessed);
+        Assert.True(callCount <= 2, $"Expected at most 2 probe calls, got {callCount}");
     }
 }
 

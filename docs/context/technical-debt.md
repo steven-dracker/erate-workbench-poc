@@ -1,6 +1,36 @@
 # Technical Debt — ERATE Workbench POC
 
-_Last updated: 2026-03-20_
+_Last updated: 2026-03-21_
+
+---
+
+## Import Resilience — Implemented (CC-ERATE-000039)
+
+The following behaviors were hardened in CC-ERATE-000039 and are now active:
+
+**Retry / backoff (`UsacCsvClient.DownloadStreamAsync`)**
+- Retries on transient failures: HTTP 5xx, HTTP 429, `SocketException`, `IOException`, network-level `HttpRequestException`
+- 3 retries maximum with exponential backoff: 1s → 2s → 4s
+- Non-transient HTTP errors (4xx other than 429) propagate immediately without retry
+- HTTP 5xx responses are logged as "upstream temporarily unavailable" before retrying
+
+**Pre-flight availability check (`UsacCsvClient.CheckAvailabilityAsync`)**
+- All importers perform a lightweight `$limit=1` probe before starting a full import
+- Probe retries once (1s delay) on transient failure, then reports unavailable
+- If the probe fails, the import job is marked `Failed` immediately with error message:
+  `"USAC data source is unavailable. Import aborted."`
+- The job record IS written to the DB before the probe, so there is always a trace
+
+**Expected failure mode during upstream outage (e.g. Socrata maintenance)**
+- Probe fires → gets 503 → retries once → still 503 → returns `false`
+- Import job written to DB as `Failed` within ~1–2 seconds
+- Clear error message in job record and in logs
+- No pages are fetched; no data is modified
+
+**Remaining gap:** Paged importers also have their own per-page retry (4 attempts: 3s/10s/30s delays).
+The pre-flight probe prevents the paging loop from starting, but if the upstream becomes unavailable
+MID-import (after the probe passes), the per-page retry still fires before ultimately failing.
+This is expected behavior — the probe only guards against outages at import start time.
 
 ---
 
