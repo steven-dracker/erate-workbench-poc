@@ -16,6 +16,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<ApplicantYearCommitmentSummary> ApplicantYearCommitmentSummaries => Set<ApplicantYearCommitmentSummary>();
     public DbSet<ApplicantYearDisbursementSummary> ApplicantYearDisbursementSummaries => Set<ApplicantYearDisbursementSummary>();
     public DbSet<ApplicantYearRiskSummary> ApplicantYearRiskSummaries => Set<ApplicantYearRiskSummary>();
+    public DbSet<ConsultantApplication> ConsultantApplications => Set<ConsultantApplication>();
+    public DbSet<ConsultantFrnStatus> ConsultantFrnStatuses => Set<ConsultantFrnStatus>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -151,6 +153,47 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.HasIndex(s => new { s.FundingYear, s.RiskLevel });
             e.Property(s => s.ApplicantEntityNumber).HasMaxLength(20);
             e.Property(s => s.RiskLevel).HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<ConsultantApplication>(e =>
+        {
+            // RawSourceKey: "{ApplicationNumber}-{ConsultantEpcOrganizationId}" — unique per consultant per application
+            e.HasIndex(a => a.RawSourceKey).IsUnique();
+            e.HasIndex(a => a.ApplicationNumber);
+            e.HasIndex(a => a.ConsultantEpcOrganizationId);
+            e.HasIndex(a => new { a.FundingYear, a.ConsultantEpcOrganizationId });
+            e.Property(a => a.RawSourceKey).HasMaxLength(80);
+            e.Property(a => a.ApplicationNumber).HasMaxLength(20);
+            e.Property(a => a.ConsultantEpcOrganizationId).HasMaxLength(20);
+            e.Property(a => a.ApplicantEpcOrganizationId).HasMaxLength(20);
+            e.Property(a => a.ApplicantState).HasMaxLength(2);
+            e.Property(a => a.ConsultantState).HasMaxLength(2);
+            e.Property(a => a.ApplicantType).HasMaxLength(100);
+            e.Property(a => a.FormVersion).HasMaxLength(50);
+            e.Property(a => a.IsCertifiedInWindow).HasMaxLength(50);
+            e.Property(a => a.ConsultantZipCode).HasMaxLength(10);
+        });
+
+        modelBuilder.Entity<ConsultantFrnStatus>(e =>
+        {
+            // RawSourceKey: "{ApplicationNumber}-{FundingRequestNumber}" — unique per FRN per application
+            e.HasIndex(f => f.RawSourceKey).IsUnique();
+            e.HasIndex(f => f.ApplicationNumber);
+            e.HasIndex(f => f.FundingRequestNumber);
+            e.HasIndex(f => f.ConsultantEpcOrganizationId);
+            e.HasIndex(f => new { f.FundingYear, f.ConsultantEpcOrganizationId });
+            e.Property(f => f.RawSourceKey).HasMaxLength(80);
+            e.Property(f => f.ApplicationNumber).HasMaxLength(20);
+            e.Property(f => f.FundingRequestNumber).HasMaxLength(20);
+            e.Property(f => f.ConsultantEpcOrganizationId).HasMaxLength(20);
+            e.Property(f => f.ApplicantState).HasMaxLength(2);
+            e.Property(f => f.Ben).HasMaxLength(20);
+            e.Property(f => f.FrnStatusName).HasMaxLength(100);
+            e.Property(f => f.FormVersion).HasMaxLength(50);
+            e.Property(f => f.IsCertifiedInWindow).HasMaxLength(50);
+            e.Property(f => f.OrganizationEntityTypeName).HasMaxLength(100);
+            e.Property(f => f.ContractTypeName).HasMaxLength(100);
+            e.Property(f => f.InvoicingMode).HasMaxLength(20);
         });
     }
 }
