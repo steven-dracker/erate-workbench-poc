@@ -263,7 +263,7 @@ app.MapPost("/import/consultants/applications", async (
     CancellationToken ct) =>
 {
     var result = await importService.RunAsync(
-        datasetUrl: request?.DatasetUrl,
+        baseUrl: request?.DatasetUrl,
         cancellationToken: ct);
 
     return Results.Ok(new FundingImportResultDto(
@@ -286,7 +286,7 @@ app.MapPost("/import/consultants/frn-status", async (
     CancellationToken ct) =>
 {
     var result = await importService.RunAsync(
-        datasetUrl: request?.DatasetUrl,
+        baseUrl: request?.DatasetUrl,
         cancellationToken: ct);
 
     return Results.Ok(new FundingImportResultDto(

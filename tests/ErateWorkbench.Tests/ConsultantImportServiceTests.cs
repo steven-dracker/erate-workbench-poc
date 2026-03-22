@@ -83,16 +83,13 @@ public class ConsultantImportServiceTests : IDisposable
             APP001,2024,EPC1
             """;
 
-        var callCount = 0;
+        // Each run: probe="", page1=csv, page2="" (terminates pagination)
+        var responses = new Queue<string>(new[] { "", csv, "", "", csv, "" });
         var handler = new StubHttpHandler(_ =>
-        {
-            callCount++;
-            var content = callCount % 2 == 1 ? "" : csv; // odd = probe, even = download
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(content, Encoding.UTF8, "text/csv"),
-            });
-        });
+                Content = new StringContent(responses.Dequeue(), Encoding.UTF8, "text/csv"),
+            }));
 
         var service = BuildConsultantApplicationService(handler);
 
@@ -197,16 +194,13 @@ public class ConsultantImportServiceTests : IDisposable
             APP001,2024,EPC1,FRN1,Funded
             """;
 
-        var callCount = 0;
+        // Each run: probe="", page1=csv, page2="" (terminates pagination)
+        var responses = new Queue<string>(new[] { "", csv, "", "", csv, "" });
         var handler = new StubHttpHandler(_ =>
-        {
-            callCount++;
-            var content = callCount % 2 == 1 ? "" : csv;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(content, Encoding.UTF8, "text/csv"),
-            });
-        });
+                Content = new StringContent(responses.Dequeue(), Encoding.UTF8, "text/csv"),
+            }));
 
         var service = BuildConsultantFrnStatusService(handler);
 
