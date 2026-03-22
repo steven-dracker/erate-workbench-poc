@@ -1,6 +1,36 @@
 # Technical Debt — ERATE Workbench POC
 
-_Last updated: 2026-03-21_
+_Last updated: 2026-03-22_
+
+---
+
+## Consultant ETL — Implemented (CC-ERATE-000038B)
+
+Raw-layer ingestion for the two USAC consultant datasets is complete.
+
+**Tables created:**
+- `ConsultantApplications` — x5px-esft, grain: one row per consultant per Form 471 application
+- `ConsultantFrnStatuses` — mihb-jfex, grain: one row per FRN per consultant-assisted application
+
+**Identity model (canonical):**
+- `ConsultantEpcOrganizationId` is the grouping key for consultant identity — not `ConsultantName`
+- `ConsultantName` is preserved as-is (display only); casing is inconsistent across records
+- `ApplicationNumber` is the cross-dataset bridge key between the two tables
+- `RawSourceKey` per table: `"{ApplicationNumber}-{ConsultantEpcOrganizationId}"` (ConsultantApplications),
+  `"{ApplicationNumber}-{FundingRequestNumber}"` (ConsultantFrnStatuses)
+
+**Datasets remain unjoined at the ETL layer** — tables are loaded independently.
+Joining/aggregation is deferred to CC-ERATE-000038C (Competitive Intelligence Dashboard).
+
+**Deferred to CC-ERATE-000038C:**
+- Name normalization across consultant name variants — use EPC ID for grouping instead
+- Join validation (application_number cardinality, multi-consultant applications)
+- E-Rate Central EPC Organization ID lookup and firm identification
+- Any analytics, rankings, or dashboard queries
+
+**Import endpoints:**
+- `POST /import/consultants/applications` — x5px-esft full ingestion
+- `POST /import/consultants/frn-status` — mihb-jfex full ingestion
 
 ---
 

@@ -57,6 +57,12 @@ builder.Services.AddScoped<EntityImportService>();
 builder.Services.AddScoped<DisbursementCsvParser>();
 builder.Services.AddScoped<DisbursementRepository>();
 builder.Services.AddScoped<DisbursementImportService>();
+builder.Services.AddScoped<ConsultantApplicationCsvParser>();
+builder.Services.AddScoped<ConsultantApplicationRepository>();
+builder.Services.AddScoped<ConsultantApplicationImportService>();
+builder.Services.AddScoped<ConsultantFrnStatusCsvParser>();
+builder.Services.AddScoped<ConsultantFrnStatusRepository>();
+builder.Services.AddScoped<ConsultantFrnStatusImportService>();
 builder.Services.AddScoped<AnalyticsRepository>();
 builder.Services.AddScoped<RiskInsightsRepository>();
 builder.Services.AddScoped<FilingWindowRepository>();
@@ -249,6 +255,52 @@ app.MapPost("/import/disbursements", async (
 })
 .WithName("TriggerDisbursementImport")
 .WithSummary("Trigger ingestion of the USAC E-Rate Invoices and Authorized Disbursements dataset")
+.WithOpenApi();
+
+app.MapPost("/import/consultants/applications", async (
+    ConsultantApplicationImportRequest? request,
+    ConsultantApplicationImportService importService,
+    CancellationToken ct) =>
+{
+    var result = await importService.RunAsync(
+        datasetUrl: request?.DatasetUrl,
+        cancellationToken: ct);
+
+    return Results.Ok(new FundingImportResultDto(
+        result.RecordsProcessed,
+        result.RecordsInserted,
+        result.RecordsUpdated,
+        result.RecordsFailed,
+        result.Duration.ToString(@"hh\:mm\:ss"),
+        result.DatasetName,
+        result.Status.ToString(),
+        result.ErrorMessage));
+})
+.WithName("TriggerConsultantApplicationImport")
+.WithSummary("Trigger ingestion of the USAC Form 471 Consultants dataset (x5px-esft)")
+.WithOpenApi();
+
+app.MapPost("/import/consultants/frn-status", async (
+    ConsultantFrnStatusImportRequest? request,
+    ConsultantFrnStatusImportService importService,
+    CancellationToken ct) =>
+{
+    var result = await importService.RunAsync(
+        datasetUrl: request?.DatasetUrl,
+        cancellationToken: ct);
+
+    return Results.Ok(new FundingImportResultDto(
+        result.RecordsProcessed,
+        result.RecordsInserted,
+        result.RecordsUpdated,
+        result.RecordsFailed,
+        result.Duration.ToString(@"hh\:mm\:ss"),
+        result.DatasetName,
+        result.Status.ToString(),
+        result.ErrorMessage));
+})
+.WithName("TriggerConsultantFrnStatusImport")
+.WithSummary("Trigger ingestion of the USAC Consultant FRN Status dataset (mihb-jfex)")
 .WithOpenApi();
 
 // --- Summary builder endpoints (dev) ---
@@ -484,3 +536,5 @@ record ServiceProviderImportRequest(string? DatasetUrl);
 record Form471ImportRequest(string? DatasetUrl, int? FundingYear);
 record EntityImportRequest(string? DatasetUrl);
 record DisbursementImportRequest(string? DatasetUrl);
+record ConsultantApplicationImportRequest(string? DatasetUrl);
+record ConsultantFrnStatusImportRequest(string? DatasetUrl);
