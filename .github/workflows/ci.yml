@@ -73,8 +73,9 @@ jobs:
           dotnet test tests/ErateWorkbench.Tests/ErateWorkbench.Tests.csproj
           --no-build
           --configuration Release
-          --verbosity normal
           --logger "console;verbosity=normal"
+          --
+          RunConfiguration.DisableAppDomain=true
 
   # ── UI Smoke Tests ────────────────────────────────────────────────────────
   ui-smoke:
