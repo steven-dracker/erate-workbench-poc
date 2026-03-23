@@ -83,13 +83,19 @@ public class ConsultantImportServiceTests : IDisposable
             APP001,2024,EPC1
             """;
 
-        // Each run: probe="", download=csv (2 HTTP calls per run)
-        var responses = new Queue<string>(new[] { "", csv, "", csv });
+        // Calls per run: 1=probe(""), 2=download(csv) — 4 total across two runs.
+        string[] responses = ["", csv, "", csv];
+        var callIndex = -1;
         var handler = new StubHttpHandler(_ =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            var idx = Interlocked.Increment(ref callIndex);
+            if (idx >= responses.Length)
+                throw new InvalidOperationException($"Unexpected HTTP call #{idx + 1}; only {responses.Length} responses configured.");
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(responses.Dequeue(), Encoding.UTF8, "text/csv"),
-            }));
+                Content = new StringContent(responses[idx], Encoding.UTF8, "text/csv"),
+            });
+        });
 
         var service = BuildConsultantApplicationService(handler);
 
@@ -194,13 +200,19 @@ public class ConsultantImportServiceTests : IDisposable
             APP001,2024,EPC1,FRN1,Funded
             """;
 
-        // Each run: probe="", download=csv (2 HTTP calls per run)
-        var responses = new Queue<string>(new[] { "", csv, "", csv });
+        // Calls per run: 1=probe(""), 2=download(csv) — 4 total across two runs.
+        string[] responses = ["", csv, "", csv];
+        var callIndex = -1;
         var handler = new StubHttpHandler(_ =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            var idx = Interlocked.Increment(ref callIndex);
+            if (idx >= responses.Length)
+                throw new InvalidOperationException($"Unexpected HTTP call #{idx + 1}; only {responses.Length} responses configured.");
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(responses.Dequeue(), Encoding.UTF8, "text/csv"),
-            }));
+                Content = new StringContent(responses[idx], Encoding.UTF8, "text/csv"),
+            });
+        });
 
         var service = BuildConsultantFrnStatusService(handler);
 

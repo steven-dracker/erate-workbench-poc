@@ -109,18 +109,19 @@ public class DisbursementImportServiceTests : IDisposable
             2390001235,INV20240002,1,SPI,2024,1900.00
             """;
 
-        // Each run: probe (200) + page + empty
-        var responses = new Queue<string>([page, EmptyPage, page, EmptyPage]);
-        var callCount = 0;
+        // Call sequence across two runs: probe, page, empty, probe, page, empty.
+        // null = ProbeOk(); non-null = CsvContent(body).
+        string?[] responses = [null, page, EmptyPage, null, page, EmptyPage];
+        var callIndex = -1;
         var handler = new DisbursementStubHandler(_ =>
         {
-            callCount++;
-            if (callCount % 3 == 1) return Task.FromResult(ProbeOk()); // probe on calls 1 and 4
-            var body = responses.Dequeue();
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = CsvContent(body)
-            });
+            var idx = Interlocked.Increment(ref callIndex);
+            if (idx >= responses.Length)
+                throw new InvalidOperationException($"Unexpected HTTP call #{idx + 1}; only {responses.Length} responses configured.");
+            var body = responses[idx];
+            return body is null
+                ? Task.FromResult(ProbeOk())
+                : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = CsvContent(body) });
         });
 
         var service = BuildService(handler);
@@ -149,17 +150,18 @@ public class DisbursementImportServiceTests : IDisposable
             2390001234,INV20240001,1,BEAR,2024,4900.00
             """;
 
-        var responses = new Queue<string>([page1, EmptyPage]);
-        var callCount = 0;
+        // Call sequence: probe, page1, empty. null = ProbeOk(); non-null = CsvContent(body).
+        string?[] responses = [null, page1, EmptyPage];
+        var callIndex = -1;
         var handler = new DisbursementStubHandler(_ =>
         {
-            callCount++;
-            if (callCount == 1) return Task.FromResult(ProbeOk()); // pre-flight probe
-            var body = responses.Dequeue();
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = CsvContent(body)
-            });
+            var idx = Interlocked.Increment(ref callIndex);
+            if (idx >= responses.Length)
+                throw new InvalidOperationException($"Unexpected HTTP call #{idx + 1}; only {responses.Length} responses configured.");
+            var body = responses[idx];
+            return body is null
+                ? Task.FromResult(ProbeOk())
+                : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = CsvContent(body) });
         });
 
         await BuildService(handler)
