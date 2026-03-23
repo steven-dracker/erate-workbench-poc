@@ -243,8 +243,6 @@ Primary datasets include:
 
 These datasets are accessed via the Socrata Open Data API and ingested into a local SQLite database for analysis.
 
----
-
 ## Licensing & Data Use
 
 USAC datasets are publicly available and provided for transparency and analysis of the E-Rate program.
@@ -259,7 +257,6 @@ This repository is not affiliated with or endorsed by USAC or the FCC.
 
 Users should refer to USAC for official program data and guidance:
 https://www.usac.org/
----
 
 ## Contributing
 

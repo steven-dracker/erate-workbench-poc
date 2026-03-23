@@ -83,8 +83,8 @@ public class ConsultantImportServiceTests : IDisposable
             APP001,2024,EPC1
             """;
 
-        // Each run: probe="", page1=csv, page2="" (terminates pagination)
-        var responses = new Queue<string>(new[] { "", csv, "", "", csv, "" });
+        // Each run: probe="", download=csv (2 HTTP calls per run)
+        var responses = new Queue<string>(new[] { "", csv, "", csv });
         var handler = new StubHttpHandler(_ =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -194,8 +194,8 @@ public class ConsultantImportServiceTests : IDisposable
             APP001,2024,EPC1,FRN1,Funded
             """;
 
-        // Each run: probe="", page1=csv, page2="" (terminates pagination)
-        var responses = new Queue<string>(new[] { "", csv, "", "", csv, "" });
+        // Each run: probe="", download=csv (2 HTTP calls per run)
+        var responses = new Queue<string>(new[] { "", csv, "", csv });
         var handler = new StubHttpHandler(_ =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -310,7 +310,8 @@ public class ConsultantImportServiceTests : IDisposable
     private ConsultantApplicationImportService BuildConsultantApplicationService(HttpMessageHandler handler)
     {
         var http = new HttpClient(handler);
-        var csvClient = new UsacCsvClient(http, NullLogger<UsacCsvClient>.Instance);
+        var csvClient = new UsacCsvClient(http, NullLogger<UsacCsvClient>.Instance,
+            (_, _) => Task.CompletedTask); // no-op delay — tests run in milliseconds
         var parser = new ConsultantApplicationCsvParser();
         var repo = new ConsultantApplicationRepository(_db);
         return new ConsultantApplicationImportService(
@@ -321,7 +322,8 @@ public class ConsultantImportServiceTests : IDisposable
     private ConsultantFrnStatusImportService BuildConsultantFrnStatusService(HttpMessageHandler handler)
     {
         var http = new HttpClient(handler);
-        var csvClient = new UsacCsvClient(http, NullLogger<UsacCsvClient>.Instance);
+        var csvClient = new UsacCsvClient(http, NullLogger<UsacCsvClient>.Instance,
+            (_, _) => Task.CompletedTask); // no-op delay — tests run in milliseconds
         var parser = new ConsultantFrnStatusCsvParser();
         var repo = new ConsultantFrnStatusRepository(_db);
         return new ConsultantFrnStatusImportService(
