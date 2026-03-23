@@ -40,7 +40,8 @@ public class DisbursementImportServiceTests : IDisposable
     private DisbursementImportService BuildService(HttpMessageHandler handler)
     {
         var httpClient = new HttpClient(handler);
-        var csvClient = new UsacCsvClient(httpClient, NullLogger<UsacCsvClient>.Instance);
+        var csvClient = new UsacCsvClient(httpClient, NullLogger<UsacCsvClient>.Instance,
+            (_, _) => Task.CompletedTask); // no-op delay — tests run in milliseconds
         var parser = new DisbursementCsvParser();
         var repo = new DisbursementRepository(_db);
         return new DisbursementImportService(

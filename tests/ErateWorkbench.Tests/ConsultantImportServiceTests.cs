@@ -83,16 +83,13 @@ public class ConsultantImportServiceTests : IDisposable
             APP001,2024,EPC1
             """;
 
-        var callCount = 0;
+        // Each run: probe="", download=csv (2 HTTP calls per run)
+        var responses = new Queue<string>(new[] { "", csv, "", csv });
         var handler = new StubHttpHandler(_ =>
-        {
-            callCount++;
-            var content = callCount % 2 == 1 ? "" : csv; // odd = probe, even = download
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(content, Encoding.UTF8, "text/csv"),
-            });
-        });
+                Content = new StringContent(responses.Dequeue(), Encoding.UTF8, "text/csv"),
+            }));
 
         var service = BuildConsultantApplicationService(handler);
 
@@ -197,16 +194,13 @@ public class ConsultantImportServiceTests : IDisposable
             APP001,2024,EPC1,FRN1,Funded
             """;
 
-        var callCount = 0;
+        // Each run: probe="", download=csv (2 HTTP calls per run)
+        var responses = new Queue<string>(new[] { "", csv, "", csv });
         var handler = new StubHttpHandler(_ =>
-        {
-            callCount++;
-            var content = callCount % 2 == 1 ? "" : csv;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(content, Encoding.UTF8, "text/csv"),
-            });
-        });
+                Content = new StringContent(responses.Dequeue(), Encoding.UTF8, "text/csv"),
+            }));
 
         var service = BuildConsultantFrnStatusService(handler);
 
@@ -316,7 +310,8 @@ public class ConsultantImportServiceTests : IDisposable
     private ConsultantApplicationImportService BuildConsultantApplicationService(HttpMessageHandler handler)
     {
         var http = new HttpClient(handler);
-        var csvClient = new UsacCsvClient(http, NullLogger<UsacCsvClient>.Instance);
+        var csvClient = new UsacCsvClient(http, NullLogger<UsacCsvClient>.Instance,
+            (_, _) => Task.CompletedTask); // no-op delay — tests run in milliseconds
         var parser = new ConsultantApplicationCsvParser();
         var repo = new ConsultantApplicationRepository(_db);
         return new ConsultantApplicationImportService(
@@ -327,7 +322,8 @@ public class ConsultantImportServiceTests : IDisposable
     private ConsultantFrnStatusImportService BuildConsultantFrnStatusService(HttpMessageHandler handler)
     {
         var http = new HttpClient(handler);
-        var csvClient = new UsacCsvClient(http, NullLogger<UsacCsvClient>.Instance);
+        var csvClient = new UsacCsvClient(http, NullLogger<UsacCsvClient>.Instance,
+            (_, _) => Task.CompletedTask); // no-op delay — tests run in milliseconds
         var parser = new ConsultantFrnStatusCsvParser();
         var repo = new ConsultantFrnStatusRepository(_db);
         return new ConsultantFrnStatusImportService(
