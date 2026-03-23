@@ -160,18 +160,19 @@ public class FundingCommitmentImportServiceTests : IDisposable
             FRN2000002,2024,Washington Elementary
             """;
 
-        // Each run: probe (200) + page + empty
-        var responses = new Queue<string>([page, EmptyPage, page, EmptyPage]);
-        var callCount = 0;
+        // Call sequence across two runs: probe, page, empty, probe, page, empty.
+        // null = ProbeOk(); non-null = CsvContent(body).
+        string?[] responses = [null, page, EmptyPage, null, page, EmptyPage];
+        var callIndex = -1;
         var handler = new StubHttpHandler(_ =>
         {
-            callCount++;
-            if (callCount % 3 == 1) return Task.FromResult(ProbeOk()); // probe on calls 1 and 4
-            var body = responses.Dequeue();
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
-            {
-                Content = CsvContent(body)
-            });
+            var idx = Interlocked.Increment(ref callIndex);
+            if (idx >= responses.Length)
+                throw new InvalidOperationException($"Unexpected HTTP call #{idx + 1}; only {responses.Length} responses configured.");
+            var body = responses[idx];
+            return body is null
+                ? Task.FromResult(ProbeOk())
+                : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = CsvContent(body) });
         });
 
         var service = BuildService(handler);

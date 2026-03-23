@@ -10,15 +10,16 @@ namespace ErateWorkbench.Tests;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/// <summary>Stub HTTP handler that returns a fixed JSON body for every request.</summary>
+/// <summary>Stub HTTP handler that returns responses in order; repeats the last entry if calls exceed the array.</summary>
 file sealed class JsonStubHandler : HttpMessageHandler
 {
-    private readonly Queue<string> responses;
+    private readonly string[] _responses;
+    private int _callIndex = -1;
 
-    /// <param name="responses">Responses returned in order (last response repeated if queue exhausted).</param>
+    /// <param name="responses">Responses returned in order (last response repeated if calls exceed the array).</param>
     public JsonStubHandler(params string[] responses)
     {
-        this.responses = new Queue<string>(responses);
+        _responses = responses.Length > 0 ? responses : [""];
     }
 
     public List<string> RequestedUrls { get; } = [];
@@ -27,10 +28,10 @@ file sealed class JsonStubHandler : HttpMessageHandler
         HttpRequestMessage request, CancellationToken ct)
     {
         RequestedUrls.Add(request.RequestUri!.ToString());
-        var body = responses.Count > 1 ? responses.Dequeue() : responses.Peek();
+        var idx = Math.Min(Interlocked.Increment(ref _callIndex), _responses.Length - 1);
         return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
         {
-            Content = new StringContent(body, Encoding.UTF8, "application/json"),
+            Content = new StringContent(_responses[idx], Encoding.UTF8, "application/json"),
         });
     }
 }
