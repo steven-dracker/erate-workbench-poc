@@ -4,8 +4,14 @@ using Microsoft.Extensions.Logging;
 
 namespace ErateWorkbench.Infrastructure;
 
-public class UsacCsvClient(HttpClient httpClient, ILogger<UsacCsvClient> logger)
+public class UsacCsvClient(
+    HttpClient httpClient,
+    ILogger<UsacCsvClient> logger,
+    // Indirection for retry waits — production uses Task.Delay; tests inject a no-op for speed.
+    Func<TimeSpan, CancellationToken, Task>? delay = null)
 {
+    private readonly Func<TimeSpan, CancellationToken, Task> _delay = delay ?? Task.Delay;
+
     private static readonly TimeSpan[] RetryDelays = [
         TimeSpan.FromSeconds(1),
         TimeSpan.FromSeconds(2),
@@ -42,7 +48,7 @@ public class UsacCsvClient(HttpClient httpClient, ILogger<UsacCsvClient> logger)
                         "Availability probe to {ProbeUrl} returned HTTP {Code} (upstream temporarily unavailable). " +
                         "Retrying in {Delay}s.",
                         probeUrl, code, RetryDelays[attempt].TotalSeconds);
-                    await Task.Delay(RetryDelays[attempt], cancellationToken);
+                    await _delay(RetryDelays[attempt], cancellationToken);
                     continue;
                 }
 
@@ -58,7 +64,7 @@ public class UsacCsvClient(HttpClient httpClient, ILogger<UsacCsvClient> logger)
                     logger.LogWarning(
                         "Availability probe to {ProbeUrl} failed (attempt {Attempt}/{Max}): {Error}. Retrying in {Delay}s.",
                         probeUrl, attempt + 1, maxAttempts, ex.Message, RetryDelays[attempt].TotalSeconds);
-                    await Task.Delay(RetryDelays[attempt], cancellationToken);
+                    await _delay(RetryDelays[attempt], cancellationToken);
                     continue;
                 }
 
@@ -111,7 +117,7 @@ public class UsacCsvClient(HttpClient httpClient, ILogger<UsacCsvClient> logger)
                 logger.LogWarning(
                     "Download attempt {Attempt}/{Max} failed for {Url}: {Error}. Retrying in {Delay}s.",
                     attempt + 1, RetryDelays.Length + 1, url, ex.Message, delay.TotalSeconds);
-                await Task.Delay(delay, cancellationToken);
+                await _delay(delay, cancellationToken);
             }
         }
     }

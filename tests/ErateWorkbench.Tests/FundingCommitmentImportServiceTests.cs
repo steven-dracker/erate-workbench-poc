@@ -67,14 +67,11 @@ public class FundingCommitmentImportServiceTests : IDisposable
 
     // ── UsacCsvClient retry tests ───────────────────────────────────────────
 
-    /// <summary>
-    /// The client should retry once after an HttpRequestException and succeed on the second attempt.
-    /// This test takes ~1 second due to the first retry delay (RetryDelays[0] = 1s).
-    /// </summary>
     [Fact]
     public async Task UsacCsvClient_RetriesOnHttpRequestException_AndSucceeds()
     {
         var callCount = 0;
+        var delayCount = 0;
         var handler = new StubHttpHandler(_ =>
         {
             callCount++;
@@ -87,13 +84,15 @@ public class FundingCommitmentImportServiceTests : IDisposable
             });
         });
 
-        var client = new UsacCsvClient(new HttpClient(handler), NullLogger<UsacCsvClient>.Instance);
+        var client = new UsacCsvClient(new HttpClient(handler), NullLogger<UsacCsvClient>.Instance,
+            (_, _) => { delayCount++; return Task.CompletedTask; });
         using var stream = await client.DownloadStreamAsync("https://test.example.com/data.csv");
         using var reader = new StreamReader(stream);
         var content = await reader.ReadToEndAsync();
 
         Assert.Equal("ok", content);
-        Assert.Equal(2, callCount); // Initial attempt failed; retry succeeded.
+        Assert.Equal(2, callCount);   // initial attempt failed; retry succeeded
+        Assert.Equal(1, delayCount);  // one backoff wait between attempts
     }
 
     // ── FundingCommitmentImportService integration tests ────────────────────
@@ -101,7 +100,8 @@ public class FundingCommitmentImportServiceTests : IDisposable
     private FundingCommitmentImportService BuildService(HttpMessageHandler handler)
     {
         var httpClient = new HttpClient(handler);
-        var csvClient = new UsacCsvClient(httpClient, NullLogger<UsacCsvClient>.Instance);
+        var csvClient = new UsacCsvClient(httpClient, NullLogger<UsacCsvClient>.Instance,
+            (_, _) => Task.CompletedTask); // no-op delay — tests run in milliseconds
         var parser = new FundingCommitmentCsvParser();
         var repo = new FundingCommitmentRepository(_db);
         return new FundingCommitmentImportService(

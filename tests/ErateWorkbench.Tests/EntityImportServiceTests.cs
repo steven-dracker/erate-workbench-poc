@@ -40,7 +40,8 @@ public class EntityImportServiceTests : IDisposable
     private EntityImportService BuildService(HttpMessageHandler handler)
     {
         var httpClient = new HttpClient(handler);
-        var csvClient = new UsacCsvClient(httpClient, NullLogger<UsacCsvClient>.Instance);
+        var csvClient = new UsacCsvClient(httpClient, NullLogger<UsacCsvClient>.Instance,
+            (_, _) => Task.CompletedTask); // no-op delay — tests run in milliseconds
         var parser = new EntityCsvParser();
         var repo = new EntityRepository(_db);
         return new EntityImportService(
