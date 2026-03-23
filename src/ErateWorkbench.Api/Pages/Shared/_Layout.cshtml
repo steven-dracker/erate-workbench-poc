@@ -39,7 +39,7 @@
 
                     <!-- Explore: data discovery pages -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle @(ViewData["ActivePage"]?.ToString() is "Search" or "Analytics" or "FilingWindow" ? "active" : "")"
+                        <a class="nav-link dropdown-toggle @(ViewData["ActivePage"]?.ToString() is "Search" or "Analytics" or "FilingWindow" or "ConsultantIntelligence" ? "active" : "")"
                            href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Explore
                         </a>
@@ -55,6 +55,10 @@
                             <li>
                                 <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "FilingWindow" ? "active" : "")"
                                    asp-page="/FilingWindow">Filing Window</a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item @(ViewData["ActivePage"]?.ToString() == "ConsultantIntelligence" ? "active" : "")"
+                                   asp-page="/ConsultantIntelligence">Competitive Intelligence</a>
                             </li>
                         </ul>
                     </li>

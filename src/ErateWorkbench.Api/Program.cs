@@ -66,6 +66,7 @@ builder.Services.AddScoped<ConsultantFrnStatusImportService>();
 builder.Services.AddScoped<AnalyticsRepository>();
 builder.Services.AddScoped<RiskInsightsRepository>();
 builder.Services.AddScoped<FilingWindowRepository>();
+builder.Services.AddScoped<ConsultantAnalyticsService>();
 
 // Reconciliation
 builder.Services.AddHttpClient<SocrataReconciliationService>();
@@ -526,6 +527,44 @@ app.MapGet("/applicants/{ben}", (string ben, int? fundingYear, ApplicantReposito
 .WithName("GetApplicantByBen")
 .WithOpenApi();
 
+
+// --- Consultant analytics endpoints ---
+
+app.MapGet("/api/consultants/overview", async (
+    ConsultantAnalyticsService consultantAnalytics,
+    CancellationToken ct) =>
+{
+    var (consultantCount, applicationCount) = await consultantAnalytics.GetOverviewStatsAsync(ct);
+    return Results.Ok(new { consultantCount, applicationCount });
+})
+.WithName("GetConsultantOverview")
+.WithSummary("Total consultant and application counts for dashboard summary cards")
+.WithOpenApi();
+
+app.MapGet("/api/consultants/top", async (
+    int? limit,
+    ConsultantAnalyticsService consultantAnalytics,
+    CancellationToken ct) =>
+{
+    var results = await consultantAnalytics.GetTopConsultantsAsync(
+        Math.Clamp(limit ?? 25, 1, 100), ct);
+    return Results.Ok(results);
+})
+.WithName("GetTopConsultants")
+.WithSummary("Top consultants by application volume with FRN counts and funded totals")
+.WithOpenApi();
+
+app.MapGet("/api/consultants/{epcId}", async (
+    string epcId,
+    ConsultantAnalyticsService consultantAnalytics,
+    CancellationToken ct) =>
+{
+    var detail = await consultantAnalytics.GetConsultantDetailsAsync(epcId, ct);
+    return detail is null ? Results.NotFound() : Results.Ok(detail);
+})
+.WithName("GetConsultantDetail")
+.WithSummary("Full detail view for a single consultant: trends, state breakdown, service types")
+.WithOpenApi();
 
 app.Run();
 
