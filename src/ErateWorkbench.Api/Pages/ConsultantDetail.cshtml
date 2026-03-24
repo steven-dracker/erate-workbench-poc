@@ -16,6 +16,10 @@
     {
         <code class="text-muted" style="font-size:.85rem">@Model.Detail.ConsultantEpcOrganizationId</code>
     }
+    @if (Model.IsERateCentral)
+    {
+        <span class="badge bg-primary" style="font-size:.75rem; vertical-align:middle">★ E-Rate Central</span>
+    }
 </div>
 
 <!-- Summary stat cards -->

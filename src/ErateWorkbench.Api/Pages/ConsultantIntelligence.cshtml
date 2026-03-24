@@ -3,12 +3,100 @@
 @{
     ViewData["Title"] = "Competitive Intelligence";
     ViewData["ActivePage"] = "ConsultantIntelligence";
+    string eRateCentralId = ErateWorkbench.Infrastructure.ConsultantConstants.ERateCentralEpcId;
 }
 
-<div class="d-flex align-items-baseline gap-3 mb-4">
+<div class="d-flex align-items-baseline gap-3 mb-3">
     <h4 class="mb-0">Competitive Intelligence</h4>
     <span class="text-muted small">Consultant market share analytics — E-Rate FY2016–FY2026</span>
 </div>
+
+<!-- Filter bar -->
+<form method="get" class="mb-4">
+    <div class="card">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label form-label-sm mb-1 text-muted" style="font-size:.75rem">FUNDING YEAR</label>
+                    <select name="years" multiple class="form-select form-select-sm" size="3"
+                            onchange="this.form.submit()">
+                        @foreach (var yr in Model.FilterOptions.FundingYears)
+                        {
+                            if (Model.Years?.Contains(yr) == true)
+                            {
+                                <option value="@yr" selected>FY@yr</option>
+                            }
+                            else
+                            {
+                                <option value="@yr">FY@yr</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label form-label-sm mb-1 text-muted" style="font-size:.75rem">STATE</label>
+                    <select name="state" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All States</option>
+                        @foreach (var s in Model.FilterOptions.States)
+                        {
+                            if (Model.State == s)
+                            {
+                                <option value="@s" selected>@s</option>
+                            }
+                            else
+                            {
+                                <option value="@s">@s</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label form-label-sm mb-1 text-muted" style="font-size:.75rem">SERVICE TYPE</label>
+                    <select name="serviceType" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Service Types</option>
+                        @foreach (var st in Model.FilterOptions.ServiceTypes)
+                        {
+                            if (Model.ServiceType == st)
+                            {
+                                <option value="@st" selected>@st</option>
+                            }
+                            else
+                            {
+                                <option value="@st">@st</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-2 align-items-end">
+                    @if (Model.HasActiveFilters)
+                    {
+                        <a href="/ConsultantIntelligence" class="btn btn-sm btn-outline-secondary w-100">
+                            Clear filters
+                        </a>
+                    }
+                </div>
+            </div>
+            @if (Model.HasActiveFilters)
+            {
+                <div class="mt-2" style="font-size:.78rem; color:#6c757d">
+                    Showing filtered results —
+                    @if (Model.Years?.Length > 0)
+                    {
+                        <span>Years: @string.Join(", ", Model.Years.Select(y => "FY" + y))</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.State))
+                    {
+                        <span> · State: @Model.State</span>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Model.ServiceType))
+                    {
+                        <span> · Service: @Model.ServiceType</span>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</form>
 
 <!-- Overview stat cards -->
 <div class="row g-3 mb-4">
@@ -28,6 +116,14 @@
             </div>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="card h-100" style="border-left:4px solid #6f42c1">
+            <div class="card-body">
+                <div class="text-muted small">Total FRNs</div>
+                <div class="fs-4 fw-bold">@Model.FrnCount.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @if (Model.ConsultantCount == 0)
@@ -39,6 +135,74 @@
 }
 else
 {
+    <!-- Insight cards -->
+    @if (Model.InsightLeaderName != null || Model.InsightConcentration != null)
+    {
+        <h6 class="text-uppercase text-muted fw-semibold mb-3" style="letter-spacing:.05em">Market Insights</h6>
+        <div class="row g-3 mb-4">
+            @if (Model.InsightLeaderName != null)
+            {
+                <div class="col-md-3">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body">
+                            <div class="text-muted small text-uppercase mb-1" style="font-size:.7rem; letter-spacing:.05em">Market Leader</div>
+                            <div class="fw-semibold">@Model.InsightLeaderName</div>
+                            <div class="text-muted" style="font-size:.8rem">@Model.InsightLeaderDetail</div>
+                        </div>
+                    </div>
+                </div>
+            }
+            @if (Model.InsightFundingName != null)
+            {
+                <div class="col-md-3">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body">
+                            <div class="text-muted small text-uppercase mb-1" style="font-size:.7rem; letter-spacing:.05em">Top Funded</div>
+                            <div class="fw-semibold">@Model.InsightFundingName</div>
+                            <div class="text-muted" style="font-size:.8rem">@Model.InsightFundingDetail</div>
+                        </div>
+                    </div>
+                </div>
+            }
+            @if (Model.InsightReachName != null)
+            {
+                <div class="col-md-3">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body">
+                            <div class="text-muted small text-uppercase mb-1" style="font-size:.7rem; letter-spacing:.05em">Widest Reach</div>
+                            <div class="fw-semibold">@Model.InsightReachName</div>
+                            <div class="text-muted" style="font-size:.8rem">@Model.InsightReachDetail</div>
+                        </div>
+                    </div>
+                </div>
+            }
+            @if (Model.InsightConcentration != null)
+            {
+                <div class="col-md-3">
+                    <div class="card h-100 border-0 bg-light">
+                        <div class="card-body">
+                            <div class="text-muted small text-uppercase mb-1" style="font-size:.7rem; letter-spacing:.05em">Concentration</div>
+                            <div class="fw-semibold text-warning-emphasis">@Model.InsightConcentration</div>
+                            <div class="text-muted" style="font-size:.8rem">in this context</div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- E-Rate Central callout -->
+    @if (Model.ERateCentralIsInResults)
+    {
+        <div class="alert alert-primary d-flex gap-2 align-items-start mb-4" role="alert" style="font-size:.875rem">
+            <span>★</span>
+            <div>
+                <strong>E-Rate Central</strong> appears in these results (EPC ID @eRateCentralId).
+                Rows marked with ★ in the table below.
+            </div>
+        </div>
+    }
+
     <!-- Top consultants chart -->
     <div class="row g-4 mb-4">
         <div class="col-12">
@@ -56,9 +220,18 @@ else
         </div>
     </div>
 
-    <!-- Top consultants table -->
+    <!-- Sort controls + table -->
     <div class="card">
-        <div class="card-header fw-semibold">Consultant Market Leaders</div>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Consultant Market Leaders</span>
+            <div class="d-flex gap-1 align-items-center">
+                <span class="text-muted small me-1">Sort by:</span>
+                <button class="btn btn-sm btn-outline-secondary sort-btn active" data-sort="apps">Applications</button>
+                <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="frns">FRNs</button>
+                <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="share">Market Share</button>
+                <button class="btn btn-sm btn-outline-secondary sort-btn" data-sort="funding">Funded</button>
+            </div>
+        </div>
         <div class="table-responsive">
             <table class="table table-sm table-hover mb-0">
                 <thead class="table-light">
@@ -67,14 +240,15 @@ else
                         <th>Consultant</th>
                         <th>EPC ID</th>
                         <th class="text-end">Applications</th>
+                        <th class="text-end">App Share</th>
                         <th class="text-end">FRNs</th>
+                        <th class="text-end">FRN Share</th>
                         <th class="text-end">Funded Total</th>
+                        <th class="text-end">States</th>
                         <th></th>
                     </tr>
                 </thead>
-                <tbody id="consultantTableBody">
-                    <!-- Populated by JS from TopConsultantsJson -->
-                </tbody>
+                <tbody id="consultantTableBody"></tbody>
             </table>
         </div>
     </div>
@@ -84,33 +258,35 @@ else
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <script>
 const consultants = @Html.Raw(Model.TopConsultantsJson);
+const eRateCentralId = '@eRateCentralId';
 
 function fmtDollars(v) {
     if (v == null) return '—';
     if (v >= 1e9) return '$' + (v / 1e9).toFixed(1) + 'B';
     if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
     if (v >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
-    return '$' + v.toLocaleString();
+    return '$' + Number(v).toLocaleString();
 }
 
-function fmtNum(v) {
-    return v == null ? '0' : v.toLocaleString();
-}
-
-function displayName(c) {
-    return c.consultantName || c.consultantEpcOrganizationId;
-}
+function fmtNum(v) { return (v ?? 0).toLocaleString(); }
+function fmtPct(v) { return (v ?? 0).toFixed(1) + '%'; }
+function displayName(c) { return c.consultantName || c.consultantEpcOrganizationId; }
+function isERateCentral(c) { return c.consultantEpcOrganizationId === eRateCentralId; }
 
 if (consultants.length > 0) {
-    // Chart
-    new Chart(document.getElementById('topConsultantsChart'), {
+    // Chart — always ordered by application count
+    const chartData = [...consultants].sort((a, b) => b.totalApplications - a.totalApplications);
+    const bgColors = chartData.map(c =>
+        isERateCentral(c) ? 'rgba(13,110,253,0.95)' : 'rgba(13,110,253,0.65)');
+
+    const chart = new Chart(document.getElementById('topConsultantsChart'), {
         type: 'bar',
         data: {
-            labels: consultants.map(c => displayName(c)),
+            labels: chartData.map(c => displayName(c)),
             datasets: [{
                 label: 'Applications',
-                data: consultants.map(c => c.totalApplications),
-                backgroundColor: 'rgba(13,110,253,0.75)',
+                data: chartData.map(c => c.totalApplications),
+                backgroundColor: bgColors,
                 borderRadius: 3,
             }]
         },
@@ -122,34 +298,68 @@ if (consultants.length > 0) {
                 legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: ctx => ` ${ctx.parsed.x.toLocaleString()} applications`
+                        label: ctx => {
+                            const c = chartData[ctx.dataIndex];
+                            return [
+                                ` ${ctx.parsed.x.toLocaleString()} applications (${fmtPct(c.applicationSharePct)} share)`,
+                                ` ${fmtNum(c.totalFrns)} FRNs`,
+                                ` ${fmtDollars(c.totalFundingAmount)} funded`
+                            ];
+                        }
                     }
                 }
             },
-            scales: {
-                x: { ticks: { callback: v => v.toLocaleString() } }
-            }
+            scales: { x: { ticks: { callback: v => v.toLocaleString() } } }
         }
     });
 
-    // Table
-    const tbody = document.getElementById('consultantTableBody');
-    consultants.forEach((c, i) => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td class="text-muted">${i + 1}</td>
-            <td><strong>${displayName(c)}</strong></td>
-            <td><code class="text-muted" style="font-size:.8rem">${c.consultantEpcOrganizationId}</code></td>
-            <td class="text-end">${fmtNum(c.totalApplications)}</td>
-            <td class="text-end">${fmtNum(c.totalFrns)}</td>
-            <td class="text-end">${fmtDollars(c.totalFundingAmount)}</td>
-            <td class="text-end">
-                <a href="/ConsultantDetail?epcId=${encodeURIComponent(c.consultantEpcOrganizationId)}"
-                   class="btn btn-sm btn-outline-primary" style="font-size:.75rem; padding:.2rem .6rem">
-                    Detail →
-                </a>
-            </td>`;
-        tbody.appendChild(row);
+    // Table render
+    let sortField = 'apps';
+    function renderTable() {
+        const sorted = [...consultants].sort((a, b) => {
+            if (sortField === 'apps')    return b.totalApplications - a.totalApplications;
+            if (sortField === 'frns')    return b.totalFrns - a.totalFrns;
+            if (sortField === 'share')   return b.applicationSharePct - a.applicationSharePct;
+            if (sortField === 'funding') return (b.totalFundingAmount ?? 0) - (a.totalFundingAmount ?? 0);
+            return 0;
+        });
+
+        const tbody = document.getElementById('consultantTableBody');
+        tbody.innerHTML = '';
+        sorted.forEach((c, i) => {
+            const star = isERateCentral(c)
+                ? '<span title="E-Rate Central" style="color:#0d6efd; margin-right:.3rem">★</span>' : '';
+            const row = document.createElement('tr');
+            if (isERateCentral(c)) row.style.background = 'rgba(13,110,253,.04)';
+            row.innerHTML = `
+                <td class="text-muted">${i + 1}</td>
+                <td>${star}<strong>${displayName(c)}</strong></td>
+                <td><code class="text-muted" style="font-size:.78rem">${c.consultantEpcOrganizationId}</code></td>
+                <td class="text-end">${fmtNum(c.totalApplications)}</td>
+                <td class="text-end text-muted" style="font-size:.85rem">${fmtPct(c.applicationSharePct)}</td>
+                <td class="text-end">${fmtNum(c.totalFrns)}</td>
+                <td class="text-end text-muted" style="font-size:.85rem">${fmtPct(c.frnSharePct)}</td>
+                <td class="text-end">${fmtDollars(c.totalFundingAmount)}</td>
+                <td class="text-end">${c.distinctStateCount > 0 ? c.distinctStateCount : '—'}</td>
+                <td class="text-end">
+                    <a href="/ConsultantDetail?epcId=${encodeURIComponent(c.consultantEpcOrganizationId)}"
+                       class="btn btn-sm btn-outline-primary" style="font-size:.72rem; padding:.15rem .5rem">
+                        Detail →
+                    </a>
+                </td>`;
+            tbody.appendChild(row);
+        });
+    }
+    renderTable();
+
+    // Sort buttons
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            sortField = btn.dataset.sort;
+            renderTable();
+        });
     });
 }
 </script>

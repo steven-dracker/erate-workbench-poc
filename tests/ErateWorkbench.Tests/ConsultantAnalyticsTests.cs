@@ -74,9 +74,10 @@ public class ConsultantAnalyticsTests : IDisposable
     [Fact]
     public async Task GetOverviewStats_ReturnsZero_WhenNoData()
     {
-        var (consultants, apps) = await _svc.GetOverviewStatsAsync();
+        var (consultants, apps, frns) = await _svc.GetOverviewStatsAsync();
         Assert.Equal(0, consultants);
         Assert.Equal(0, apps);
+        Assert.Equal(0, frns);
     }
 
     [Fact]
@@ -87,7 +88,7 @@ public class ConsultantAnalyticsTests : IDisposable
         SeedApplication("EPC2", "APP3");
         await _db.SaveChangesAsync();
 
-        var (consultants, apps) = await _svc.GetOverviewStatsAsync();
+        var (consultants, apps, _) = await _svc.GetOverviewStatsAsync();
         Assert.Equal(2, consultants); // 2 distinct EPC IDs
         Assert.Equal(3, apps);
     }
@@ -295,5 +296,211 @@ public class ConsultantAnalyticsTests : IDisposable
         var types = await _svc.GetServiceTypesAsync("EPC1");
         Assert.Single(types);
         Assert.Equal("Internal Connections", types[0].ServiceTypeName);
+    }
+
+    // ── Market share (CC-ERATE-000038E) ───────────────────────────────────────
+
+    [Fact]
+    public async Task GetTopConsultants_ApplicationSharePct_SumsCorrectly()
+    {
+        // EPC1 has 3 apps, EPC2 has 1 app → total 4, shares should be 75% and 25%
+        SeedApplication("EPC1", "APP1");
+        SeedApplication("EPC1", "APP2");
+        SeedApplication("EPC1", "APP3");
+        SeedApplication("EPC2", "APP4");
+        await _db.SaveChangesAsync();
+
+        var result = await _svc.GetTopConsultantsAsync();
+        var epc1 = result.Single(r => r.ConsultantEpcOrganizationId == "EPC1");
+        var epc2 = result.Single(r => r.ConsultantEpcOrganizationId == "EPC2");
+
+        Assert.Equal(75.0m, epc1.ApplicationSharePct);
+        Assert.Equal(25.0m, epc2.ApplicationSharePct);
+    }
+
+    [Fact]
+    public async Task GetTopConsultants_FrnSharePct_SumsCorrectly()
+    {
+        SeedApplication("EPC1", "APP1");
+        SeedApplication("EPC2", "APP2");
+        SeedFrn("EPC1", "FRN1", "APP1");
+        SeedFrn("EPC1", "FRN2", "APP1");
+        SeedFrn("EPC2", "FRN3", "APP2");
+        await _db.SaveChangesAsync();
+
+        var result = await _svc.GetTopConsultantsAsync();
+        var epc1 = result.Single(r => r.ConsultantEpcOrganizationId == "EPC1");
+        var epc2 = result.Single(r => r.ConsultantEpcOrganizationId == "EPC2");
+
+        // 2 of 3 FRNs = 66.7%, 1 of 3 = 33.3%
+        Assert.True(epc1.FrnSharePct > epc2.FrnSharePct);
+        Assert.Equal(100.0m, epc1.FrnSharePct + epc2.FrnSharePct);
+    }
+
+    [Fact]
+    public async Task GetTopConsultants_DistinctStateCount_ReflectsGeographicReach()
+    {
+        SeedApplication("EPC1", "APP1", state: "TX");
+        SeedApplication("EPC1", "APP2", state: "TX"); // same state, still 1 distinct
+        SeedApplication("EPC1", "APP3", state: "CA");
+        SeedApplication("EPC1", "APP4", state: null); // null excluded
+        await _db.SaveChangesAsync();
+
+        var result = await _svc.GetTopConsultantsAsync();
+        Assert.Equal(2, result.Single().DistinctStateCount);
+    }
+
+    // ── Filtering (CC-ERATE-000038E) ──────────────────────────────────────────
+
+    [Fact]
+    public async Task GetTopConsultants_YearFilter_ExcludesOtherYears()
+    {
+        SeedApplication("EPC1", "APP1", year: 2024);
+        SeedApplication("EPC1", "APP2", year: 2023);
+        SeedApplication("EPC2", "APP3", year: 2023);
+        await _db.SaveChangesAsync();
+
+        var result = await _svc.GetTopConsultantsAsync(
+            filters: new ConsultantFilterParams(FundingYears: [2024]));
+
+        // Only EPC1's 2024 application should appear
+        Assert.Single(result);
+        Assert.Equal("EPC1", result[0].ConsultantEpcOrganizationId);
+        Assert.Equal(1, result[0].TotalApplications);
+    }
+
+    [Fact]
+    public async Task GetTopConsultants_StateFilter_ExcludesOtherStates()
+    {
+        SeedApplication("EPC1", "APP1", state: "TX");
+        SeedApplication("EPC1", "APP2", state: "CA");
+        SeedApplication("EPC2", "APP3", state: "CA");
+        await _db.SaveChangesAsync();
+
+        var result = await _svc.GetTopConsultantsAsync(
+            filters: new ConsultantFilterParams(State: "TX"));
+
+        Assert.Single(result);
+        Assert.Equal("EPC1", result[0].ConsultantEpcOrganizationId);
+        Assert.Equal(1, result[0].TotalApplications);
+    }
+
+    [Fact]
+    public async Task GetTopConsultants_ServiceTypeFilter_RestrictsToEpcIdsWithMatchingFrns()
+    {
+        SeedApplication("EPC1", "APP1");
+        SeedApplication("EPC2", "APP2");
+        SeedFrn("EPC1", "FRN1", "APP1", serviceType: "Internal Connections");
+        SeedFrn("EPC2", "FRN2", "APP2", serviceType: "Data Transmission and/or Internet Access");
+        await _db.SaveChangesAsync();
+
+        var result = await _svc.GetTopConsultantsAsync(
+            filters: new ConsultantFilterParams(ServiceType: "Internal Connections"));
+
+        // Only EPC1 has Internal Connections FRNs
+        Assert.Single(result);
+        Assert.Equal("EPC1", result[0].ConsultantEpcOrganizationId);
+    }
+
+    [Fact]
+    public async Task GetTopConsultants_ServiceTypeFilter_ReturnsEmpty_WhenNoMatch()
+    {
+        SeedApplication("EPC1", "APP1");
+        SeedFrn("EPC1", "FRN1", "APP1", serviceType: "Internal Connections");
+        await _db.SaveChangesAsync();
+
+        var result = await _svc.GetTopConsultantsAsync(
+            filters: new ConsultantFilterParams(ServiceType: "Voice Services"));
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task GetTopConsultants_FilteredSharePct_BasedOnFilteredTotals()
+    {
+        // When filtered, market share % should be relative to filtered total, not global total
+        SeedApplication("EPC1", "APP1", year: 2024);
+        SeedApplication("EPC2", "APP2", year: 2024);
+        SeedApplication("EPC3", "APP3", year: 2023); // excluded by year filter
+        await _db.SaveChangesAsync();
+
+        var result = await _svc.GetTopConsultantsAsync(
+            filters: new ConsultantFilterParams(FundingYears: [2024]));
+
+        // EPC1 and EPC2 each have 1 of 2 filtered apps → 50% each
+        Assert.Equal(2, result.Count);
+        Assert.Equal(50.0m, result[0].ApplicationSharePct);
+        Assert.Equal(50.0m, result[1].ApplicationSharePct);
+    }
+
+    // ── GetOverviewStatsAsync with filters ────────────────────────────────────
+
+    [Fact]
+    public async Task GetOverviewStats_ReturnsFrnCount()
+    {
+        SeedApplication("EPC1", "APP1");
+        SeedFrn("EPC1", "FRN1", "APP1");
+        SeedFrn("EPC1", "FRN2", "APP1");
+        await _db.SaveChangesAsync();
+
+        var (consultants, apps, frns) = await _svc.GetOverviewStatsAsync();
+        Assert.Equal(1, consultants);
+        Assert.Equal(1, apps);
+        Assert.Equal(2, frns);
+    }
+
+    [Fact]
+    public async Task GetOverviewStats_YearFilter_CountsOnlyMatchingRows()
+    {
+        SeedApplication("EPC1", "APP1", year: 2024);
+        SeedApplication("EPC1", "APP2", year: 2023);
+        SeedFrn("EPC1", "FRN1", "APP1", year: 2024);
+        SeedFrn("EPC1", "FRN2", "APP2", year: 2023);
+        await _db.SaveChangesAsync();
+
+        var (_, apps, frns) = await _svc.GetOverviewStatsAsync(
+            new ConsultantFilterParams(FundingYears: [2024]));
+        Assert.Equal(1, apps);
+        Assert.Equal(1, frns);
+    }
+
+    // ── GetAvailableFiltersAsync ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task GetAvailableFilters_ReturnsDistinctYears_Descending()
+    {
+        SeedApplication("EPC1", "APP1", year: 2022);
+        SeedApplication("EPC1", "APP2", year: 2024);
+        SeedApplication("EPC1", "APP3", year: 2024); // duplicate year
+        await _db.SaveChangesAsync();
+
+        var opts = await _svc.GetAvailableFiltersAsync();
+        Assert.Equal([2024, 2022], opts.FundingYears);
+    }
+
+    [Fact]
+    public async Task GetAvailableFilters_ReturnsDistinctStates_Sorted()
+    {
+        SeedApplication("EPC1", "APP1", state: "TX");
+        SeedApplication("EPC1", "APP2", state: "CA");
+        SeedApplication("EPC1", "APP3", state: "TX"); // duplicate
+        SeedApplication("EPC1", "APP4", state: null); // excluded
+        await _db.SaveChangesAsync();
+
+        var opts = await _svc.GetAvailableFiltersAsync();
+        Assert.Equal(["CA", "TX"], opts.States);
+    }
+
+    [Fact]
+    public async Task GetAvailableFilters_ReturnsDistinctServiceTypes_FromFrnDataset()
+    {
+        SeedFrn("EPC1", "FRN1", "APP1", serviceType: "Internal Connections");
+        SeedFrn("EPC1", "FRN2", "APP1", serviceType: "Internal Connections"); // duplicate
+        SeedFrn("EPC1", "FRN3", "APP1", serviceType: "Data Transmission and/or Internet Access");
+        SeedFrn("EPC1", "FRN4", "APP1", serviceType: null); // excluded
+        await _db.SaveChangesAsync();
+
+        var opts = await _svc.GetAvailableFiltersAsync();
+        Assert.Equal(2, opts.ServiceTypes.Count);
     }
 }

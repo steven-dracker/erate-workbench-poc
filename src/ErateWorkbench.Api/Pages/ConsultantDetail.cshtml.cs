@@ -20,6 +20,9 @@ public class ConsultantDetailModel(
     public string StateBreakdownJson { get; private set; } = "[]";
     public string ServiceTypesJson { get; private set; } = "[]";
 
+    public bool IsERateCentral =>
+        Detail?.ConsultantEpcOrganizationId == ConsultantConstants.ERateCentralEpcId;
+
     public async Task<IActionResult> OnGetAsync(CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(EpcId))
