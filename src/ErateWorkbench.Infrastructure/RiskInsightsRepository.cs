@@ -360,7 +360,7 @@ public class RiskInsightsRepository(AppDbContext db, ILogger<RiskInsightsReposit
     // -----------------------------------------------------------------------
 
     public async Task<List<AdvisorySignalDto>> GetAdvisorySignalsAsync(
-        int? year = null, int topN = 25, CancellationToken ct = default)
+        int? year = null, string? severity = null, int topN = 25, CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
 
@@ -369,6 +369,12 @@ public class RiskInsightsRepository(AppDbContext db, ILogger<RiskInsightsReposit
 
         if (year.HasValue)
             query = query.Where(r => r.FundingYear == year.Value);
+
+        if (!string.IsNullOrEmpty(severity))
+        {
+            var severityLower = severity.ToLowerInvariant();
+            query = query.Where(r => r.RiskLevel.ToLower() == severityLower);
+        }
 
         // Load rows that match at least one advisory condition.
         // All filter predicates use double/bool columns — fully SQL-translated.
