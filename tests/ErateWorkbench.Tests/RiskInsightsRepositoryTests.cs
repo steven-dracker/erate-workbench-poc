@@ -962,4 +962,65 @@ public class RiskInsightsRepositoryTests : IDisposable
         var signals = await _repo.GetAdvisorySignalsAsync();
         Assert.Empty(signals);
     }
+
+    // -----------------------------------------------------------------------
+    // GetAdvisorySignalsAsync — severity filter (MANUAL-QA-BUG-00006)
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task GetAdvisorySignals_SeverityFilter_ExcludesNonMatchingRiskLevels()
+    {
+        // BEN001 = High, BEN002 = Low — filtering "High" should exclude BEN002
+        _db.ApplicantYearRiskSummaries.AddRange(
+            RS("BEN001", redPct: 0.7, disbPct: 0.2, riskScore: 0.75, riskLevel: "High"),
+            RS("BEN002", redPct: 0.7, disbPct: 0.2, riskScore: 0.75, riskLevel: "Low"));
+        await _db.SaveChangesAsync();
+
+        var signals = await _repo.GetAdvisorySignalsAsync(severity: "High");
+
+        Assert.All(signals, s => Assert.Equal("High", s.RiskLevel));
+        Assert.DoesNotContain(signals, s => s.EntityNumber == "BEN002");
+    }
+
+    [Fact]
+    public async Task GetAdvisorySignals_SeverityFilter_CaseInsensitive()
+    {
+        _db.ApplicantYearRiskSummaries.Add(
+            RS("BEN001", redPct: 0.7, disbPct: 0.2, riskScore: 0.75, riskLevel: "High"));
+        await _db.SaveChangesAsync();
+
+        var signalsUpper = await _repo.GetAdvisorySignalsAsync(severity: "HIGH");
+        var signalsLower = await _repo.GetAdvisorySignalsAsync(severity: "high");
+
+        Assert.Single(signalsUpper);
+        Assert.Single(signalsLower);
+    }
+
+    [Fact]
+    public async Task GetAdvisorySignals_SeverityFilter_ReturnsEmptyWhenNoneMatch()
+    {
+        _db.ApplicantYearRiskSummaries.Add(
+            RS("BEN001", redPct: 0.7, disbPct: 0.2, riskScore: 0.75, riskLevel: "Low"));
+        await _db.SaveChangesAsync();
+
+        var signals = await _repo.GetAdvisorySignalsAsync(severity: "High");
+
+        Assert.Empty(signals);
+    }
+
+    [Fact]
+    public async Task GetAdvisorySignals_YearAndSeverityFilters_BothApplied()
+    {
+        // Only BEN002 (FY2024, High) should match combined filter
+        _db.ApplicantYearRiskSummaries.AddRange(
+            RS("BEN001", year: 2024, redPct: 0.7, disbPct: 0.2, riskScore: 0.75, riskLevel: "Low"),
+            RS("BEN002", year: 2024, redPct: 0.7, disbPct: 0.2, riskScore: 0.75, riskLevel: "High"),
+            RS("BEN003", year: 2023, redPct: 0.7, disbPct: 0.2, riskScore: 0.75, riskLevel: "High"));
+        await _db.SaveChangesAsync();
+
+        var signals = await _repo.GetAdvisorySignalsAsync(year: 2024, severity: "High");
+
+        Assert.Single(signals);
+        Assert.Equal("BEN002", signals[0].EntityNumber);
+    }
 }

@@ -32,7 +32,7 @@ public class RiskInsightsModel(RiskInsightsRepository repo) : PageModel
         TopRiskApplicants  = await repo.GetTopRiskApplicantsAsync(20, Year, Severity, ct);
         TopGaps            = await repo.GetTopCommitmentDisbursementGapsAsync(15, Year, ct);
         TopReductions      = await repo.GetTopReductionRatesAsync(15, Year, ct);
-        AdvisorySignals    = await repo.GetAdvisorySignalsAsync(Year, 25, ct);
+        AdvisorySignals    = await repo.GetAdvisorySignalsAsync(Year, Severity, 25, ct);
 
         ShowPartialYearBanner = PartialYearDetector.IsPartialYear(AvailableYears, Year);
         if (ShowPartialYearBanner)
