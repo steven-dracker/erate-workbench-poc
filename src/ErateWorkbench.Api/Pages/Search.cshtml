@@ -88,8 +88,8 @@
                     <th>State</th>
                     <th>City</th>
                     <th>Status</th>
-                    <th>Cat 1 Discount</th>
-                    <th>Cat 2 Discount</th>
+                    <th title="Category 1 discount rate from the FY2025 USAC entity reference dataset">Cat 1 Disc (FY25)</th>
+                    <th title="Category 2 discount rate from the FY2025 USAC entity reference dataset">Cat 2 Disc (FY25)</th>
                 </tr>
             </thead>
             <tbody>
@@ -117,6 +117,9 @@
                 }
             </tbody>
         </table>
+    </div>
+    <div class="text-muted mt-2" style="font-size:.78rem">
+        Discount rates (FY25) are from the USAC entity reference dataset and are available for entities that appear in that dataset. "—" indicates the rate is not on file.
     </div>
 }
 else if (Request.Query.Count > 0)
