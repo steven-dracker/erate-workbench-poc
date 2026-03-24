@@ -77,8 +77,8 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header fw-semibold">
-                Cumulative Applications Certified by Day of Year
-                <span class="text-muted fw-normal small">(day 1 = January 1 of funding year; late-cert outliers excluded)</span>
+                Cumulative Applications Certified by Calendar Date
+                <span class="text-muted fw-normal small">(January 1 = filing window opens; late-cert outliers excluded)</span>
             </div>
             <div class="card-body">
                 <div class="chart-container" style="height:380px">
@@ -177,6 +177,14 @@ const allDays = timingRaw.map(r => r.day);
 const maxDay = allDays.length ? Math.min(Math.max(...allDays), 120) : 120;
 const dayLabels = Array.from({length: maxDay}, (_, i) => i + 1);
 
+// Convert 1-based day-of-year to a short calendar label (e.g. day 32 → "Feb 1")
+// Uses a fixed non-leap reference year — only the month/day portion is displayed.
+function dayToLabel(d) {
+    const date = new Date(2023, 0, d);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+const calendarLabels = dayLabels.map(d => dayToLabel(d));
+
 const timingDatasets = Object.keys(byYear).sort().map(year => {
     let cumulative = 0;
     const data = dayLabels.map(d => {
@@ -197,7 +205,7 @@ const timingDatasets = Object.keys(byYear).sort().map(year => {
 
 new Chart(document.getElementById('timingChart'), {
     type: 'line',
-    data: { labels: dayLabels, datasets: timingDatasets },
+    data: { labels: calendarLabels, datasets: timingDatasets },
     options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -206,15 +214,22 @@ new Chart(document.getElementById('timingChart'), {
             legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 20 } },
             tooltip: {
                 callbacks: {
-                    title: ctx => 'Day ' + ctx[0].label,
+                    title: ctx => ctx[0].label,
                     label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() + ' apps',
                 }
             }
         },
         scales: {
             x: {
-                title: { display: true, text: 'Day of Year (Jan 1 = Day 1)' },
-                ticks: { maxTicksLimit: 15 }
+                ticks: {
+                    // Show only month-boundary labels (Jan 1, Feb 1, Mar 1, Apr 1)
+                    callback: (value) => {
+                        const d = dayLabels[value];
+                        return [1, 32, 60, 91].includes(d) ? calendarLabels[value] : '';
+                    },
+                    maxRotation: 0,
+                    autoSkip: false,
+                }
             },
             y: {
                 title: { display: true, text: 'Cumulative Applications' },
