@@ -534,8 +534,8 @@ app.MapGet("/api/consultants/overview", async (
     ConsultantAnalyticsService consultantAnalytics,
     CancellationToken ct) =>
 {
-    var (consultantCount, applicationCount) = await consultantAnalytics.GetOverviewStatsAsync(ct);
-    return Results.Ok(new { consultantCount, applicationCount });
+    var (consultantCount, applicationCount, frnCount) = await consultantAnalytics.GetOverviewStatsAsync(ct: ct);
+    return Results.Ok(new { consultantCount, applicationCount, frnCount });
 })
 .WithName("GetConsultantOverview")
 .WithSummary("Total consultant and application counts for dashboard summary cards")
@@ -547,7 +547,7 @@ app.MapGet("/api/consultants/top", async (
     CancellationToken ct) =>
 {
     var results = await consultantAnalytics.GetTopConsultantsAsync(
-        Math.Clamp(limit ?? 25, 1, 100), ct);
+        limit: Math.Clamp(limit ?? 25, 1, 100), ct: ct);
     return Results.Ok(results);
 })
 .WithName("GetTopConsultants")

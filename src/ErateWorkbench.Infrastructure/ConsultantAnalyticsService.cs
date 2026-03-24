@@ -3,7 +3,43 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ErateWorkbench.Infrastructure;
 
-// ── Output DTOs ──────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+/// <summary>Well-known consultant EPC IDs confirmed during CC-ERATE-000038C audit.</summary>
+public static class ConsultantConstants
+{
+    /// <summary>
+    /// E-Rate Central EPC Organization ID — confirmed in CC-ERATE-000038C data audit.
+    /// Used for highlighting in rankings and detail pages.
+    /// </summary>
+    public const string ERateCentralEpcId = "16060891";
+    public const string ERateCentralDisplayName = "E-Rate Central";
+}
+
+// ── Filter types ──────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Optional filter parameters for consultant analytics queries.
+/// All fields are nullable — omitted fields are treated as "all".
+/// </summary>
+public record ConsultantFilterParams(
+    int[]? FundingYears = null,
+    string? State = null,
+    string? ServiceType = null)
+{
+    public bool IsEmpty =>
+        (FundingYears is null or { Length: 0 }) &&
+        string.IsNullOrWhiteSpace(State) &&
+        string.IsNullOrWhiteSpace(ServiceType);
+}
+
+/// <summary>Available filter option values for populating filter dropdowns.</summary>
+public record ConsultantFilterOptionsDto(
+    IReadOnlyList<int> FundingYears,
+    IReadOnlyList<string> States,
+    IReadOnlyList<string> ServiceTypes);
+
+// ── Output DTOs ───────────────────────────────────────────────────────────────
 
 /// <summary>Aggregated view of a single consultant's market activity.</summary>
 public record ConsultantSummaryDto(
@@ -11,7 +47,13 @@ public record ConsultantSummaryDto(
     string? ConsultantName,
     int TotalApplications,
     int TotalFrns,
-    decimal? TotalFundingAmount);
+    decimal? TotalFundingAmount,
+    /// <summary>% share of total applications in the current filter context.</summary>
+    decimal ApplicationSharePct,
+    /// <summary>% share of total FRNs in the current filter context.</summary>
+    decimal FrnSharePct,
+    /// <summary>Count of distinct applicant states served (always unfiltered — shows total reach).</summary>
+    int DistinctStateCount);
 
 /// <summary>Application and FRN activity for one consultant in one funding year.</summary>
 public record ConsultantTrendDto(
@@ -40,7 +82,7 @@ public record ConsultantDetailDto(
     IReadOnlyList<ConsultantStateBreakdownDto> StateBreakdown,
     IReadOnlyList<ConsultantServiceTypeDto> ServiceTypes);
 
-// ── Service ──────────────────────────────────────────────────────────────────
+// ── Service ───────────────────────────────────────────────────────────────────
 
 /// <summary>
 /// Provides aggregation-safe analytics over the consultant datasets.
@@ -55,35 +97,123 @@ public record ConsultantDetailDto(
 /// FRN semantics: each row in ConsultantFrnStatuses is one unique FRN (the RawSourceKey
 /// deduplicates on import), so COUNT(*) == distinct FRN count within a group.
 /// Financial aggregations filter WHERE FrnStatusName = 'Funded' per validation finding.
+///
+/// Filtering (CC-ERATE-000038E): Year and State filters apply to ConsultantApplications.
+/// ServiceType filter applies to ConsultantFrnStatuses and restricts the application
+/// side to EPC IDs that have matching FRNs (cross-dataset filter without SQL join).
 /// </summary>
 public class ConsultantAnalyticsService(AppDbContext db)
 {
+    // ── Filter helpers ────────────────────────────────────────────────────────
+
+    private static IQueryable<ConsultantApplication> ApplyAppFilters(
+        IQueryable<ConsultantApplication> query, ConsultantFilterParams? filters)
+    {
+        if (filters is null || filters.IsEmpty) return query;
+        if (filters.FundingYears is { Length: > 0 } years)
+            query = query.Where(a => years.Contains(a.FundingYear));
+        if (!string.IsNullOrWhiteSpace(filters.State))
+            query = query.Where(a => a.ApplicantState == filters.State);
+        return query;
+    }
+
+    private static IQueryable<ConsultantFrnStatus> ApplyFrnFilters(
+        IQueryable<ConsultantFrnStatus> query, ConsultantFilterParams? filters)
+    {
+        if (filters is null || filters.IsEmpty) return query;
+        if (filters.FundingYears is { Length: > 0 } years)
+            query = query.Where(f => years.Contains(f.FundingYear));
+        if (!string.IsNullOrWhiteSpace(filters.State))
+            query = query.Where(f => f.ApplicantState == filters.State);
+        if (!string.IsNullOrWhiteSpace(filters.ServiceType))
+            query = query.Where(f => f.ServiceTypeName == filters.ServiceType);
+        return query;
+    }
+
+    // ── GetAvailableFiltersAsync ──────────────────────────────────────────────
+
     /// <summary>
-    /// Returns the top <paramref name="limit"/> consultants by application volume.
-    /// Application count comes from ConsultantApplications; FRN count and funded
-    /// total come from ConsultantFrnStatuses. The two datasets are joined in memory
-    /// by EPC ID to prevent cross-dataset fan-out.
+    /// Returns distinct values for all filter dropdowns.
+    /// Intended to be cached at the page level.
+    /// </summary>
+    public async Task<ConsultantFilterOptionsDto> GetAvailableFiltersAsync(
+        CancellationToken ct = default)
+    {
+        var years = await db.ConsultantApplications
+            .Select(a => a.FundingYear)
+            .Distinct()
+            .OrderByDescending(y => y)
+            .ToListAsync(ct);
+
+        var states = await db.ConsultantApplications
+            .Where(a => a.ApplicantState != null)
+            .Select(a => a.ApplicantState!)
+            .Distinct()
+            .OrderBy(s => s)
+            .ToListAsync(ct);
+
+        var serviceTypes = await db.ConsultantFrnStatuses
+            .Where(f => f.ServiceTypeName != null)
+            .Select(f => f.ServiceTypeName!)
+            .Distinct()
+            .OrderBy(s => s)
+            .ToListAsync(ct);
+
+        return new ConsultantFilterOptionsDto(years, states, serviceTypes);
+    }
+
+    // ── GetTopConsultantsAsync ────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns the top <paramref name="limit"/> consultants by application volume,
+    /// with market share percentages and geographic reach.
+    ///
+    /// When <paramref name="filters"/> includes a ServiceType, the application side
+    /// is restricted to EPC IDs that have FRNs of that service type (cross-dataset
+    /// filter without a SQL join — aggregation safety is preserved).
+    ///
+    /// Market share denominators use the full filtered dataset (not just top-N).
+    /// DistinctStateCount is always unfiltered — it reflects total geographic reach.
     /// </summary>
     public async Task<List<ConsultantSummaryDto>> GetTopConsultantsAsync(
         int limit = 25,
+        ConsultantFilterParams? filters = null,
         CancellationToken ct = default)
     {
+        var appQuery = ApplyAppFilters(db.ConsultantApplications.AsQueryable(), filters);
+        var frnBaseQuery = ApplyFrnFilters(db.ConsultantFrnStatuses.AsQueryable(), filters);
+
+        // If service type filter: restrict applications to EPC IDs that have
+        // FRNs of the requested service type (cross-dataset filter without SQL join).
+        if (!string.IsNullOrWhiteSpace(filters?.ServiceType))
+        {
+            var allowedEpcIds = await frnBaseQuery
+                .Select(f => f.ConsultantEpcOrganizationId)
+                .Distinct()
+                .ToListAsync(ct);
+
+            if (allowedEpcIds.Count == 0) return [];
+            appQuery = appQuery.Where(a => allowedEpcIds.Contains(a.ConsultantEpcOrganizationId));
+        }
+
+        // Market share denominators (full filtered dataset)
+        var totalApplications = await appQuery.CountAsync(ct);
+        if (totalApplications == 0) return [];
+        var totalFrns = await frnBaseQuery.CountAsync(ct);
+
         // Step 1: rank consultants by application count (application grain dataset).
         // Group by EPC ID only — never by name.
-        var appGroups = await db.ConsultantApplications
+        var appGroups = await appQuery
             .GroupBy(a => a.ConsultantEpcOrganizationId)
             .Select(g => new { EpcId = g.Key, TotalApplications = g.Count() })
             .OrderByDescending(x => x.TotalApplications)
             .Take(limit)
             .ToListAsync(ct);
 
-        if (appGroups.Count == 0)
-            return [];
-
+        if (appGroups.Count == 0) return [];
         var topEpcIds = appGroups.Select(x => x.EpcId).ToList();
 
         // Step 2: representative display name per EPC ID (MAX is deterministic in SQLite).
-        // Consultant names have inconsistent casing across rows — this is display-only.
         var nameDict = await db.ConsultantApplications
             .Where(a => topEpcIds.Contains(a.ConsultantEpcOrganizationId)
                         && a.ConsultantName != null)
@@ -91,17 +221,15 @@ public class ConsultantAnalyticsService(AppDbContext db)
             .Select(g => new { g.Key, Name = g.Max(a => a.ConsultantName) })
             .ToDictionaryAsync(x => x.Key, x => x.Name, ct);
 
-        // Step 3: FRN count per EPC ID from the FRN grain dataset.
-        // COUNT(*) == distinct FRN count because RawSourceKey deduplicates on upsert.
-        var frnCountDict = await db.ConsultantFrnStatuses
+        // Step 3: FRN count per EPC ID (filtered FRN dataset).
+        var frnCountDict = await frnBaseQuery
             .Where(f => topEpcIds.Contains(f.ConsultantEpcOrganizationId))
             .GroupBy(f => f.ConsultantEpcOrganizationId)
-            .Select(g => new { g.Key, TotalFrns = g.Count() })
-            .ToDictionaryAsync(x => x.Key, x => x.TotalFrns, ct);
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
 
-        // Step 4: funded commitment total per EPC ID (filter on FrnStatusName = "Funded").
-        // Cast to double for SQLite SUM compatibility; convert back to decimal for output.
-        var fundedDict = await db.ConsultantFrnStatuses
+        // Step 4: funded commitment total per EPC ID.
+        var fundedDict = await frnBaseQuery
             .Where(f => topEpcIds.Contains(f.ConsultantEpcOrganizationId)
                         && f.FrnStatusName == "Funded"
                         && f.FundingCommitmentRequest != null)
@@ -109,17 +237,40 @@ public class ConsultantAnalyticsService(AppDbContext db)
             .Select(g => new { g.Key, Total = (double?)g.Sum(f => (double)f.FundingCommitmentRequest!.Value) })
             .ToDictionaryAsync(x => x.Key, x => x.Total, ct);
 
-        // Step 5: assemble results in the ranked order from step 1.
-        return appGroups.Select(a => new ConsultantSummaryDto(
-            ConsultantEpcOrganizationId: a.EpcId,
-            ConsultantName: nameDict.GetValueOrDefault(a.EpcId),
-            TotalApplications: a.TotalApplications,
-            TotalFrns: frnCountDict.GetValueOrDefault(a.EpcId),
-            TotalFundingAmount: fundedDict.TryGetValue(a.EpcId, out var total) && total.HasValue
-                ? (decimal?)Math.Round((decimal)total.Value, 2)
-                : null
-        )).ToList();
+        // Step 5: distinct applicant state counts — unfiltered, shows total geographic reach.
+        var stateCountDict = await db.ConsultantApplications
+            .Where(a => topEpcIds.Contains(a.ConsultantEpcOrganizationId)
+                        && a.ApplicantState != null)
+            .Select(a => new { a.ConsultantEpcOrganizationId, a.ApplicantState })
+            .Distinct()
+            .GroupBy(x => x.ConsultantEpcOrganizationId)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Count, ct);
+
+        // Step 6: assemble results in ranked order.
+        return appGroups.Select(a =>
+        {
+            var frnCount = frnCountDict.GetValueOrDefault(a.EpcId);
+            return new ConsultantSummaryDto(
+                ConsultantEpcOrganizationId: a.EpcId,
+                ConsultantName: nameDict.GetValueOrDefault(a.EpcId),
+                TotalApplications: a.TotalApplications,
+                TotalFrns: frnCount,
+                TotalFundingAmount: fundedDict.TryGetValue(a.EpcId, out var total) && total.HasValue
+                    ? (decimal?)Math.Round((decimal)total.Value, 2)
+                    : null,
+                ApplicationSharePct: totalApplications > 0
+                    ? Math.Round((decimal)a.TotalApplications / totalApplications * 100, 1)
+                    : 0m,
+                FrnSharePct: totalFrns > 0 && frnCount > 0
+                    ? Math.Round((decimal)frnCount / totalFrns * 100, 1)
+                    : 0m,
+                DistinctStateCount: stateCountDict.GetValueOrDefault(a.EpcId)
+            );
+        }).ToList();
     }
+
+    // ── GetConsultantDetailsAsync ─────────────────────────────────────────────
 
     /// <summary>
     /// Returns summary, year trends, state breakdown, and service type distribution
@@ -166,6 +317,8 @@ public class ConsultantAnalyticsService(AppDbContext db)
             ServiceTypes: serviceTypes);
     }
 
+    // ── GetTrendsAsync ────────────────────────────────────────────────────────
+
     /// <summary>
     /// Application and FRN activity by funding year for a single consultant.
     /// The two year series are joined in memory — no cross-dataset SQL join.
@@ -195,6 +348,8 @@ public class ConsultantAnalyticsService(AppDbContext db)
         )).ToList();
     }
 
+    // ── GetStateBreakdownAsync ────────────────────────────────────────────────
+
     /// <summary>
     /// Applicant state distribution for a single consultant.
     /// Uses ApplicantState (where the school/library is located), not ConsultantState.
@@ -211,6 +366,8 @@ public class ConsultantAnalyticsService(AppDbContext db)
             .Select(x => new ConsultantStateBreakdownDto(x.State, x.Count))
             .ToListAsync(ct);
     }
+
+    // ── GetServiceTypesAsync ──────────────────────────────────────────────────
 
     /// <summary>
     /// Service type distribution for a single consultant (FRN grain dataset).
@@ -230,19 +387,37 @@ public class ConsultantAnalyticsService(AppDbContext db)
             .ToListAsync(ct);
     }
 
+    // ── GetOverviewStatsAsync ─────────────────────────────────────────────────
+
     /// <summary>
-    /// Returns total consultant count and total application count for dashboard summaries.
+    /// Returns total consultant count, application count, and FRN count
+    /// for dashboard summary cards. Accepts optional filters.
     /// </summary>
-    public async Task<(int ConsultantCount, int ApplicationCount)> GetOverviewStatsAsync(
+    public async Task<(int ConsultantCount, int ApplicationCount, int FrnCount)> GetOverviewStatsAsync(
+        ConsultantFilterParams? filters = null,
         CancellationToken ct = default)
     {
-        var consultantCount = await db.ConsultantApplications
+        var appQuery = ApplyAppFilters(db.ConsultantApplications.AsQueryable(), filters);
+        var frnQuery = ApplyFrnFilters(db.ConsultantFrnStatuses.AsQueryable(), filters);
+
+        // If service type filter, restrict consultant count to those with matching FRNs
+        if (!string.IsNullOrWhiteSpace(filters?.ServiceType))
+        {
+            var allowedEpcIds = await frnQuery
+                .Select(f => f.ConsultantEpcOrganizationId)
+                .Distinct()
+                .ToListAsync(ct);
+            appQuery = appQuery.Where(a => allowedEpcIds.Contains(a.ConsultantEpcOrganizationId));
+        }
+
+        var consultantCount = await appQuery
             .Select(a => a.ConsultantEpcOrganizationId)
             .Distinct()
             .CountAsync(ct);
 
-        var applicationCount = await db.ConsultantApplications.CountAsync(ct);
+        var applicationCount = await appQuery.CountAsync(ct);
+        var frnCount = await frnQuery.CountAsync(ct);
 
-        return (consultantCount, applicationCount);
+        return (consultantCount, applicationCount, frnCount);
     }
 }
