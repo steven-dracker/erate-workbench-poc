@@ -18,11 +18,11 @@
             <div class="row g-2 align-items-end">
                 <div class="col-md-3">
                     <label class="form-label form-label-sm mb-1 text-muted" style="font-size:.75rem">FUNDING YEAR</label>
-                    <select name="years" multiple class="form-select form-select-sm" size="3"
-                            onchange="this.form.submit()">
+                    <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Years</option>
                         @foreach (var yr in Model.FilterOptions.FundingYears)
                         {
-                            if (Model.Years?.Contains(yr) == true)
+                            if (Model.Year == yr)
                             {
                                 <option value="@yr" selected>FY@(yr)</option>
                             }
@@ -80,9 +80,9 @@
             {
                 <div class="mt-2" style="font-size:.78rem; color:#6c757d">
                     Showing filtered results —
-                    @if (Model.Years?.Length > 0)
+                    @if (Model.Year.HasValue)
                     {
-                        <span>Years: @string.Join(", ", Model.Years.Select(y => "FY" + y))</span>
+                        <span>Year: FY@(Model.Year)</span>
                     }
                     @if (!string.IsNullOrWhiteSpace(Model.State))
                     {

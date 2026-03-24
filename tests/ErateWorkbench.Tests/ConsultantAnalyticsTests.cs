@@ -361,7 +361,7 @@ public class ConsultantAnalyticsTests : IDisposable
         await _db.SaveChangesAsync();
 
         var result = await _svc.GetTopConsultantsAsync(
-            filters: new ConsultantFilterParams(FundingYears: [2024]));
+            filters: new ConsultantFilterParams(Year: 2024));
 
         // Only EPC1's 2024 application should appear
         Assert.Single(result);
@@ -425,7 +425,7 @@ public class ConsultantAnalyticsTests : IDisposable
         await _db.SaveChangesAsync();
 
         var result = await _svc.GetTopConsultantsAsync(
-            filters: new ConsultantFilterParams(FundingYears: [2024]));
+            filters: new ConsultantFilterParams(Year: 2024));
 
         // EPC1 and EPC2 each have 1 of 2 filtered apps → 50% each
         Assert.Equal(2, result.Count);
@@ -459,7 +459,7 @@ public class ConsultantAnalyticsTests : IDisposable
         await _db.SaveChangesAsync();
 
         var (_, apps, frns) = await _svc.GetOverviewStatsAsync(
-            new ConsultantFilterParams(FundingYears: [2024]));
+            new ConsultantFilterParams(Year: 2024));
         Assert.Equal(1, apps);
         Assert.Equal(1, frns);
     }

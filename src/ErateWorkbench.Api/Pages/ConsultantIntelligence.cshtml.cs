@@ -18,7 +18,7 @@ public class ConsultantIntelligenceModel(
     // ── Filter binding ────────────────────────────────────────────────────────
 
     [Microsoft.AspNetCore.Mvc.BindProperty(SupportsGet = true)]
-    public int[]? Years { get; set; }
+    public int? Year { get; set; }
 
     [Microsoft.AspNetCore.Mvc.BindProperty(SupportsGet = true)]
     public string? State { get; set; }
@@ -27,7 +27,7 @@ public class ConsultantIntelligenceModel(
     public string? ServiceType { get; set; }
 
     public bool HasActiveFilters =>
-        (Years?.Length > 0) ||
+        Year.HasValue ||
         !string.IsNullOrWhiteSpace(State) ||
         !string.IsNullOrWhiteSpace(ServiceType);
 
@@ -76,7 +76,7 @@ public class ConsultantIntelligenceModel(
 
         // Build active filter params (null = no filters)
         var filters = HasActiveFilters
-            ? new ConsultantFilterParams(Years, State, ServiceType)
+            ? new ConsultantFilterParams(Year, State, ServiceType)
             : null;
 
         // Overview stats — bypass cache when filters are active
