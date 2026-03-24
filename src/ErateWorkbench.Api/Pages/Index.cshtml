@@ -5,6 +5,20 @@
     ViewData["ActivePage"] = "Home";
 }
 
+<!-- Product description -->
+<div class="mb-4">
+    <div class="d-flex align-items-baseline gap-3 mb-1">
+        <h4 class="mb-0">E-Rate Workbench</h4>
+        <span class="text-muted small">Program analytics POC — E-Rate FY2016–FY2026</span>
+    </div>
+    <p class="text-muted mb-0" style="max-width:680px; font-size:.9rem">
+        E-Rate Workbench provides program-wide analytics, competitive intelligence, and risk insights
+        across the E-Rate ecosystem. Explore funding trends, analyze E-Rate management firm positioning,
+        and identify patterns in application behavior and risk signals.
+    </p>
+</div>
+
+<!-- Stat cards -->
 <div class="row g-4 mb-4">
     <div class="col-md-3">
         <div class="card stat-card h-100">
@@ -40,22 +54,71 @@
     </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-md-6">
-        <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">School &amp; Library Search</h5>
-                <p class="card-text text-muted">Search @Model.TotalEntities.ToString("N0") E-Rate eligible entities by name, state, type, or status.</p>
-                <a asp-page="/Search" class="btn btn-primary">Open Search</a>
+<!-- What You Can Do -->
+<div class="card mb-4 border-0 bg-light">
+    <div class="card-body">
+        <h6 class="text-uppercase text-muted fw-semibold mb-3" style="letter-spacing:.05em; font-size:.75rem">What You Can Do</h6>
+        <div class="row g-2">
+            <div class="col-md-6">
+                <ul class="mb-0" style="font-size:.9rem; padding-left:1.25rem">
+                    <li class="mb-1">Analyze program-wide funding and filing window trends across all applicants</li>
+                    <li class="mb-1">Explore competitive positioning of E-Rate management firms by application volume, funding, and reach</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <ul class="mb-0" style="font-size:.9rem; padding-left:1.25rem">
+                    <li class="mb-1">Identify risk signals and execution gaps in funding outcomes</li>
+                    <li class="mb-1">Search schools and libraries across the program by name, state, type, or status</li>
+                </ul>
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+</div>
+
+<!-- Where to Start -->
+<h6 class="text-uppercase text-muted fw-semibold mb-3" style="letter-spacing:.05em">Where to Start</h6>
+<div class="row g-3">
+    <div class="col-md-3">
         <div class="card h-100">
-            <div class="card-body">
-                <h5 class="card-title">Analytics</h5>
-                <p class="card-text text-muted">Committed funding by year and category, top-funded entities, entity distribution, and discount rate trends across states.</p>
-                <a asp-page="/Analytics" class="btn btn-outline-primary">View Analytics</a>
+            <div class="card-body d-flex flex-column">
+                <div class="fw-semibold mb-1">Filing Window Analytics</div>
+                <p class="card-text text-muted mb-3" style="font-size:.85rem">
+                    Program-wide certification timing, demand vs commitment, and application status trends — FY2020–FY2026.
+                </p>
+                <a href="/FilingWindow" class="btn btn-outline-primary btn-sm mt-auto">View →</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <div class="fw-semibold mb-1">Competitive Intelligence</div>
+                <p class="card-text text-muted mb-3" style="font-size:.85rem">
+                    Firm-level market share rankings, application volume, funded totals, and geographic reach across E-Rate management firms.
+                </p>
+                <a href="/ConsultantIntelligence" class="btn btn-outline-primary btn-sm mt-auto">View →</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <div class="fw-semibold mb-1">Risk Insights</div>
+                <p class="card-text text-muted mb-3" style="font-size:.85rem">
+                    Funding reduction rates, disbursement gaps, and advisory signals identifying applicants with elevated execution risk.
+                </p>
+                <a href="/RiskInsights" class="btn btn-outline-primary btn-sm mt-auto">View →</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100">
+            <div class="card-body d-flex flex-column">
+                <div class="fw-semibold mb-1">School &amp; Library Search</div>
+                <p class="card-text text-muted mb-3" style="font-size:.85rem">
+                    Search @Model.TotalEntities.ToString("N0") E-Rate eligible entities by name, state, type, or status.
+                </p>
+                <a asp-page="/Search" class="btn btn-outline-primary btn-sm mt-auto">Search →</a>
             </div>
         </div>
     </div>
