@@ -23,12 +23,12 @@ public static class ConsultantConstants
 /// All fields are nullable — omitted fields are treated as "all".
 /// </summary>
 public record ConsultantFilterParams(
-    int[]? FundingYears = null,
+    int? Year = null,
     string? State = null,
     string? ServiceType = null)
 {
     public bool IsEmpty =>
-        (FundingYears is null or { Length: 0 }) &&
+        !Year.HasValue &&
         string.IsNullOrWhiteSpace(State) &&
         string.IsNullOrWhiteSpace(ServiceType);
 }
@@ -110,8 +110,8 @@ public class ConsultantAnalyticsService(AppDbContext db)
         IQueryable<ConsultantApplication> query, ConsultantFilterParams? filters)
     {
         if (filters is null || filters.IsEmpty) return query;
-        if (filters.FundingYears is { Length: > 0 } years)
-            query = query.Where(a => years.Contains(a.FundingYear));
+        if (filters.Year.HasValue)
+            query = query.Where(a => a.FundingYear == filters.Year.Value);
         if (!string.IsNullOrWhiteSpace(filters.State))
             query = query.Where(a => a.ApplicantState == filters.State);
         return query;
@@ -121,8 +121,8 @@ public class ConsultantAnalyticsService(AppDbContext db)
         IQueryable<ConsultantFrnStatus> query, ConsultantFilterParams? filters)
     {
         if (filters is null || filters.IsEmpty) return query;
-        if (filters.FundingYears is { Length: > 0 } years)
-            query = query.Where(f => years.Contains(f.FundingYear));
+        if (filters.Year.HasValue)
+            query = query.Where(f => f.FundingYear == filters.Year.Value);
         if (!string.IsNullOrWhiteSpace(filters.State))
             query = query.Where(f => f.ApplicantState == filters.State);
         if (!string.IsNullOrWhiteSpace(filters.ServiceType))
