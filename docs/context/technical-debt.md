@@ -1,6 +1,6 @@
 # Technical Debt — ERATE Workbench POC
 
-_Last updated: 2026-03-22_
+_Last updated: 2026-03-25
 
 ---
 
@@ -249,3 +249,98 @@ One-line fix in `Program.cs`. The per-page retry logic (4 attempts, delays 3s/10
 
 ---
 
+## Release QA Technical Debt (Intentional Deferrals)
+
+During Release QA Mode, several items were explicitly deferred to maintain delivery velocity and preserve correctness.
+
+---
+
+### CI/CD Pipeline Instability
+
+Issue:
+- GitHub Actions workflows (unit tests + UI tests) intermittently hang after successful execution
+
+Current Approach:
+- Manual QA used as source of truth
+- Workflows manually cancelled when hung
+
+Rationale:
+- Avoid blocking feature validation during critical QA phase
+- Ensure real functionality is validated over pipeline reliability
+
+Future Resolution:
+- Investigate test runner completion conditions
+- Add explicit timeouts or job termination guards
+- Separate long-running UI tests from blocking pipelines
+
+---
+
+### Incomplete Entity-Level Discount Data
+
+Issue:
+- Discount rates available for ~15% of entities only
+- Majority of individual schools lack data in USAC datasets
+
+Current Approach:
+- Removed discount columns from School Search (CC-ERATE-000053B)
+
+Rationale:
+- Avoid misleading users with partial or biased data
+- Maintain trust in displayed analytics
+
+Future Resolution:
+- Identify dataset with per-entity, per-year discount rates
+- Likely requires funding-year keyed enrichment table
+
+---
+
+### Manual Data Refresh Process
+
+Issue:
+- Data ingestion not automated
+- Requires manual execution (CC-ERATE-000054)
+
+Current Approach:
+- Manual refresh prior to demo or analysis
+
+Rationale:
+- Keep ETL simple during POC phase
+- Avoid premature automation complexity
+
+Future Resolution:
+- Add scheduled ingestion (cron / pipeline trigger)
+- Track dataset freshness metadata
+
+---
+
+### No Filter Context Propagation to Detail Views
+
+Issue:
+- Consultant detail page does not inherit filters from ranking page
+
+Current Approach:
+- Explicitly documented as "full-history view"
+
+Rationale:
+- Prevent ambiguous partial data views
+- Maintain consistent interpretation of detailed analytics
+
+Future Resolution:
+- Add optional filter context propagation
+- Clearly indicate filtered vs full-history mode
+
+---
+
+### Manual Version Management
+
+Issue:
+- Version numbers manually updated in project file
+
+Current Approach:
+- Manual bump (0.1.0 → 0.3.0)
+
+Rationale:
+- Keep versioning simple during rapid iteration
+
+Future Resolution:
+- Automate versioning via CI (commit-based or tag-based)

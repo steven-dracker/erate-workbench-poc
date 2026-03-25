@@ -1,6 +1,6 @@
 # ChatGPT Architecture Session Primer
 # Paste this file contents at the start of a new ChatGPT chat to restore full context.
-# Last updated: 2026-03-23 | CC-ERATE-000038D complete | CC-ERATE-000038E pending
+# Last updated: 2026-03-23 | CC-ERATE-000054 complete | CC-ERATE-000055 pending
 # Update CURRENT STATE after each Claude Code session using /handoff output.
 
 ---
@@ -88,25 +88,62 @@ The following are explicitly out of scope unless revisited by the architect:
 | CC-ERATE-000038B | Consultant dataset ETL |
 | CC-ERATE-000038C | Consultant data validation / market-shape audit |
 | CC-ERATE-000038D | Competitive Intelligence dashboard (consultant analytics + UI) |
+| CC-ERATE-000038E | Competitive Intelligence refinements (filters, market share, insights) |
 | CC-ERATE-000039 | Socrata import resilience (retry/backoff + availability probe) |
 | CC-ERATE-000040 | UI smoke test navigation stabilization |
 | CC-ERATE-000041 | Deterministic retry delay handling in tests |
 | CC-ERATE-000042 | Thread-safe test handler sequencing (CI hang fix) |
+| CC-ERATE-000043 | Advisory Signals filter consistency fix (Risk Insights) |
+| CC-ERATE-000044 | Funding Year label correction (Competitive Intelligence) |
+| CC-ERATE-000045 | Funding Year filter UX (dropdown conversion) |
+| CC-ERATE-000046 | Filing Window context clarity (program-wide labeling) |
+| CC-ERATE-000047 | Certification Timing axis redesign (calendar-based) |
+| CC-ERATE-000048 | Consultant detail page context clarification (full-history view) |
+| CC-ERATE-000049 | Competitive Intelligence terminology refinement (firms vs consultants) |
+| CC-ERATE-000050 | Dashboard product framing and navigation guidance |
+| CC-ERATE-000051 | Footer labeling clarification (Version → Build) |
+| CC-ERATE-000052 | Footer version bump (0.1.0 → 0.3.0) |
+| CC-ERATE-000053 | School search discount data investigation (root-cause analysis) |
+| CC-ERATE-000053B | Removal of unsupported discount columns (truthful UI correction) |
+| CC-ERATE-000054 | Data refresh using existing USAC ingestion workflow |
 
 ---
 
-## CURRENT STATE
+### CURRENT STATE
 <!-- UPDATE THIS SECTION after each Claude Code session using /handoff output -->
 
-# Session Handoff — CC-ERATE-000037 — 2026-03-21
+## Session Handoff — CC-ERATE-000055 — 2026-03-25
+
+## CURRENT TASK — CC-ERATE-000055
+
+Enhance School & Library Search UI with color-coded entity type badges.
+
+### Requirements
+
+Map entity types to distinct colors:
+
+- School → medium green  
+- Library → medium blue  
+- SchoolDistrict → darker green  
+- LibrarySystem → dark blue  
+- Consortium → dark orange  
+- NonInstructionalFacility → medium orange  
+- Unknown → unchanged  
+
+### Constraints
+
+- Modify existing badge rendering only  
+- No backend or data changes  
+- Use Bootstrap classes or minimal CSS  
+- Maintain readability and layout stability  
 
 ## ✅ Completed This Session
 
-Here is a fully updated chatgpt-primer.md reflecting your current state (through 000038D, not yet merged), clean, accurate, and ready to drop in:
+Here is a fully updated chatgpt-primer.md reflecting your current state (through 000054, fully merged), clean, accurate.
 
 # ERATE Workbench — ChatGPT Primer
 
-Last updated: 2026-03-23
+Last updated: 2026-03-25
 
 ---
 
@@ -125,29 +162,6 @@ Use this to quickly resume productive work without re-discovery.
 
 ---
 
-# 🧭 Session Handoff — CC-ERATE-000038D
-
-## ✅ Completed This Session
-
-### CC-ERATE-000038D — Competitive Intelligence Dashboard (PR #33)
-- Implemented `ConsultantAnalyticsService` with aggregation-safe logic:
-  - top consultants
-  - consultant detail summary
-  - year trends
-  - state breakdown
-  - service type distribution
-- Built UI:
-  - `/ConsultantIntelligence` (list + chart + rankings)
-  - `/Consultants/{epcId}` detail page
-- Added 3 minimal API endpoints
-- Integrated navigation under **Explore → Competitive Intelligence**
-- Added `ConsultantAnalyticsTests` (17 tests)
-- Fixed EF Core SQLite translation issue (projection ordering)
-
-⚠️ Status: **Complete but not yet merged**
-
----
-
 # 📊 Current State
 
 | Area | Status |
@@ -155,28 +169,22 @@ Use this to quickly resume productive work without re-discovery.
 | Consultant schema discovery (000038A) | ✅ Complete / Merged |
 | Consultant ETL (000038B) | ✅ Complete / Merged |
 | Consultant validation (000038C) | ✅ Complete / Merged |
-| Competitive Intelligence dashboard (000038D) | ⚠️ Complete (PR #33 open) |
-| Local dashboard validation | ⚠️ In progress |
-| CI reliability | ⚠️ GitHub Actions test hang persists |
+| Competitive Intelligence dashboard (000038D) | ✅ Complete / Merged |
+| Competitive Intelligence refinements (000038E) | ✅ Complete / Merged |
+| Filing Window Analytics dashboard (000036) | ✅ Complete / Merged |
+| Risk Insights (filter consistency) (000043) | ✅ Complete / Merged |
+| School & Library Search (truthful UI correction) (000053B) | ✅ Complete / Merged |
+| Dashboard product framing (000050) | ✅ Complete / Merged |
+| Footer labeling + versioning (000051–000052) | ✅ Complete / Merged |
+| Data refresh (000054) | ⚠️ In progress / recently executed |
+| Entity type badge colors (000055) | 🔜 Next task |
+| Local dashboard validation | ✅ Complete |
+| CI reliability | ⚠️ GitHub Actions test hang persists (non-blocking) |
+| Overall system status | ✅ Demo-ready |
 
 ---
 
-### Branch Merge Dependency
-```
-feature/filing-window-analytics  ──► must land first
-feature/desktop-nav-refresh      ──► depends on above
-```
-
----
-
-## 🔍 Unexpected Discoveries
-
-- **CLAUDE.md boot block chore commits** land on feature branches and get reverted when resetting to `main` between sessions — the CC-ERATE-000036 boot block update was never on `main`; had to apply a combined `000036+000037` update from the CC-ERATE-000031 baseline
-- **Dataset `9s6i-myen`** stores `funding_year` as `TEXT` (not `INTEGER`) — Socrata `$where` numeric comparison fails; must use string comparison `funding_year='2026'` for year-scoped imports
-
----
-
-## ⚠️ Autonomous Decisions — Needs Architect Review
+## Settled Operational Decisions / Known Constraints
 
 1. **Late-cert outlier filter threshold** set to  
    `CertificationDate < new DateTime(FundingYear + 1, 7, 1)`  
@@ -200,51 +208,60 @@ feature/desktop-nav-refresh      ──► depends on above
 
 ---
 
-### New Decisions (Consultant Analytics + Resilience Phase)
+## Core Architecture Decisions — Consultant Analytics
 
-5. **Consultant identity strategy (canonical key)**  
-   - `ConsultantEpcOrganizationId` selected as the **only grouping key**  
-   - `ConsultantName` treated as display-only  
-   - ❗ Assumes EPC ID stability and completeness across datasets
-
-6. **Aggregation-first analytics model (fan-out prevention)**  
-   - All consultant analytics enforce grouping before joins  
-   - Distinct counts used for:
-     - applications
-     - FRNs  
-   - ❗ Raw joins are intentionally disallowed to prevent duplication
-
-7. **Consultant analytics implemented as runtime aggregation (no materialization)**  
-   - Analytics computed dynamically via LINQ/EF queries  
-   - ❗ No pre-aggregated tables → potential performance issues at scale
-
-8. **24-hour cache for consultant dashboard**  
-   - Reduces repeated aggregation cost  
-   - ❗ No explicit invalidation tied to data imports (stale data risk)
-
-9. **Socrata resilience strategy (000039)**  
-   - Retry/backoff: 1s → 2s → 4s (3 retries)  
-   - Pre-flight availability probe before import  
-   - ❗ Mid-import outages rely on per-page retry only (no global recovery)
-
-10. **Test determinism strategy (000041)**  
-    - Retry delays replaced with injectable/no-op delay in tests  
-    - ❗ Divergence between production timing and test timing
-
-11. **Thread-safe test handler sequencing (000042)**  
-    - Replaced queue-based sequencing with `Interlocked` + immutable arrays  
-    - ❗ Assumes strict call ordering; unexpected calls fail fast
-
-12. **CI test execution workaround pending**  
-    - GitHub Actions unit test job hangs after completion  
-    - Local execution is clean and fast  
-    - ❗ Current state relies on workaround/acceptance rather than root-cause fix
-
-13. **Consultant multi-consultant handling strategy**  
-    - No attempt to de-duplicate consultant participation across shared applications  
-    - ❗ Assumes aggregation rules sufficiently mitigate fan-out
+1. **Consultant identity strategy (canonical key)**  
+   - `ConsultantEpcOrganizationId` is the sole grouping key  
+   - `ConsultantName` is display-only  
+   - Ensures stable aggregation across datasets  
 
 ---
+
+2. **Aggregation-first analytics model (fan-out prevention)**  
+   - All analytics enforce grouping before joins  
+   - Distinct counts used for:
+     - applications  
+     - FRNs  
+   - Raw joins intentionally avoided to prevent duplication errors  
+
+---
+
+3. **Runtime aggregation model (no materialization)**  
+   - Analytics computed dynamically via LINQ/EF  
+   - Avoids complexity of maintaining pre-aggregated tables  
+   - Trade-off: higher compute cost at scale  
+
+---
+
+4. **Caching strategy (consultant dashboard)**  
+   - 24-hour cache applied to reduce repeated aggregation cost  
+   - Simplifies performance management during POC phase  
+
+---
+
+5. **Socrata resilience strategy (000039)**  
+   - Retry/backoff: 1s → 2s → 4s (3 retries)  
+   - Pre-flight availability check before import  
+   - Ensures stable ingestion under intermittent API conditions  
+
+---
+
+6. **Test determinism strategy (000041)**  
+   - Retry delays replaced with injectable/no-op delays in tests  
+   - Ensures fast, deterministic test execution  
+
+---
+
+7. **Thread-safe test handler sequencing (000042)**  
+   - Uses `Interlocked` + immutable arrays  
+   - Ensures predictable, thread-safe test execution  
+
+---
+
+8. **Consultant multi-consultant handling strategy**  
+   - No attempt to de-duplicate shared application participation  
+   - Aggregation rules designed to avoid fan-out distortion  
+
 
 ---
 
@@ -364,47 +381,85 @@ A **demo-ready POC** suitable for:
 
 ## APPLICATION FEATURES (stable)
 
-Dashboard, Search, Analytics (cached), Risk Insights, Program Workflow, Ecosystem, History, Entity search, Filing Window Analytics dashboard, Form 471 historical ingestion, incremental FY2026 data refresh, idempotent ETL pipelines, **Competitive Intelligence dashboard (consultant rankings, detail views, trends, state and service breakdowns)**, Swagger API interface, reference pages (Program Workflow, Ecosystem, History), Help/About/Release Notes navigation, and grouped desktop navigation with responsive mobile support.
+- **Dashboard (Landing Page)** — product overview, capabilities, and guided navigation  
+- **Filing Window Analytics** — program-wide trends, certification timing, demand vs commitment  
+- **Competitive Intelligence** — firm-level analytics, market share, rankings, detail views, geographic and service breakdowns  
+- **Risk Insights** — advisory signals, funding and disbursement risk patterns  
+- **School & Library Search** — entity-level lookup with filtering and pagination  
+
+### Data & Analytics Foundations
+- Form 471 historical ingestion (FY2020–FY2026)  
+- Incremental FY2026 refresh strategy  
+- Idempotent ETL pipelines  
+- Aggregation-first analytics model (fan-out safe)  
+- Cached analytics (performance optimization)
+
+### Reference & Navigation
+- Program Workflow, Ecosystem, and History reference pages  
+- Help / About / Release Notes  
+- Grouped desktop navigation with responsive mobile support  
+- Swagger API interface  
+
+---
 
 ## DEVOPS CAPABILITIES (stable)
 
-- Multi-stage CI pipeline (build → test → ui-smoke → security → secrets-scan → publish → release)
-- Playwright UI smoke tests
-- Dependency vulnerability scanning + Dependabot
-- Secrets scanning (gitleaks)
-- Artifact publishing (linux-x64 self-contained)
-- Manual release workflow (workflow_dispatch, GitHub Release with artifact)
-- Structured logging (SimpleConsole + file tee)
-- Local dev scripts: dev-run.sh, ui-test.sh
-- Deterministic startup via /health
-- **Socrata import resilience (retry/backoff + availability probe)**
-- **Deterministic test execution (no-op delay injection for retry logic)**
-- **Thread-safe test infrastructure (Interlocked-based handler sequencing)**
+- Multi-stage CI pipeline:
+  - build → test → ui-smoke → security → secrets-scan → publish → release  
+- Playwright UI smoke tests  
+- Dependency vulnerability scanning + Dependabot  
+- Secrets scanning (gitleaks)  
+- Artifact publishing (linux-x64 self-contained)  
+- Manual release workflow (GitHub Releases + artifacts)  
+
+### Reliability & Observability
+- Structured logging (SimpleConsole + file tee)  
+- Deterministic startup via `/health`  
+- Socrata import resilience:
+  - retry/backoff + availability probe  
+
+### Test Infrastructure
+- Deterministic test execution (no-op delay injection)  
+- Thread-safe test handler sequencing (Interlocked-based)  
+
+### Developer Experience
+- Local dev scripts:
+  - `dev-run.sh`
+  - `ui-test.sh`
+
+## Key Technical Constraints / Known Risks
+
+### Data & Ingestion
+- Data refresh is **manual** (no scheduled ingestion)
+- Some datasets require **full re-import per funding year**
+- No deletion detection → upstream removals are not reflected locally
+- Import sequencing must be performed correctly to avoid inconsistent analytics
+
 ---
 
-## ACTIVE TECHNICAL DEBT
+### Analytics & Performance
+- Analytics are computed via **runtime aggregation (no materialization)**
+- Cache has **no explicit invalidation tied to imports**
+- Some aggregation queries may become expensive at scale
 
-| Area | Issue | Risk |
-|------|-------|------|
-| Data Ingestion & ETL | TD-001 — HttpClient timeout handling | Long-running Socrata requests may still fail under slow network conditions; imports can terminate prematurely without configurable timeout control |
-| Data Ingestion & ETL | TD-002 — Import progress visibility | Lack of real-time feedback makes long-running imports opaque and harder to monitor or troubleshoot |
-| Data Ingestion & ETL | TD-003 — Year-scoped import inconsistency | Only Form 471 supports incremental import; other datasets require full reloads, increasing runtime and cost |
-| Data Ingestion & ETL | TD-004 — Rebuild ordering is manual | Incorrect import sequencing can produce inconsistent or incomplete analytics results |
-| Data Ingestion & ETL | TD-008 — No deletion detection from source | Upstream data removals are not reflected locally, causing stale or inaccurate records |
-| Data Ingestion & ETL | TD-017 — mihb-jfex dataset scaling unknown | Consultant FRN dataset size and performance characteristics may require paging or batching at scale |
-| Analytics & Performance | TD-006 — In-memory aggregation for risk summary | Inefficient processing may degrade performance as dataset size grows |
-| Analytics & Performance | TD-007 — Raw table queries for analytics | Lack of pre-aggregation or indexing can lead to slow queries and poor scalability |
-| Analytics & Performance | TD-011 — Analytics cache has no invalidation | Cached data may become stale after imports, leading to misleading analytics |
-| Analytics & Performance | TD-018 — Consultant analytics aggregation cost | Current aggregation queries may become expensive as dataset size grows; may require materialized views or summary tables |
-| Data Quality & Modeling | TD-012 — Diagnostic logging still present | Excessive or unstructured logs can clutter output and obscure meaningful signals |
-| Data Quality & Modeling | TD-013 — xUnit analyzer warning | Test quality issues may hide incorrect assertions or reduce reliability of test suite |
-| Data Quality & Modeling | TD-019 — Consultant name normalization | Inconsistent casing, abbreviations, and legal suffixes prevent reliable name-based grouping or display consistency |
-| Data Quality & Modeling | TD-020 — E-Rate Central EPC identification missing | Cannot confidently identify specific firms (e.g., E-Rate Central) for highlighting or analysis |
-| DevOps & Tooling | TD-014 — Playwright browser dependency (WSL) | UI tests require manual setup locally, reducing developer productivity and consistency |
-| DevOps & Tooling | TD-015 — Dependabot PR queue management | Unmanaged dependency updates can create noise or delay important security fixes |
-| DevOps & Tooling | TD-021 — GitHub Actions test runner hang | CI unit test job hangs after completion despite local success; likely testhost/runner lifecycle issue |
-| DevOps & Tooling | TD-022 — Test host parallelism sensitivity | Async test behavior and parallel execution can expose non-deterministic issues; requires careful test design |
-| UI / UX | TD-016 — UI polish and visual consistency | Minor visual inconsistencies reduce perceived product quality and professionalism |
+---
+
+### Data Completeness
+- Certain datasets are **incomplete (e.g., entity-level discount rates)**
+- UI is intentionally constrained to avoid misleading outputs
+
+---
+
+### CI / Test Infrastructure
+- GitHub Actions test workflow **hangs after completion**
+- Local test execution is stable and used as source of truth
+- Parallel test execution requires careful handling
+
+---
+
+### Developer Experience
+- UI tests require local Playwright setup (WSL dependency)
+- Dependency update workflow requires manual oversight
 
 ## Notes
 
@@ -415,7 +470,7 @@ Dashboard, Search, Analytics (cached), Risk Insights, Program Workflow, Ecosyste
 
 ## CURRENT PRIORITIES
 
-**Next task:** CC-ERATE-000038E — Competitive Intelligence refinements (filters, market share %, insights)
+**Next task:** CC-ERATE-000055 — Enhance School & Library Search UI with color-coded entity type badges.
 
 **Priority:** High  
 **State:** Ready — pending PR #33 merge and local validation
@@ -436,98 +491,86 @@ Dashboard, Search, Analytics (cached), Risk Insights, Program Workflow, Ecosyste
 
 ---
 
-### Implementation Plan
+## Historical Implementation Summary — Consultant Analytics
 
-## CC-ERATE-000038 — Consultant Analytics (Completed)
-
-This feature was implemented as a staged prompt sequence following the standard AI-first SDLC:
+The Competitive Intelligence feature was implemented using a staged, AI-assisted development flow:
 
 **discover → ingest → validate → visualize → refine**
 
----
+### Key Outcomes
 
-### CC-ERATE-000038A — Schema Discovery
-- Retrieved live samples from USAC Socrata datasets
-- Documented full field inventories in `docs/schema_consultants.md`
-- Identified:
-  - consultant identity fields
-  - join strategy (`application_number`)
-  - funding and service type fields
-- Confirmed data normalization challenges and naming inconsistencies
+- Consultant identity standardized on **EPC Organization ID**
+- Aggregation-first analytics model prevents fan-out duplication errors
+- Market structure validated through data audit
+- Full analytics surface delivered:
+  - rankings
+  - market share
+  - trends
+  - geographic and service breakdowns
+  - consultant detail views
 
----
+### Final State
 
-### CC-ERATE-000038B — ETL Implementation
-- Created tables:
-  - `ConsultantApplications`
-  - `ConsultantFrnStatuses`
-- Implemented idempotent ingestion pipelines
-- Established canonical identity key:
-  - `ConsultantEpcOrganizationId`
-- Reused Socrata resilience pattern (retry + probe)
+- Competitive Intelligence is fully implemented and refined (CC-ERATE-000038D + 000038E)
+- Integrated into main navigation
+- Fully QA validated and demo-ready
 
 ---
-
-### CC-ERATE-000038C — Data Validation / Market-Shape Audit
-- Confirmed aggregation-safe join strategy
-- Identified FRN-level fan-out risk
-- Validated:
-  - consultant identity model (EPC ID)
-  - service type availability
-  - state field meaning (applicant vs consultant HQ)
-- Documented market-shape characteristics and constraints
-
----
-
-### CC-ERATE-000038D — Competitive Intelligence Dashboard (PR #33)
-- Implemented `ConsultantAnalyticsService`:
-  - top consultants
-  - consultant detail summary
-  - year trends
-  - state breakdown
-  - service type distribution
-- Built UI:
-  - `/ConsultantIntelligence` (rankings + chart)
-  - `/Consultants/{epcId}` detail page
-- Added minimal API endpoints
-- Integrated navigation under Explore
-- Added analytics test coverage
-- Applied aggregation-first design to prevent fan-out errors
-
----
-
-### Key Architectural Outcomes
-
-- Consultant identity standardized on **EPC organization ID**
-- Aggregation-first analytics model prevents duplication errors
-- FRN/application fan-out handled explicitly
-- Dashboard reflects validated, trustworthy data
-
----
-
-### Remaining Work
-
-- CC-ERATE-000038E — add filters, market share %, and competitive insights layer
 
 ## CLAUDE CODE PROMPT RULES (enforce on every prompt)
 
-**Rule 1 — Always start with a new branch**
+### Rule 1 — Always start with a new branch
 Every prompt must begin with:
-```
+
+```bash
 git checkout main
 git pull
 git checkout -b feature/<task-name>
 ```
 
-**Rule 2 — Required prompt sections**
-Every prompt must include: Objective, Context, Requirements, Constraints, Validation, Deliverable, CC-ERATE ID
+---
 
-**Rule 3 — Scope discipline**
-Single-purpose tasks only. No multi-feature prompts. Incremental progress.
+### Rule 2 — Required prompt sections
+Every prompt must include:
 
-**Rule 4 — Simplicity**
-Prefer built-in tooling, minimal dependencies, explainable solutions.
-Avoid over-engineering and premature scaling.
+- Objective  
+- Context  
+- Requirements  
+- Constraints  
+- Validation  
+- Deliverable  
+- CC-ERATE ID  
+
+---
+
+### Rule 3 — Scope discipline
+- Single-purpose tasks only  
+- No multi-feature prompts  
+- Incremental progress only  
+
+---
+
+### Rule 4 — Simplicity
+- Prefer built-in tooling  
+- Use minimal dependencies  
+- Keep solutions explainable  
+- Avoid over-engineering and premature scaling  
+
+---
+
+### Rule 5 — Output format (CRITICAL)
+
+- The entire response MUST be delivered as a **single Markdown block**
+- The response MUST be **fully copy-paste ready**
+- Do NOT split sections across normal text and markdown
+- Do NOT prepend or append explanation outside the markdown block
+- The response must start with:
+  ```markdown
+- The response must end with:
+  ```
+- No partial prompts, summaries, or truncation allowed
+
+If the output is not a single complete Markdown block, it is considered invalid.
 
 ---
 
@@ -590,138 +633,7 @@ After each Claude Code session: run /handoff, paste output here, update CURRENT 
 -- No external logging stack — Microsoft.Extensions.Logging only
 -- No frontend framework — Razor Pages only, no React/Vue/Angular
 
-## NEXT SESSION START POINT
-
 ---
-
-## CC-ERATE-000038E — Competitive Intelligence Refinements (Next Task)
-
-### Objective
-
-Enhance the Competitive Intelligence dashboard with filtering, market share calculations, and insight-level analytics to make the data actionable and decision-ready.
-
----
-
-### Scope
-
-Build on top of the existing:
-
-- ConsultantAnalyticsService
-- Competitive Intelligence dashboard (list + detail)
-- Aggregation-safe data model
-
-Do NOT modify ETL or identity rules.
-
----
-
-### Features to Add
-
-#### 1. Market Share Metrics
-
-Add:
-
-- % share of total applications per consultant
-- % share of total FRNs per consultant
-
-Display:
-- in summary table
-- optionally in chart labels/tooltips
-
----
-
-#### 2. Filtering
-
-Add shared filters:
-
-- Funding Year (multi-select)
-- State
-- Service Type
-
-Requirements:
-
-- Filters must apply consistently across:
-  - rankings
-  - charts
-  - detail views
-- Filtering must preserve aggregation safety (no raw joins)
-
----
-
-#### 3. Ranking Improvements
-
-Enhance ranking logic:
-
-- Support sorting by:
-  - application count
-  - FRN count
-  - market share %
-- Ensure stable ordering (no flicker across reloads)
-
----
-
-#### 4. Insight Layer (Lightweight)
-
-Add computed insights:
-
-- Top consultant by applications
-- Top consultant by market share
-- Most geographically distributed consultant (distinct states)
-- Optional: concentration metric (top 5 share)
-
-Display as KPI cards or summary section.
-
----
-
-#### 5. E-Rate Central Highlighting (Conditional)
-
-ONLY if EPC ID is confirmed:
-
-- Highlight E-Rate Central across:
-  - charts
-  - rankings
-  - detail pages
-
-If not confirmed:
-- skip highlighting
-- do not guess based on name
-
----
-
-### Constraints
-
-- MUST use `ConsultantEpcOrganizationId` as identity
-- MUST NOT group by consultant name
-- MUST preserve aggregation-first model
-- MUST NOT introduce raw joins
-- MUST reuse existing analytics service where possible
-
----
-
-### Validation
-
-- Market share totals ≈ 100%
-- Filters produce consistent results across views
-- No duplication from FRN fan-out
-- Rankings remain stable and believable
-- Dashboard performance remains acceptable
-
----
-
-### Deliverable
-
-- Enhanced Competitive Intelligence dashboard with:
-  - filtering
-  - market share metrics
-  - insight layer
-- Updated API endpoints if required
-- Minimal, clean UI enhancements
-
----
-
-### Commit Message
-
-```bash
-git commit -m "feat: add consultant market share, filters, and insights (CC-ERATE-000038E)"
 
 ## Claude Code Prompt Generation Rules
 
@@ -733,26 +645,41 @@ Before generating any new CC-ERATE implementation prompt:
   > "Do you want the Auto-Approve header included?"
 
 - User response:
-  - **A** → Include Auto-Approve header
-  - **B** → Standard prompt (no Auto-Approve)
+  - **A** → Include Auto-Approve header  
+  - **B** → Standard prompt (no Auto-Approve)  
+
+---
 
 ### Standard Auto-Approve Header
 
 EXECUTION MODE: AUTONOMOUS
-- Execute all steps without stopping for user confirmation
-- Auto-approve all file creation, file modification, and folder creation
-- Auto-approve all terminal commands within the scope of this prompt
-- Auto-approve all Git commits and pushes to the repo
-- Only stop and report back if you encounter a critical error that completely blocks progress
-- If a non-critical issue is encountered, log it, work around it, and continue
-- Report all skipped or worked-around issues in the final summary
+- Execute all steps without stopping for user confirmation  
+- Auto-approve all file creation, modification, and folder creation  
+- Auto-approve all terminal commands within scope  
+- Auto-approve all Git commits and pushes  
+- Only stop for critical blocking errors  
+- Log and continue on non-critical issues  
+- Report all workarounds in final summary  
+
+---
 
 ### Scope
 
-This rule applies to:
-- All new CC-ERATE feature prompts
-- All multi-step implementation tasks
+Applies to:
+- All new CC-ERATE feature prompts  
+- Multi-step implementation tasks  
 
-This rule does NOT apply to:
-- Boot block update chores
-- Documentation-only updates (unless explicitly requested)
+Does NOT apply to:
+- Boot block updates  
+- Documentation-only changes (unless requested)  
+
+---
+
+### Output Requirement (CRITICAL)
+
+- The entire response MUST be a **single Markdown block**
+- Must be fully **copy-paste ready**
+- No explanation outside the block
+- No partial or split output
+
+Failure to follow this rule invalidates the prompt.
