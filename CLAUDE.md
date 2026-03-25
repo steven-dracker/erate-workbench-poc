@@ -1,5 +1,6 @@
 ## BOOT BLOCK
-— # Last updated: 2026-03-23 | Boot Block: CC-ERATE-000038D
+— # Last updated: 2026-03-25 | Boot Block: CC-ERATE-000055
+
 
 ### PROJECT IDENTITY
 - App: **ERATE Workbench** — E-Rate lifecycle analytics POC showing where execution breaks down, where advisors should focus, and how to reason about the E-Rate program operationally
@@ -8,6 +9,13 @@
 - Dev env: **WSL-first** (canonical). Windows local is not the source of truth.
 - Solution: `ErateWorkbench.sln`
 - Projects: `ErateWorkbench.Api` | `ErateWorkbench.Domain` | `ErateWorkbench.Infrastructure` | `ErateWorkbench.Tests` | `ErateWorkbench.UITests`
+
+## KEY ENGINEERING PRINCIPLES
+- Never fabricate data  
+- Prefer truthful UI over complete UI  
+- Maintain aggregation-first design (no fan-out joins)  
+- Keep fixes minimal and scoped  
+- Prioritize demo clarity and correctness  
 
 ### ARCHITECTURAL LAWS
 These are immutable. Never violate without explicit architect approval.
@@ -20,9 +28,16 @@ These are immutable. Never violate without explicit architect approval.
 - No external logging stack — use built-in `Microsoft.Extensions.Logging` only (ADR-020)
 - No frontend framework — Razor Pages only, no React/Vue/Angular (ADR-001)
 
-### CURRENT STATE (as of CC-ERATE-000038D)
-- **Last completed:** CC-ERATE-000038D — Competitive Intelligence dashboard with consultant analytics, rankings, and detail views (PR #33 open, locally validated)
-- **Branch:** feature/consultant-market-intelligence — PR #33 open (ready for merge)
+### CURRENT STATE (as of CC-ERATE-000055)
+
+- **Last completed:** CC-ERATE-000054B — Safe targeted data refresh (operational, no code changes)  
+- **Branch:** main  
+- **Active task / next prompt:** CC-ERATE-000055 — Entity type badge color enhancement (School Search)  
+
+- **Project State:**  
+  The ERATE Workbench is **feature-complete and demo-ready**.  
+  All major QA issues have been resolved.  
+  Data has been refreshed to the extent safely supported by upstream sources.  
 
 - **Works (verified stable):**
   - Full CI pipeline: build → test → ui-smoke → security → secrets-scan → publish
@@ -47,57 +62,155 @@ These are immutable. Never violate without explicit architect approval.
     - Aggregation-safe analytics via ConsultantAnalyticsService
     - Chart.js visualizations
 
-- **Caveats (data quality & scale):**
-  - FY2020 contains a COVID window extension spike — annotated
-  - Late-certification outliers excluded from timing charts
-  - ServiceType null in Form 471 dataset
-  - FY2026 partial — advisory banner shown
-  - Socrata duplication handled via idempotent upsert
-  - ConsultantName is display-only; EPC ID is canonical
-  - E-Rate Central confirmed: EPC ID 16060891
-  - Tel Logic not found — unresolved
-  - mihb-jfex dataset scale confirmed:
-    - ~556K records processed
-    - 231 pages
-    - ~42-minute full import locally
+ ## CURRENT TASK — CC-ERATE-000055
 
-- **Consultant identity model (reference):**
-  - Canonical key: `ConsultantEpcOrganizationId`
-  - Display only: `ConsultantName`
-  - RawSourceKey:
-    - Applications: `{AppNumber}-{EpcId}`
-    - FRN: `{AppNumber}-{FRN}`
-  - Join safety: CONDITIONALLY SAFE
-  - Fan-out risk: ~2 FRNs per application
+Enhance School & Library Search UI with color-coded entity type badges.
+
+### Requirements
+
+Map entity types to distinct colors:
+
+- School → medium green  
+- Library → medium blue  
+- SchoolDistrict → darker green  
+- LibrarySystem → dark blue  
+- Consortium → dark orange  
+- NonInstructionalFacility → medium orange  
+- Unknown → unchanged  
+
+### Constraints
+
+- Modify existing badge rendering only  
+- No backend or data changes  
+- Use Bootstrap classes or minimal CSS  
+- Maintain readability and layout stability     
+
+### Data Caveats (Quality, Coverage, and Scale)
+
+#### Time-Based Characteristics
+- FY2020 includes a COVID-era filing window extension spike (explicitly annotated)  
+- Late-certification outliers are excluded from timing charts to preserve interpretability  
+- FY2026 data is partial; advisory messaging is shown in the UI  
+
+---
+
+#### Data Completeness & Schema
+- `ServiceType` is null for portions of the Form 471 dataset  
+- External datasets (USAC) may change schema over time (e.g., Form 471 CSV header drift)  
+
+---
+
+#### Identity & Modeling
+- `ConsultantName` is display-only; EPC ID is the canonical identity  
+- E-Rate Central confirmed: EPC ID `16060891`  
+
+---
+
+#### Data Integrity & Processing
+- Socrata duplication handled via idempotent upsert logic  
+- Aggregation-first model prevents duplication from FRN fan-out 
+- Some datasets unavailable or unstable upstream (USAC)
+- Form 471 CSV schema drift (snake_case → Title Case) breaks parser
+- Very large imports may hit SQLite limits near completion (minor tail loss possible)
+- Data is **accurate where present**, not artificially completed 
+
+---
+
+#### Scale Characteristics
+- Large datasets (e.g., consultant FRN dataset `mihb-jfex`) operate at:
+  - ~556K records  
+  - ~231 pages  
+  - ~40+ minute full import locally  
+- Dataset growth is ongoing and impacts ingestion strategy   
+
+---
+
+#### Data Completeness & Schema
+- `ServiceType` is null for portions of the Form 471 dataset  
+- External datasets (USAC) may change schema over time (e.g., Form 471 CSV header drift)  
+
+---
+
+#### Identity & Modeling
+- `ConsultantName` is display-only; EPC ID is the canonical identity  
+- E-Rate Central confirmed: EPC ID `16060891`  
+
+---
+
+#### Data Integrity & Processing
+- Socrata duplication handled via idempotent upsert logic  
+- Aggregation-first model prevents duplication from FRN fan-out  
+- Some datasets unavailable or unstable upstream (USAC)
+- Form 471 CSV schema drift (snake_case → Title Case) breaks parser
+- Very large imports may hit SQLite limits near completion (minor tail loss possible)
+- Data is **accurate where present**, not artificially completed
+
+---
+
+#### Scale Characteristics
+- Large datasets (e.g., consultant FRN dataset `mihb-jfex`) operate at:
+  - ~556K records  
+  - ~231 pages  
+  - ~40+ minute full import locally  
+- Dataset growth is ongoing and impacts ingestion strategy
+  
+
+### Consultant Identity Model (Reference)
+
+- **Canonical Key**
+  - `ConsultantEpcOrganizationId` is the sole identity key used for grouping and aggregation  
+
+- **Display Field**
+  - `ConsultantName` is display-only and not used for grouping  
+
+- **Raw Source Keys**
+  - Applications: `{ApplicationNumber}-{ConsultantEpcOrganizationId}`  
+  - FRNs: `{ApplicationNumber}-{FRN}`  
+
+- **Aggregation Model**
+  - Aggregation-first approach is enforced before combining datasets  
+  - Distinct counts used for:
+    - applications  
+    - FRNs  
+
+- **Fan-Out Characteristics**
+  - FRN data introduces natural fan-out (~2 FRNs per application on average)  
+  - Managed through aggregation rules to prevent duplication errors  
+
+- **Join Safety**
+  - Raw joins are intentionally avoided  
+  - All cross-dataset logic is applied post-aggregation to ensure correctness 
 
 ### ACTIVE TASK
-- Next prompt: CC-ERATE-000038E
-- Status: Final feature — Competitive Intelligence refinements (filters, market share, insights)
+- Next prompt: CC-ERATE-000055 
+- Status: Final feature — Entity type badge color enhancement (School Search)
 
 ### CURRENT MODE
-- Demo Stabilization → Release QA (post-000038E)
-- No new features beyond CC-ERATE-000038E
-- Focus on validation, bug fixes, and demo readiness
+- Release QA complete → Demo-ready state  
+- Limited-scope enhancements only (UI polish, clarity, minor improvements)  
+- Focus on stability, correctness, and demo presentation  
+- No major feature expansion or architectural changes  
 
 ### KNOWN DEBT (summary — see docs/context/technical-debt.md)
-- TD-001: HttpClient timeout handling
-- TD-002: Import observability weak
-- TD-003: Partial incremental import support
-- TD-004: Manual rebuild ordering
-- TD-006: In-memory joins (SQLite limitation)
-- TD-007: Analytics on raw tables
-- TD-008: No deletion detection
-- TD-011: Cache invalidation missing
-- TD-012: Diagnostic logging remnants
-- TD-013: xUnit analyzer warning
-- TD-014: Playwright WSL dependency
-- TD-015: Dependabot PR management
-- TD-016: UI polish incomplete
-- TD-017: Consultant fan-out aggregation risk
-- TD-018: Consultant name normalization
-- TD-019: EPC identification gaps (Tel Logic unresolved)
-- TD-020: mihb-jfex confirmed large-scale dataset (~556K rows, ~42 min import)
-- TD-021: GitHub Actions test runner hang (CI-only issue)
+- TD-001: HttpClient timeout handling (long-running imports may stall without explicit timeout control)  
+- TD-002: Import observability limited (no real-time progress visibility beyond polling)  
+- TD-003: Inconsistent incremental import support (some datasets require full reloads)  
+- TD-004: Manual rebuild ordering required for derived tables  
+- TD-006: SQLite limitations under large-scale aggregation/import (connection errors on long-running jobs)  
+- TD-007: Analytics executed on raw tables (no materialized views)  
+- TD-008: No deletion detection from upstream data sources  
+- TD-011: Cache invalidation not tied to data refresh operations  
+- TD-012: Residual diagnostic logging  
+- TD-013: xUnit analyzer warning (test quality improvement opportunity)  
+- TD-014: Playwright dependency setup required in WSL  
+- TD-015: Dependabot PR management requires manual oversight  
+- TD-016: Minor UI polish and visual consistency gaps  
+- TD-017: Large-scale dataset ingestion performance (multi-million row imports stress current architecture)  
+- TD-018: Consultant name normalization inconsistencies  
+- TD-019: EPC identification gaps for certain firms  
+- TD-020: External dataset growth (USAC datasets expanding significantly, impacting ingestion strategy)  
+- TD-021: GitHub Actions test runner hang (CI-only, non-blocking)  
+- TD-022: Form 471 schema drift (USAC CSV header change breaks parser)
 
 ### WHAT TO IGNORE
 - `erate-workbench/` subdirectory — legacy
