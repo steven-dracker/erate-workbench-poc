@@ -223,27 +223,57 @@ Map entity types to distinct colors:
 ## Home Lab Infrastructure
 
 ### dude-mcp-01
-- **Role:** Primary MCP hub, Postgres server, CI/build node
 - **Hardware:** Dell Latitude 7400, Intel i7-9750H (6-core, 4.5GHz boost), 16GB DDR4, 512GB NVMe SSD
 - **OS:** Ubuntu 24.04 LTS (kernel 6.8.0-106-generic)
 - **IP:** 192.168.1.208 (static, DHCP reserved at router)
-- **Tailscale:** enrolled
+- **Tailscale:** 100.106.14.96
 - **SSH:** ssh drake@192.168.1.208
+- **VS Code Remote:** configured
 - **User:** drake
-- **Postgres:** 
+- **Ethernet:** TP-Link UE306 USB-C adapter (enx9c69d375f5a0)
+- **Installed:**
+  - Node.js v24
+  - Claude Code 2.1.86
+  - Git, curl, wget, net-tools, htop, tree, unzip, tmux
+  - Postgres 16 (erate user, eratedb database)
+  - GitHub MCP server (connected ✓)
+  - Keeper Commander (via pipx)
+  - .NET 8 SDK
+  - nginx
+- **Postgres:**
+  - Superuser: postgres
   - App user: erate
   - App database: eratedb
-  - Superuser: postgres
-- **Installed:** Node.js v24, Claude Code 2.1.86, Git, curl, wget, htop
-- **Ethernet:** TP-Link UE306 USB-C adapter (enx9c69d375f5a0)
+  - Port: 5432 (listening on 0.0.0.0)
+  - Remote access: enabled for 192.168.1.0/24
 - **Provisioned:** 2026-03-28
 
+### dude-ops-01
+- **Hardware:** Dell OptiPlex 5080 Micro, Intel i5-10500T (6-core, 3.8GHz boost), 8GB DDR4 (DIMM 2 empty — upgradeable to 16GB), 256GB NVMe SSD
+- **OS:** Ubuntu 24.04 LTS
+- **IP:** 192.168.1.210 (static, DHCP reserved at router)
+- **Tailscale:** 100.70.156.106
+- **SSH:** ssh drake@192.168.1.210
+- **VS Code Remote:** configured
+- **User:** drake
+- **Ethernet:** Built-in Intel I219-LM (eno1)
+- **Installed:**
+  - Node.js v24
+  - Claude Code 2.1.87
+  - Git, curl, wget, net-tools, htop, tree, unzip, tmux
+  - GitHub MCP server (connected ✓)
+- **Planned:** OpenClaw agent, monitoring services
+- **Provisioned:** 2026-03-29
+
+### Two Node Fleet — Both Operational
+- dude-mcp-01  192.168.1.208  → MCP hub, Postgres, ERATE Workbench
+- dude-ops-01  192.168.1.210  → Always-on services, OpenClaw, monitoring
+
 ### Fleet Naming Convention
-- dude-mcp-01 — MCP hub (this node)
-- dude-mcp-02 — reserved
-- dude-db-01 — dedicated database (future)
+- dude-mcp-01 — MCP hub, dedicated database (Running)
+- dude-ops-02 — Always-on services, OpenClaw, monitoring (Running)
 - dude-ci-01 — dedicated CI (future)
-- dude-mon-01 — monitoring (future)
+- dude-mon-01 — other (future)
 
 ### Network
 - Home subnet: 192.168.1.0/24
@@ -252,12 +282,37 @@ Map entity types to distinct colors:
 - Switch: Nighthawk (desk mounted)
 - Backhaul: single Cat6 run FiOS → desk switch
 
-### Golden Image - Laptop Specific Settings
-- Disable lid sleep: set HandleLidSwitch=ignore in /etc/systemd/logind.conf
-- Apply with: sudo systemctl restart systemd-logind
+### Pending Fleet (Treasure Chest)
+| Device | Status | Planned Role |
+|---|---|---|
+| Dell Latitude 7400 (2019) | Not provisioned | dude-mcp-02 or dude-ci-01 |
+| Intel MacBook Pro | Not provisioned | dude-node-03 |
+| Mac Mini 2011 | Not provisioned | dude-mac-01, lightweight tasks |
 
 ### Secrets Management
 - Keeper Commander installed via pipx on dude-mcp-01
 - Dedicated secrets user for programmatic access
 - All tokens, passwords, connection strings stored in Keeper
 - Never store secrets in repo, config files, or environment files
+
+### Golden Image — Standard Install Checklist
+- Ubuntu Server 24.04 LTS (not minimized)
+- OpenSSH server enabled
+- Skip snaps
+- Post install:
+  - lvextend root to full disk
+  - Static IP via netplan
+  - DHCP reservation at router
+  - Tailscale enrollment
+  - Base packages: git curl wget net-tools htop tree unzip tmux
+  - Node.js LTS via nodesource
+  - Claude Code via npm-global prefix
+  - GitHub MCP server
+  - HandleLidSwitch=ignore (laptops only)
+  - systemctl enable postgresql (if DB node)
+
+### Golden Image — Laptop Specific
+- Disable lid sleep: HandleLidSwitch=ignore in /etc/systemd/logind.conf
+- Apply: sudo systemctl restart systemd-logind
+- BIOS: disable camera, bluetooth, wake on WiFi
+- USB ethernet: TP-Link UE306 (USB-C) or UE300 (USB-A)
