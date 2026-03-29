@@ -237,61 +237,118 @@ Use this exact prompt ID in your response: CC-ERATE-000055
 
 The project is transitioning from a single-node POC application into a **distributed, infrastructure-backed system**.
 
-### MCP Hub Environment (dude-mcp-01)
+### Home Lab Infrastructure
 
-- Dell Latitude 7400 (i7-9750H, 16GB RAM, 512GB NVMe)
-- Ubuntu 24.04 LTS (headless)
-- Static IP: 192.168.1.208
-- SSH via VS Code Remote SSH
-- Tailscale mesh VPN enabled
-- Node.js v24 installed
-- Claude Code 2.1.86 installed
-- Postgres installed:
-  - user: `erate`
-  - database: `eratedb`
-- GitHub MCP server connected and validated
-- Lid-close sleep disabled (systemd-logind)
-- Role:
-  - Primary MCP hub
-  - Postgres database host
-  - CI/build node
+#### MCP Hub — dude-mcp-01
+- **Hardware:** Dell Latitude 7400 (i7-9750H, 6-core, 4.5GHz boost, 16GB RAM, 512GB NVMe)
+- **OS:** Ubuntu 24.04 LTS (headless, kernel 6.8.0-106-generic)
+- **Static IP:** 192.168.1.208 (DHCP reserved at router)
+- **Tailscale:** 100.106.14.96
+- **SSH:** `ssh drake@192.168.1.208` via VS Code Remote SSH
+- **Ethernet:** TP-Link UE306 USB-C adapter
+- **Installed:**
+  - Node.js v24
+  - Claude Code 2.1.86
+  - Git, curl, wget, net-tools, htop, tmux
+  - Postgres 16 (user: `erate`, database: `eratedb`)
+  - GitHub MCP server (connected ✓)
+  - Keeper Commander (via pipx)
+  - .NET 8 SDK
+  - nginx
+- **Postgres:**
+  - Superuser: `postgres`
+  - App user: `erate`
+  - App database: `eratedb`
+  - Port: 5432 (listening on 0.0.0.0)
+  - Remote access: enabled for 192.168.1.0/24
+- **Lid sleep:** disabled via systemd-logind
+- **Role:** Primary MCP hub, Postgres host, CI/build node, ERATE Workbench host
+- **Provisioned:** 2026-03-28
+
+#### Always-On Services — dude-ops-01
+- **Hardware:** Dell OptiPlex 5080 Micro (i5-10500T, 6-core, 3.8GHz boost, 8GB DDR4, 256GB NVMe)
+- **OS:** Ubuntu 24.04 LTS (headless)
+- **Static IP:** 192.168.1.210 (DHCP reserved at router)
+- **Tailscale:** 100.70.156.106
+- **SSH:** `ssh drake@192.168.1.210` via VS Code Remote SSH
+- **Ethernet:** Built-in Intel I219-LM (eno1)
+- **Installed:**
+  - Node.js v24
+  - Claude Code 2.1.87
+  - Git, curl, wget, net-tools, htop, tmux
+  - GitHub MCP server (connected ✓)
+- **RAM:** DIMM 2 empty — upgradeable to 16GB (planned)
+- **Role:** Always-on services, OpenClaw agent host, monitoring
+- **Provisioned:** 2026-03-29
+
+#### Pending Fleet (Treasure Chest)
+| Device | Planned Hostname | Planned Role |
+|---|---|---|
+| Dell Latitude 7400 (2019) | dude-mcp-02 | Second MCP/CI node |
+| Intel MacBook Pro | dude-node-03 | General Ubuntu node |
+| Mac Mini 2011 | dude-mac-01 | Lightweight tasks |
 
 ### Fleet Naming Convention
+- `dude-mcp-XX` — MCP hub and application nodes
+- `dude-ops-XX` — Always-on service nodes
+- `dude-db-XX` — Dedicated database nodes (future)
+- `dude-ci-XX` — CI/build nodes (future)
+- `dude-mon-XX` — Monitoring nodes (future)
 
-- `dude-mcp-01` — primary node (active)
-- `dude-mcp-02+` — future expansion nodes
+### Network
+- Home subnet: 192.168.1.0/24
+- Gateway: 192.168.1.1
+- Mesh VPN: Tailscale
+- Switch: Nighthawk (desk mounted)
+- Backhaul: single Cat6 run FiOS → desk switch
+- eero wired backhaul on same switch
 
 ### Phase Goals
 
-1. **Migrate ERATE Workbench to MCP Hub**
-   - run app from `dude-mcp-01`
-   - validate remote dev + execution workflow
+1. **Migrate ERATE Workbench to dude-mcp-01**
+   - Clone repo, install .NET 8, run app headless
+   - Validate remote dev + execution workflow
+   - Configure nginx reverse proxy
 
 2. **Database Migration**
-   - SQLite → Postgres
-   - preserve schema + data integrity
-   - update EF / connection configuration
+   - SQLite → Postgres (eratedb on dude-mcp-01)
+   - Preserve schema + data integrity
+   - Update EF Core connection configuration
+   - Full 19M row migration via CSV COPY
 
-3. **Environment Reproducibility**
-   - create Ubuntu Autoinstall (golden image)
-   - enable rapid provisioning of new nodes
+3. **OpenClaw on dude-ops-01**
+   - Deploy agent as systemd service
+   - Gmail OAuth, Enphase, Home Assistant, Ring integrations
+   - Claude/GPT-4o mini dual-model routing
+   - Keeper Commander for secrets
 
-4. **Multi-Node Readiness**
-   - define roles (API, DB, worker, CI)
-   - prepare for horizontal scaling
+4. **Environment Reproducibility**
+   - Ubuntu Autoinstall golden image
+   - Ansible post-install playbook
+   - Rapid provisioning of remaining fleet devices
+
+5. **Multi-Node Readiness**
+   - Define roles (API, DB, worker, CI)
+   - Prepare for horizontal scaling
 
 ### Constraints
-
 - No breaking changes to current app functionality
 - Maintain demo stability during migration
 - Prefer incremental migration (SQLite fallback allowed temporarily)
+- Secrets managed via Keeper Commander — never in repo or config files
 
 ### Current Status
-
-- MCP hub provisioned and operational
-- App not yet migrated
-- Postgres installed but not integrated
-- Phase not yet started in codebase
+| Item | Status |
+|---|---|
+| dude-mcp-01 provisioned | ✅ Operational |
+| dude-ops-01 provisioned | ✅ Operational |
+| Tailscale mesh | ✅ Both nodes enrolled |
+| GitHub MCP | ✅ Connected on both nodes |
+| Postgres + eratedb | ✅ Ready on dude-mcp-01 |
+| ERATE Workbench migrated | ⏳ Not started |
+| SQLite → Postgres | ⏳ Not started |
+| OpenClaw deployed | ⏳ Not started |
+| Golden image built | ⏳ Not started |
 
 ### Next Execution Order
 
