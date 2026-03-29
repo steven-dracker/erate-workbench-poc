@@ -217,3 +217,35 @@ Map entity types to distinct colors:
 - `reports/` output files
 - UI test build artifacts
 - Any Windows-local assumptions
+
+## Home Lab Infrastructure
+
+### dude-mcp-01
+- **Role:** Primary MCP hub, Postgres server, CI/build node
+- **Hardware:** Dell Latitude 7400, Intel i7-9750H (6-core, 4.5GHz boost), 16GB DDR4, 512GB NVMe SSD
+- **OS:** Ubuntu 24.04 LTS (kernel 6.8.0-106-generic)
+- **IP:** 192.168.1.208 (static, DHCP reserved at router)
+- **Tailscale:** enrolled
+- **SSH:** ssh drake@192.168.1.208
+- **User:** drake
+- **Postgres:** 
+  - App user: erate
+  - App database: eratedb
+  - Superuser: postgres
+- **Installed:** Node.js v24, Claude Code 2.1.86, Git, curl, wget, htop
+- **Ethernet:** TP-Link UE306 USB-C adapter (enx9c69d375f5a0)
+- **Provisioned:** 2026-03-28
+
+### Fleet Naming Convention
+- dude-mcp-01 — MCP hub (this node)
+- dude-mcp-02 — reserved
+- dude-db-01 — dedicated database (future)
+- dude-ci-01 — dedicated CI (future)
+- dude-mon-01 — monitoring (future)
+
+### Network
+- Home subnet: 192.168.1.0/24
+- Gateway: 192.168.1.1
+- Mesh VPN: Tailscale
+- Switch: Nighthawk (desk mounted)
+- Backhaul: single Cat6 run FiOS → desk switch
