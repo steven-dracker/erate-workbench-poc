@@ -142,17 +142,31 @@ DURATION=$((IMPORT_END - IMPORT_START))
 
 echo "Result: $IMPORT_RESULT"
 
+# ImportJob response: { id, status (int: 0=Pending,1=Running,2=Succeeded,3=Failed),
+#                       recordsProcessed, recordsFailed, startedAt, completedAt, ... }
 RECORDS_PROCESSED=$(echo "$IMPORT_RESULT" | grep -oP '"recordsProcessed":\K[0-9]+' || echo "?")
-RECORDS_INSERTED=$(echo  "$IMPORT_RESULT" | grep -oP '"recordsInserted":\K[0-9]+'  || echo "?")
-STATUS=$(echo "$IMPORT_RESULT"            | grep -oP '"status":"\K[^"]+' | head -1  || echo "?")
+RECORDS_FAILED=$(echo    "$IMPORT_RESULT" | grep -oP '"recordsFailed":\K[0-9]+'     || echo "?")
+STATUS_INT=$(echo        "$IMPORT_RESULT" | grep -oP '"status":\K[0-9]+'            || echo "?")
 
-if [[ "$STATUS" == "Completed" ]]; then
-  ok "Import completed: processed=$RECORDS_PROCESSED inserted=$RECORDS_INSERTED duration=${DURATION}s"
+# 2 = Succeeded
+if [[ "$STATUS_INT" == "2" ]]; then
+  ok "Import succeeded: processed=$RECORDS_PROCESSED failed=$RECORDS_FAILED duration=${DURATION}s"
+  if [[ "$RECORDS_PROCESSED" =~ ^[0-9]+$ ]] && [[ "$RECORDS_PROCESSED" -gt 0 ]]; then
+    ok "Row write confirmed: $RECORDS_PROCESSED records processed"
+  else
+    fail "Unexpected recordsProcessed: $RECORDS_PROCESSED — import may have written nothing"
+    exit 1
+  fi
 else
-  fail "Import status: $STATUS"
+  fail "Import status int: $STATUS_INT (expected 2=Succeeded)"
   echo "$IMPORT_RESULT"
   exit 1
 fi
+
+# Row count after first import — used as idempotency baseline
+COUNT_AFTER_RUN1=$(PGPASSWORD="$PASS" psql -h localhost -U erate -d eratedb -t -c \
+  "SELECT COUNT(*) FROM \"EpcEntities\";" 2>/dev/null | tr -d ' \n' || echo "unavailable")
+info "EpcEntities row count after run 1: $COUNT_AFTER_RUN1"
 
 # ── 6. Idempotency rerun ──────────────────────────────────────────────────────
 echo
@@ -164,19 +178,22 @@ RERUN_RESULT=$(curl -sf -X POST "${BASE_URL}/import/usac" \
 
 echo "Rerun result: $RERUN_RESULT"
 
-RERUN_INSERTED=$(echo "$RERUN_RESULT" | grep -oP '"recordsInserted":\K[0-9]+'  || echo "?")
-RERUN_UPDATED=$(echo  "$RERUN_RESULT" | grep -oP '"recordsUpdated":\K[0-9]+'   || echo "?")
-RERUN_STATUS=$(echo  "$RERUN_RESULT"  | grep -oP '"status":"\K[^"]+' | head -1 || echo "?")
+RERUN_PROCESSED=$(echo "$RERUN_RESULT" | grep -oP '"recordsProcessed":\K[0-9]+' || echo "?")
+RERUN_STATUS_INT=$(echo "$RERUN_RESULT" | grep -oP '"status":\K[0-9]+'          || echo "?")
 
-if [[ "$RERUN_STATUS" == "Completed" ]]; then
-  if [[ "$RERUN_INSERTED" == "0" ]]; then
-    ok "Idempotency confirmed: rerun inserted=$RERUN_INSERTED updated=$RERUN_UPDATED (no new rows)"
+COUNT_AFTER_RUN2=$(PGPASSWORD="$PASS" psql -h localhost -U erate -d eratedb -t -c \
+  "SELECT COUNT(*) FROM \"EpcEntities\";" 2>/dev/null | tr -d ' \n' || echo "unavailable")
+info "EpcEntities row count after run 2: $COUNT_AFTER_RUN2"
+
+if [[ "$RERUN_STATUS_INT" == "2" ]]; then
+  if [[ "$COUNT_AFTER_RUN1" == "$COUNT_AFTER_RUN2" ]]; then
+    ok "Idempotency confirmed: row count unchanged ($COUNT_AFTER_RUN1 → $COUNT_AFTER_RUN2)"
   else
-    fail "Idempotency breach: rerun inserted $RERUN_INSERTED new rows"
+    fail "Idempotency breach: row count grew from $COUNT_AFTER_RUN1 to $COUNT_AFTER_RUN2"
     exit 1
   fi
 else
-  fail "Rerun status: $RERUN_STATUS"
+  fail "Rerun status int: $RERUN_STATUS_INT"
   exit 1
 fi
 
@@ -216,14 +233,12 @@ else
   fail "Analytics: HTTP $HTTP_STATUS"
 fi
 
-# ── 8. Row count spot-check via Swagger/API ────────────────────────────────────
+# ── 8. Row count spot-check ────────────────────────────────────────────────────
 echo
 info "=== Step 7: Row count spot-check ==="
-ENTITY_COUNT=$(PGPASSWORD="$PASS" psql -h localhost -U erate -d eratedb -t -c \
-  "SELECT COUNT(*) FROM \"Entities\";" 2>/dev/null | tr -d ' \n' || echo "psql unavailable")
-info "Entities table row count: $ENTITY_COUNT"
+ENTITY_COUNT="$COUNT_AFTER_RUN2"
 if [[ "$ENTITY_COUNT" =~ ^[0-9]+$ ]] && [[ "$ENTITY_COUNT" -gt 0 ]]; then
-  ok "Entities table has $ENTITY_COUNT rows"
+  ok "EpcEntities table has $ENTITY_COUNT rows (confirmed in Postgres)"
 else
   info "psql count unavailable — relying on import result above"
 fi
@@ -236,9 +251,8 @@ echo "========================================"
 echo " Node:          dude-mcp-01"
 echo " Provider:      Postgres (eratedb)"
 echo " Import:        EPC Entities (7i5i-83qf)"
-echo " Processed:     $RECORDS_PROCESSED"
-echo " Inserted:      $RECORDS_INSERTED"
-echo " Rerun status:  $RERUN_STATUS (inserted=$RERUN_INSERTED)"
-echo " Entity count:  $ENTITY_COUNT"
+echo " Processed:     $RECORDS_PROCESSED (failed=$RECORDS_FAILED)"
+echo " Rerun:         $RERUN_PROCESSED processed (count stable: $COUNT_AFTER_RUN1 → $COUNT_AFTER_RUN2)"
+echo " EpcEntities:   $ENTITY_COUNT rows in Postgres"
 echo "========================================"
 ok "All validation steps passed"
