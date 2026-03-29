@@ -255,3 +255,9 @@ Map entity types to distinct colors:
 ### Golden Image - Laptop Specific Settings
 - Disable lid sleep: set HandleLidSwitch=ignore in /etc/systemd/logind.conf
 - Apply with: sudo systemctl restart systemd-logind
+
+### Secrets Management
+- Keeper Commander installed via pipx on dude-mcp-01
+- Dedicated secrets user for programmatic access
+- All tokens, passwords, connection strings stored in Keeper
+- Never store secrets in repo, config files, or environment files
