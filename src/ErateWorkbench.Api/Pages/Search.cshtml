@@ -15,6 +15,32 @@
         };
         return QueryString.Create(q).ToUriComponent();
     }
+
+    // Entity type badge color helpers (CC-ERATE-000055)
+    string EntityBadgeClass(EpcEntityType t) => t switch
+    {
+        EpcEntityType.School  => "bg-success",
+        EpcEntityType.Library => "bg-primary",
+        _                     => "bg-secondary"
+    };
+
+    string EntityBadgeStyle(EpcEntityType t) => t switch
+    {
+        EpcEntityType.SchoolDistrict          => "background-color:#146c43",
+        EpcEntityType.LibrarySystem           => "background-color:#0a367a",
+        EpcEntityType.Consortium              => "background-color:#c35a00",
+        EpcEntityType.NonInstructionalFacility => "background-color:#fd7e14",
+        _                                     => ""
+    };
+
+    string EntityBadgeTextClass(EpcEntityType t) => t switch
+    {
+        EpcEntityType.NonInstructionalFacility => "text-dark",
+        EpcEntityType.SchoolDistrict or
+        EpcEntityType.LibrarySystem  or
+        EpcEntityType.Consortium               => "text-white",
+        _                                      => ""
+    };
 }
 
 <h4 class="mb-3">School &amp; Library Search</h4>
@@ -96,7 +122,10 @@
                     <tr>
                         <td><code>@e.EntityNumber</code></td>
                         <td>@e.EntityName</td>
-                        <td><span class="badge bg-secondary">@e.EntityType</span></td>
+                        <td>
+                            <span class="badge @EntityBadgeClass(e.EntityType) @EntityBadgeTextClass(e.EntityType)"
+                                  style="@EntityBadgeStyle(e.EntityType)">@e.EntityType</span>
+                        </td>
                         <td>@e.PhysicalState</td>
                         <td>@e.PhysicalCity</td>
                         <td>
