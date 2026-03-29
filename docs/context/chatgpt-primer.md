@@ -1,6 +1,6 @@
 # ChatGPT Architecture Session Primer
 # Paste this file contents at the start of a new ChatGPT chat to restore full context.
-# Last updated: 2026-03-23 | CC-ERATE-000054 complete | CC-ERATE-000055 pending
+# Last updated: 2026-03-28 | CC-ERATE-000054 complete | CC-ERATE-000055 pending
 # Update CURRENT STATE after each Claude Code session using /handoff output.
 
 ---
@@ -112,30 +112,193 @@ The following are explicitly out of scope unless revisited by the architect:
 ### CURRENT STATE
 <!-- UPDATE THIS SECTION after each Claude Code session using /handoff output -->
 
-## Session Handoff — CC-ERATE-000055 — 2026-03-25
+---
 
-## CURRENT TASK — CC-ERATE-000055
+## SESSION HANDOFF — CC-ERATE-000055 — 2026-03-28
 
-Enhance School & Library Search UI with color-coded entity type badges.
+### COMPLETED THIS SESSION
+- Committed and pushed pending doc/context updates (boot block, chatgpt-primer, technical-debt, archive) from `feature/safe-targeted-data-refresh` — PR #46 opened and merged to main
+- Produced full test suite audit (CC-ERATE-TEST-AUDIT-001): ~179 tests across 24 classes inventoried, classified, and prioritized — audit output delivered as a structured report (not committed)
+- Identified 3 remove candidates (trivial/tautological), 8+ review candidates, and 1 edit candidate in the test suite
+- CI hang root cause confirmed resolved (CC-ERATE-000042); no remaining shared-state lifecycle risks in test classes
 
-### Requirements
+### CURRENT STATE
+- Works end-to-end: All features listed in CLAUDE.md CURRENT STATE — Works section remain stable; main is clean
+- Partial / incomplete: CC-ERATE-000055 (entity type badge color enhancement on School Search) — not yet started; test suite audit delivered but no cleanup commits made
+- Tests passing: Yes (CI green, main is clean)
+- Branch status: `main` — clean, up to date; no open feature branches; PR #46 merged
 
-Map entity types to distinct colors:
+### UNEXPECTED DISCOVERIES
+- `feature/safe-targeted-data-refresh` had uncommitted doc changes from a prior session that were never committed or merged — resolved this session by committing and opening PR #46
+- Two tautological test methods exist in `ProgramWorkflowModelTests` that can never fail under any inputs (`BackwardCompat_P0AbsentInOldSave_DefaultsToEmpty`, `BackwardCompat_OldSaveKeys_StillMapToCorrectPhases`) — both are safe to delete
+- `UnitTest1.cs` is a scaffold artifact containing only a comment — no tests, zero value
+- `AdvisorPlaybookModelTests.Phase3_IsCurrentPhase` encodes live demo state as a test invariant — will produce a spurious failure if the playbook phase advances
 
-- School → medium green  
-- Library → medium blue  
-- SchoolDistrict → darker green  
-- LibrarySystem → dark blue  
-- Consortium → dark orange  
-- NonInstructionalFacility → medium orange  
-- Unknown → unchanged  
+### DECISIONS I MADE AUTONOMOUSLY (needs architect review)
+- Executed test audit as a research/analysis task only — no tests were deleted or modified; cleanup was intentionally deferred per audit-first scope
+- Classified `Phase3_IsCurrentPhase` as conditional remove (Batch 3) rather than immediate remove, given uncertainty about whether the phase is expected to advance
+
+### BOOT BLOCK FIELDS TO UPDATE IN CLAUDE.md
+- [ ] Boot Block ID (increment to CC-ERATE-000056 once 000055 is complete)
+- [ ] CURRENT STATE — Last completed (update to CC-ERATE-000055 once badge work is done)
+- [ ] CURRENT STATE — Branch status (currently main — update when feature branch opens)
+- [ ] CURRENT STATE — Works (add test audit artifact as context note if desired)
+- [ ] ACTIVE TASK — Goal (update to next task after 000055)
+- [ ] KNOWN DEBT — consider adding TD-023: Test suite contains tautological/snapshot tests (identified in CC-ERATE-TEST-AUDIT-001)
+- [ ] Other: Verify PR #46 appears in boot block history if tracking merged PRs
+
+---
+
+## NEXT PROMPT DRAFT (CC-ERATE-000055)
+
+---
+
+Before starting this task:
+git checkout main
+git pull
+git checkout -b feature/entity-type-badge-colors
+
+
+
+CC-ERATE-000055 — Entity type badge color enhancement (School Search)
+
+You are working in the erate-workbench-poc repo on branch `feature/entity-type-badge-colors`.
+
+## Objective
+Enhance the School & Library Search results table to display entity type badges with distinct, meaningful colors rather than the current uniform gray (`bg-secondary`). This improves scannability and visual differentiation between schools, libraries, districts, and other entity types during demo and operational use. The change is purely presentational — no backend, data, or API changes.
+
+## Context
+The repo already includes:
+- Full CI pipeline: build → test → ui-smoke → security → secrets-scan → publish
+- Playwright UI smoke tests (SmokeTests.cs) — must remain green after this change
+- School & Library Search page at `/Search` (Search.cshtml) with entity type badges currently rendering as `<span class="badge bg-secondary">@e.EntityType</span>` for all types
+- Entity types in use: School, Library, SchoolDistrict, LibrarySystem, Consortium, NonInstructionalFacility, Unknown
+- Bootstrap 5 is the CSS framework in use
+- Desktop navigation with grouped dropdowns (Dashboard, Explore, Insights, Reference, Help)
+- All 20 ADRs implemented; Razor Pages only — no frontend framework
+
+## Primary Goals
+1. Map each entity type to a distinct Bootstrap or minimal-CSS color so types are visually differentiable at a glance
+2. Render colored badges in the Search results table without altering layout, column widths, or any other badge (the status badge must remain untouched)
+3. Keep Unknown unchanged (`bg-secondary` gray)
+
+## Requirements
+1. Modify `src/ErateWorkbench.Api/Pages/Search.cshtml` only — target the entity type badge (currently `<span class="badge bg-secondary">@e.EntityType</span>`)
+2. Replace static `bg-secondary` with a conditional color mapping using a Razor expression or helper:
+   - `School` → `bg-success` (medium green)
+   - `Library` → `bg-primary` (medium blue)
+   - `SchoolDistrict` → darker green — use inline style `background-color: #146c43` or Bootstrap `bg-success` with opacity override; choose whichever is cleaner
+   - `LibrarySystem` → dark blue — use inline style `background-color: #0a367a` or Bootstrap `bg-primary` with opacity override
+   - `Consortium` → dark orange — use inline style `background-color: #c35a00` or Bootstrap `bg-warning text-dark` tinted darker
+   - `NonInstructionalFacility` → medium orange — use `style="background-color: #fd7e14"` (Bootstrap's `$orange` token)
+   - `Unknown` → `bg-secondary` (unchanged)
+3. The mapping must be readable inline in Razor — use a local function, a switch expression, or a dictionary lookup; do not create a new helper class or file
+4. All badge text must remain white or dark as appropriate for contrast — add `text-white` where needed for inline-style badges
+5. Do not change any other badge (the Active/Closed status badge at the adjacent column must remain unchanged)
+6. Do not change page models, API endpoints, domain, infrastructure, or any other file
+
+## Constraints
+- Razor Pages only — no React, Vue, or Angular
+- No backend or data model changes
+- No new .cs files or utility classes
+- No logging changes
+- Must not break existing Playwright smoke tests
+- Follow WSL-canonical dev environment
+- Minimal CSS only — prefer Bootstrap classes; use inline styles only where Bootstrap does not provide the needed color token
+
+## Validation
+1. Run the app locally: `dotnet run --project src/ErateWorkbench.Api`
+2. Navigate to `/Search`, search for mixed entity types (e.g., state = "TX" with no other filters)
+3. Confirm each of the 7 entity types renders with its distinct color badge
+4. Confirm the status badge column (Active/Closed) is unchanged
+5. Run `dotnet test` — all tests must pass
+6. Run `dotnet build` — zero warnings or errors introduced
+
+## Deliverable
+Return:
+- Summary of changes
+- Files changed
+- Approach chosen and rationale (switch expression vs. dictionary vs. local function; Bootstrap classes vs. inline styles per type)
+- Validation performed
+- Commit hash if committed
+
+Use this exact prompt ID in your response: CC-ERATE-000055
+
+---
+
+**Reminders:**
+1. Review the NEXT PROMPT DRAFT above — verify it matches intent before using
+2. Paste handoff to ChatGPT for architect review
+3. Update CLAUDE.md boot block fields listed above
+4. Archive this handoff to `docs/context/boot-blocks/CC-ERATE-000055-handoff.md`
+5. ChatGPT may refine the NEXT PROMPT DRAFT — always use ChatGPT's version as final
+
+## 🚀 NEXT PHASE — MCP HUB & PLATFORM EXPANSION (CC-ERATE-000056)
+
+The project is transitioning from a single-node POC application into a **distributed, infrastructure-backed system**.
+
+### MCP Hub Environment (dude-mcp-01)
+
+- Dell Latitude 7400 (i7-9750H, 16GB RAM, 512GB NVMe)
+- Ubuntu 24.04 LTS (headless)
+- Static IP: 192.168.1.208
+- SSH via VS Code Remote SSH
+- Tailscale mesh VPN enabled
+- Node.js v24 installed
+- Claude Code 2.1.86 installed
+- Postgres installed:
+  - user: `erate`
+  - database: `eratedb`
+- GitHub MCP server connected and validated
+- Lid-close sleep disabled (systemd-logind)
+- Role:
+  - Primary MCP hub
+  - Postgres database host
+  - CI/build node
+
+### Fleet Naming Convention
+
+- `dude-mcp-01` — primary node (active)
+- `dude-mcp-02+` — future expansion nodes
+
+### Phase Goals
+
+1. **Migrate ERATE Workbench to MCP Hub**
+   - run app from `dude-mcp-01`
+   - validate remote dev + execution workflow
+
+2. **Database Migration**
+   - SQLite → Postgres
+   - preserve schema + data integrity
+   - update EF / connection configuration
+
+3. **Environment Reproducibility**
+   - create Ubuntu Autoinstall (golden image)
+   - enable rapid provisioning of new nodes
+
+4. **Multi-Node Readiness**
+   - define roles (API, DB, worker, CI)
+   - prepare for horizontal scaling
 
 ### Constraints
 
-- Modify existing badge rendering only  
-- No backend or data changes  
-- Use Bootstrap classes or minimal CSS  
-- Maintain readability and layout stability  
+- No breaking changes to current app functionality
+- Maintain demo stability during migration
+- Prefer incremental migration (SQLite fallback allowed temporarily)
+
+### Current Status
+
+- MCP hub provisioned and operational
+- App not yet migrated
+- Postgres installed but not integrated
+- Phase not yet started in codebase
+
+### Next Execution Order
+
+1. Complete CC-ERATE-000055 (UI badge enhancement)
+2. Begin CC-ERATE-000056:
+   - connect app to Postgres (local first)
+   - then migrate execution to MCP node
 
 ## ✅ Completed This Session
 
@@ -143,7 +306,7 @@ Here is a fully updated chatgpt-primer.md reflecting your current state (through
 
 # ERATE Workbench — ChatGPT Primer
 
-Last updated: 2026-03-25
+Last updated: 2026-03-28
 
 ---
 
@@ -164,6 +327,8 @@ Use this to quickly resume productive work without re-discovery.
 
 # 📊 Current State
 
+# 📊 Current State
+
 | Area | Status |
 |-----|------|
 | Consultant schema discovery (000038A) | ✅ Complete / Merged |
@@ -176,11 +341,14 @@ Use this to quickly resume productive work without re-discovery.
 | School & Library Search (truthful UI correction) (000053B) | ✅ Complete / Merged |
 | Dashboard product framing (000050) | ✅ Complete / Merged |
 | Footer labeling + versioning (000051–000052) | ✅ Complete / Merged |
-| Data refresh (000054) | ⚠️ In progress / recently executed |
+| Data refresh (000054B) | ✅ Completed (operational; no code changes) |
+| Test audit (CC-ERATE-TEST-AUDIT-001) | ⚠️ Completed (analysis only; cleanup not started) |
 | Entity type badge colors (000055) | 🔜 Next task |
+| MCP Hub & platform expansion (000056) | 🚀 Next phase (not started) |
 | Local dashboard validation | ✅ Complete |
-| CI reliability | ⚠️ GitHub Actions test hang persists (non-blocking) |
-| Overall system status | ✅ Demo-ready |
+| Test baseline | ⚠️ One known failing test on main (`ConsultantFrnStatusImport_IsIdempotent_OnRerun`) |
+| CI reliability | ⚠️ GitHub Actions instability persists (hang behavior / environment sensitivity) |
+| Overall system status | ✅ Demo-ready; transitioning to platform expansion phase |
 
 ---
 
@@ -206,6 +374,48 @@ Use this to quickly resume productive work without re-discovery.
    - Improves layout cleanliness  
    - ❗ Reduces discoverability for developers
 
+5. **Aggregation-first analytics model (global constraint)**  
+   - All consultant analytics group before combining datasets  
+   - Raw joins are intentionally avoided to prevent fan-out duplication  
+   - ❗ Limits flexibility for certain cross-dataset queries
+
+6. **Consultant identity model is EPC-ID-only**  
+   - `ConsultantEpcOrganizationId` is the canonical key  
+   - `ConsultantName` is display-only  
+   - ❗ Assumes EPC ID stability and completeness across datasets
+
+7. **Runtime aggregation (no materialized views)**  
+   - Analytics computed dynamically via LINQ/EF  
+   - ❗ Potential performance constraints at scale
+
+8. **Analytics caching has no import-aware invalidation**  
+   - Cache reduces computation cost  
+   - ❗ Data may become stale after refresh until cache expires
+
+9. **Data truthfulness constraint (UI)**  
+   - Features must not display inferred or incomplete data  
+   - Unsupported data must be removed or deferred (e.g., discount columns)  
+   - ❗ Results in intentionally reduced UI completeness in some areas
+
+10. **Test suite cleanup strategy (audit-first)**  
+   - CC-ERATE-TEST-AUDIT-001 completed as analysis only  
+   - Cleanup must be incremental and validated per change  
+   - ❗ Full test regeneration explicitly rejected
+
+11. **Known failing baseline test on main**  
+   - `ConsultantFrnStatusImport_IsIdempotent_OnRerun` currently failing  
+   - ❗ Must be investigated before further test cleanup
+
+12. **CI reliability constraint**  
+   - GitHub Actions may hang after tests complete  
+   - Local test execution remains authoritative  
+   - ❗ CI signal is not fully trustworthy yet
+
+13. **Data ingestion scale limitations (SQLite)**  
+   - Large imports (1M+ rows) approach SQLite limits  
+   - Partial failures observed under long-running loads  
+   - ❗ Drives need for Postgres migration (CC-ERATE-000056)
+
 ---
 
 ## Core Architecture Decisions — Consultant Analytics
@@ -214,28 +424,32 @@ Use this to quickly resume productive work without re-discovery.
    - `ConsultantEpcOrganizationId` is the sole grouping key  
    - `ConsultantName` is display-only  
    - Ensures stable aggregation across datasets  
+   - ❗ Assumes EPC ID stability and completeness across all upstream datasets  
 
 ---
 
 2. **Aggregation-first analytics model (fan-out prevention)**  
-   - All analytics enforce grouping before joins  
+   - All analytics enforce grouping before combining datasets  
    - Distinct counts used for:
      - applications  
      - FRNs  
    - Raw joins intentionally avoided to prevent duplication errors  
+   - ❗ Limits flexibility for certain cross-dataset queries  
 
 ---
 
 3. **Runtime aggregation model (no materialization)**  
    - Analytics computed dynamically via LINQ/EF  
    - Avoids complexity of maintaining pre-aggregated tables  
-   - Trade-off: higher compute cost at scale  
+   - ❗ Trade-off: higher compute cost as dataset size grows  
+   - ❗ May require materialization strategy in future (Postgres phase)  
 
 ---
 
 4. **Caching strategy (consultant dashboard)**  
    - 24-hour cache applied to reduce repeated aggregation cost  
    - Simplifies performance management during POC phase  
+   - ❗ No cache invalidation tied to data refresh → potential stale data  
 
 ---
 
@@ -243,140 +457,201 @@ Use this to quickly resume productive work without re-discovery.
    - Retry/backoff: 1s → 2s → 4s (3 retries)  
    - Pre-flight availability check before import  
    - Ensures stable ingestion under intermittent API conditions  
+   - ❗ Mid-import failures rely on per-page retry only (no global recovery)  
 
 ---
 
 6. **Test determinism strategy (000041)**  
    - Retry delays replaced with injectable/no-op delays in tests  
    - Ensures fast, deterministic test execution  
+   - ❗ Diverges slightly from production timing behavior  
 
 ---
 
 7. **Thread-safe test handler sequencing (000042)**  
    - Uses `Interlocked` + immutable arrays  
    - Ensures predictable, thread-safe test execution  
+   - ❗ Assumes strict call ordering; unexpected calls fail fast  
 
 ---
 
 8. **Consultant multi-consultant handling strategy**  
    - No attempt to de-duplicate shared application participation  
    - Aggregation rules designed to avoid fan-out distortion  
-
-
----
-
-## 🧪 RELEASE QA MODE (Post-000038E)
-
-After completing CC-ERATE-000038E, the project enters **Release QA Mode**.
-
-### Objective
-
-Stabilize the POC through full end-to-end validation.  
-No new features beyond minor fixes.
+   - ❗ Assumes aggregation-level accuracy is sufficient for analysis  
 
 ---
 
-### Rules (STRICT)
-
-- ❌ No new features
-- ❌ No new datasets
-- ❌ No architectural refactors
-- ❌ No scope expansion
-
-- ✅ Fix bugs encountered during walkthrough
-- ✅ Improve clarity (labels, wording, small UX fixes)
-- ✅ Fix data inconsistencies if discovered
-- ✅ Improve reliability (timeouts, edge cases)
-- ✅ Minor performance improvements if needed
+9. **Market share calculation model (000038E)**  
+   - Market share derived from filtered dataset totals  
+   - Calculations scoped to active filters (year/state/service type)  
+   - ❗ Not persisted; recalculated per request  
 
 ---
 
-### QA Method
+10. **Filter model (cross-dataset consistency)**  
+   - Shared filter parameters applied across:
+     - application-level data  
+     - FRN-level data  
+   - Service type filtering implemented without raw joins  
+   - ❗ Requires careful alignment of filter logic across datasets  
 
-Perform a **full system walkthrough**:
+---
 
-#### 1. Startup & Data
+## 🧪 CURRENT EXECUTION MODE — POST-DEMO STABILIZATION & CONTROLLED EVOLUTION
+
+The ERATE Workbench has completed demo validation and is now operating in a **post-demo stabilization phase**, transitioning into **platform expansion (CC-ERATE-000056)**.
+
+This phase balances:
+- maintaining a stable, demo-ready application
+- selectively improving quality and correctness
+- evolving the system into a reusable, infrastructure-backed platform
+
+---
+
+### 🎯 Objectives
+
+1. Preserve a **stable, demo-ready baseline**
+2. Perform **targeted cleanup and correctness improvements**
+3. Resolve **known test and CI inconsistencies**
+4. Prepare for **platform expansion (MCP hub + Postgres migration)**
+5. Maintain **high-quality context and handoff continuity**
+
+---
+
+### ⚙️ Operating Rules
+
+#### Allowed
+
+- ✅ Fix bugs and data inconsistencies
+- ✅ Perform **surgical test cleanup** (audit-driven, incremental)
+- ✅ Improve clarity (labels, UX wording, minor layout)
+- ✅ Improve reliability (timeouts, edge cases, error handling)
+- ✅ Update documentation and context artifacts
+- ✅ Introduce **small, contained enhancements** (e.g., CC-ERATE-000055)
+- ✅ Prepare infrastructure and platform migration work (CC-ERATE-000056)
+
+---
+
+#### Restricted (but no longer forbidden)
+
+- ⚠️ Architectural changes only when:
+  - scoped
+  - isolated
+  - justified by scale or correctness (e.g., Postgres migration)
+
+---
+
+#### Still Disallowed
+
+- ❌ Large, unbounded refactors
+- ❌ Multi-feature bundled changes
+- ❌ Introducing features that rely on unverified or incomplete data
+- ❌ Breaking existing demo flows or core analytics surfaces
+
+---
+
+### 🧪 Validation Approach
+
+Manual validation remains authoritative.
+
+#### 1. Core App Validation
 - App launches cleanly
-- Imports run without errors
-- Data appears in UI
+- Key pages load without error:
+  - Dashboard
+  - Filing Window Analytics
+  - Competitive Intelligence
+  - Risk Insights
+  - Search
 
-#### 2. Filing Window Analytics
-- FY2026 data present
-- Charts load correctly
-- Numbers are consistent
+#### 2. Data Integrity
+- Metrics are internally consistent
+- No duplication or inflation from aggregation errors
+- Filters behave consistently across views
 
-#### 3. Competitive Intelligence
-- Consultant rankings render
-- Detail pages load
-- Trends, states, and service types look correct
-- No duplicate consultants
-- No inflated counts
+#### 3. UX & Navigation
+- All navigation paths work
+- Labels are clear and self-explanatory
+- No confusing or misleading UI elements
 
-#### 4. Navigation
-- All menu links work
-- No dead pages
-- Logical flow between sections
-
-#### 5. Performance
+#### 4. Performance
 - Pages load within reasonable time
-- No obvious blocking delays
-- Charts render smoothly
+- No blocking or hanging requests
+- Large datasets still render acceptably
 
-#### 6. Error Handling
-- Unknown routes handled cleanly
-- Invalid consultant IDs return 404
-- No visible stack traces
+#### 5. Error Handling
+- Invalid routes handled cleanly
+- Invalid IDs return 404
+- No stack traces exposed
 
 ---
 
-### Fix Strategy
+### 🧪 Test Strategy (Updated)
+
+- Local test execution is the **primary source of truth**
+- CI signal is **secondary due to known instability**
+- Test cleanup is:
+  - incremental
+  - audit-driven (CC-ERATE-TEST-AUDIT-001)
+  - validated after each change
+
+⚠️ Current constraint:
+- `ConsultantFrnStatusImport_IsIdempotent_OnRerun` is failing on `main`
+- This must be understood before further cleanup proceeds
+
+---
+
+### 🔧 Fix Strategy
 
 When an issue is found:
 
-1. Fix immediately (small, targeted change)
-2. Do NOT refactor unrelated code
-3. Do NOT expand scope
-4. Validate fix locally
-5. Continue walkthrough
+1. Make a **small, targeted change**
+2. Do not refactor unrelated code
+3. Validate locally (manual + tests)
+4. Commit independently (single-purpose)
+5. Continue iteratively
 
 ---
 
-### Goal State
+### 🚀 Platform Transition (New)
 
-The application should:
+The system is preparing to transition into a **platform-backed architecture**:
 
-- Feel stable
-- Produce believable, consistent data
-- Require no explanation to navigate
-- Support a clean, uninterrupted demo
+- MCP Hub (`dude-mcp-01`) will host:
+  - Postgres database
+  - Claude Code execution
+  - build/CI workloads
 
----
+- Planned evolution:
+  - SQLite → Postgres migration
+  - remote execution model
+  - reproducible node provisioning
 
-### Exit Criteria
-
-Release QA is complete when:
-
-- Full walkthrough completes without errors
-- No visual or data inconsistencies remain
-- Demo can be run start-to-finish confidently
+This work is scoped under **CC-ERATE-000056**
 
 ---
 
-### Final Deliverable
+### 🎯 Success Criteria for This Phase
 
-A **demo-ready POC** suitable for:
-- stakeholder walkthrough
-- interview demonstration
-- architectural discussion
+- Application remains stable and demo-ready
+- Test suite becomes cleaner and more reliable
+- Known inconsistencies are understood or resolved
+- Documentation accurately reflects system state
+- Platform migration groundwork is established
 
 ---
 
-### Key Architectural Themes
+### 🧠 Guiding Principles
 
-- Favor **correctness over efficiency** (full re-import, aggregation safety)
-- Favor **explicit constraints over silent errors**
-- Accept **temporary inefficiencies** pending scale validation
-- Defer **configurability** in favor of hard-coded, validated rules
+- Favor **correctness over completeness**
+- Favor **truthful UI over speculative data**
+- Favor **small, reversible changes over large rewrites**
+- Favor **explicit constraints over hidden assumptions**
+- Treat the system as:
+  - an application
+  - a development framework
+  - an evolving platform
+
 ---
 
 ## APPLICATION FEATURES (stable)
@@ -624,14 +899,53 @@ After each Claude Code session: run /handoff, paste output here, update CURRENT 
 
 ---
 
-## CONSTRAINTS ##
+## CONSTRAINTS
 
--- WSL is the canonical dev environment — no Windows-local assumptions
--- Three-layer data model only: Raw → Summary → Risk (never skip layers)
--- Idempotent imports via RawSourceKey upsert — never truncate/reload
--- Feature branches only — never commit directly to main unless we are applying chore code
--- No external logging stack — Microsoft.Extensions.Logging only
--- No frontend framework — Razor Pages only, no React/Vue/Angular
+- WSL is the canonical dev environment — no Windows-local assumptions
+- Three-layer data model only: Raw → Summary → Risk (never skip layers)
+- Idempotent imports via RawSourceKey upsert — never truncate/reload
+- Feature branches only — never commit directly to `main` (except controlled docs/chore updates)
+- No external logging stack — Microsoft.Extensions.Logging only
+- No frontend framework — Razor Pages only (no React/Vue/Angular)
+
+---
+
+### Data & Analytics Constraints
+
+- Aggregation-first analytics model — never introduce raw joins that create fan-out duplication
+- Consultant identity must always use `ConsultantEpcOrganizationId` (never group by name)
+- UI must not display inferred or incomplete data — remove features if data is not trustworthy
+- Filters must remain consistent across datasets (application-level and FRN-level)
+
+---
+
+### Test & CI Constraints
+
+- Local test execution is the primary source of truth
+- CI results may be unreliable due to known GitHub Actions hang behavior
+- Test cleanup must be incremental and audit-driven (CC-ERATE-TEST-AUDIT-001)
+- Do not delete or regenerate the full test suite
+- Known failing test on main must be understood before further cleanup
+
+---
+
+### Infrastructure Constraints (New — CC-ERATE-000056 Phase)
+
+- SQLite remains supported for local development during transition
+- Postgres will become the primary database (hosted on MCP hub)
+- Migration must be incremental — no breaking cutover
+- MCP hub (`dude-mcp-01`) is the canonical execution environment for platform expansion
+- System must remain runnable locally even after MCP integration
+
+---
+
+### Change Management Constraints
+
+- Single-purpose changes only (one task per PR)
+- No bundled feature work
+- No large-scale refactors without explicit task scope
+- Maintain demo stability at all times
+- Prefer reversible changes over permanent structural shifts
 
 ---
 

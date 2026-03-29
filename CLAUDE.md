@@ -30,14 +30,22 @@ These are immutable. Never violate without explicit architect approval.
 
 ### CURRENT STATE (as of CC-ERATE-000055)
 
-- **Last completed:** CC-ERATE-000054B — Safe targeted data refresh (operational, no code changes)  
-- **Branch:** main  
-- **Active task / next prompt:** CC-ERATE-000055 — Entity type badge color enhancement (School Search)  
+- **Next Phase:** CC-ERATE-000056 — MCP Hub integration and platform expansion
+- **Infrastructure:** dude-mcp-01 provisioned (Postgres + Claude Code + MCP server)
 
-- **Project State:**  
-  The ERATE Workbench is **feature-complete and demo-ready**.  
-  All major QA issues have been resolved.  
-  Data has been refreshed to the extent safely supported by upstream sources.  
+**Project State:**  
+The ERATE Workbench is **feature-complete and demo-ready**.  
+Core functionality is stable and validated through manual QA.  
+Data has been refreshed to the extent safely supported by upstream sources.  
+
+⚠️ Known follow-up work remains:
+- Test suite cleanup (CC-ERATE-TEST-AUDIT-001 — audit complete, cleanup pending)
+- One known failing test on main (`ConsultantFrnStatusImport_IsIdempotent_OnRerun`)
+- CI reliability issues (GitHub Actions hang behavior)
+
+🚀 The project is now transitioning into a new phase:
+- CC-ERATE-000055 — final UI enhancement (next task)
+- CC-ERATE-000056 — MCP hub integration and platform expansion
 
 - **Works (verified stable):**
   - Full CI pipeline: build → test → ui-smoke → security → secrets-scan → publish
@@ -87,72 +95,63 @@ Map entity types to distinct colors:
 
 ### Data Caveats (Quality, Coverage, and Scale)
 
+### Data Caveats (Quality, Coverage, and Scale)
+
 #### Time-Based Characteristics
-- FY2020 includes a COVID-era filing window extension spike (explicitly annotated)  
-- Late-certification outliers are excluded from timing charts to preserve interpretability  
-- FY2026 data is partial; advisory messaging is shown in the UI  
+- FY2020 includes a COVID-era filing window extension spike (intentionally retained and annotated)
+- Late-certification outliers are excluded from timing charts using a fixed threshold
+- FY2026 data is partial and still evolving
 
 ---
 
-#### Data Completeness & Schema
-- `ServiceType` is null for portions of the Form 471 dataset  
-- External datasets (USAC) may change schema over time (e.g., Form 471 CSV header drift)  
+#### Data Completeness & Coverage
+- Not all datasets contain complete fields across all entities (e.g., ServiceType nulls in Form 471)
+- Entity-level discount rates are only available for a subset of entities (~15% coverage)
+  - Primarily district and library-system level
+  - Individual schools often lack this data
+- UI features must reflect only data that is reliably present (no inferred values)
 
 ---
 
-#### Identity & Modeling
-- `ConsultantName` is display-only; EPC ID is the canonical identity  
-- E-Rate Central confirmed: EPC ID `16060891`  
-
----
-
-#### Data Integrity & Processing
-- Socrata duplication handled via idempotent upsert logic  
-- Aggregation-first model prevents duplication from FRN fan-out 
-- Some datasets unavailable or unstable upstream (USAC)
-- Form 471 CSV schema drift (snake_case → Title Case) breaks parser
-- Very large imports may hit SQLite limits near completion (minor tail loss possible)
-- Data is **accurate where present**, not artificially completed 
-
----
-
-#### Scale Characteristics
-- Large datasets (e.g., consultant FRN dataset `mihb-jfex`) operate at:
-  - ~556K records  
-  - ~231 pages  
-  - ~40+ minute full import locally  
-- Dataset growth is ongoing and impacts ingestion strategy   
-
----
-
-#### Data Completeness & Schema
-- `ServiceType` is null for portions of the Form 471 dataset  
-- External datasets (USAC) may change schema over time (e.g., Form 471 CSV header drift)  
-
----
-
-#### Identity & Modeling
-- `ConsultantName` is display-only; EPC ID is the canonical identity  
-- E-Rate Central confirmed: EPC ID `16060891`  
+#### Schema Variability (Upstream Risk)
+- USAC datasets may change structure without notice
+- Example:
+  - Form 471 CSV headers changed from `snake_case` → `Title Case`
+- Import pipelines must be resilient to schema drift
 
 ---
 
 #### Data Integrity & Processing
-- Socrata duplication handled via idempotent upsert logic  
-- Aggregation-first model prevents duplication from FRN fan-out  
-- Some datasets unavailable or unstable upstream (USAC)
-- Form 471 CSV schema drift (snake_case → Title Case) breaks parser
-- Very large imports may hit SQLite limits near completion (minor tail loss possible)
-- Data is **accurate where present**, not artificially completed
+- Socrata ingestion uses idempotent upsert logic via `RawSourceKey`
+- Duplicate records are prevented at ingestion time
+- Aggregation-first model prevents duplication at analytics layer
 
 ---
 
 #### Scale Characteristics
-- Large datasets (e.g., consultant FRN dataset `mihb-jfex`) operate at:
-  - ~556K records  
-  - ~231 pages  
-  - ~40+ minute full import locally  
-- Dataset growth is ongoing and impacts ingestion strategy
+- Datasets have grown significantly:
+  - Funding commitments: ~1.6M+ rows
+  - Disbursements: ~3.2M+ rows
+- Large imports approach SQLite limits:
+  - Long-running jobs (~60+ minutes)
+  - Occasional connection failures near completion
+- Current architecture is near the upper bound of SQLite capability
+
+---
+
+#### Operational Limitations
+- Data refresh is manual and not scheduled
+- Partial import failures can result in small data gaps (<0.1%)
+- Some datasets may be temporarily unavailable (e.g., USAC 503 responses)
+
+---
+
+#### Strategic Implication
+- SQLite is sufficient for POC and demo workloads
+- Migration to Postgres (CC-ERATE-000056) is required for:
+  - reliability at scale
+  - improved query performance
+  - long-term system viability
   
 
 ### Consultant Identity Model (Reference)
@@ -182,8 +181,8 @@ Map entity types to distinct colors:
   - All cross-dataset logic is applied post-aggregation to ensure correctness 
 
 ### ACTIVE TASK
-- Next prompt: CC-ERATE-000055 
-- Status: Final feature — Entity type badge color enhancement (School Search)
+- CC-ERATE-000055 — Entity type badge color enhancement (next)
+- CC-ERATE-000056 — MCP hub integration (follows 000055)
 
 ### CURRENT MODE
 - Release QA complete → Demo-ready state  
@@ -192,12 +191,13 @@ Map entity types to distinct colors:
 - No major feature expansion or architectural changes  
 
 ### KNOWN DEBT (summary — see docs/context/technical-debt.md)
+
 - TD-001: HttpClient timeout handling (long-running imports may stall without explicit timeout control)  
 - TD-002: Import observability limited (no real-time progress visibility beyond polling)  
 - TD-003: Inconsistent incremental import support (some datasets require full reloads)  
 - TD-004: Manual rebuild ordering required for derived tables  
-- TD-006: SQLite limitations under large-scale aggregation/import (connection errors on long-running jobs)  
-- TD-007: Analytics executed on raw tables (no materialized views)  
+- TD-006: SQLite limitations under large-scale aggregation/import (connection errors on long-running jobs; approaching system limits)  
+- TD-007: Analytics executed on raw tables (no materialized views; may not scale)  
 - TD-008: No deletion detection from upstream data sources  
 - TD-011: Cache invalidation not tied to data refresh operations  
 - TD-012: Residual diagnostic logging  
@@ -209,8 +209,10 @@ Map entity types to distinct colors:
 - TD-018: Consultant name normalization inconsistencies  
 - TD-019: EPC identification gaps for certain firms  
 - TD-020: External dataset growth (USAC datasets expanding significantly, impacting ingestion strategy)  
-- TD-021: GitHub Actions test runner hang (CI-only, non-blocking)  
-- TD-022: Form 471 schema drift (USAC CSV header change breaks parser)
+- TD-021: GitHub Actions test runner hang (CI instability; local execution remains authoritative)  
+- TD-022: Form 471 schema drift (USAC CSV header change breaks parser)  
+- TD-023: Test suite hygiene (tautological/low-value tests identified in CC-ERATE-TEST-AUDIT-001; cleanup pending)  
+- TD-024: Platform scaling limitation (SQLite → Postgres migration required for reliability and long-term viability; addressed in CC-ERATE-000056)  
 
 ### WHAT TO IGNORE
 - `erate-workbench/` subdirectory — legacy
@@ -249,3 +251,7 @@ Map entity types to distinct colors:
 - Mesh VPN: Tailscale
 - Switch: Nighthawk (desk mounted)
 - Backhaul: single Cat6 run FiOS → desk switch
+
+### Golden Image - Laptop Specific Settings
+- Disable lid sleep: set HandleLidSwitch=ignore in /etc/systemd/logind.conf
+- Apply with: sudo systemctl restart systemd-logind

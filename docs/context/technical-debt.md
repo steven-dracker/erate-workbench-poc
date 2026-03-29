@@ -344,3 +344,231 @@ Rationale:
 
 Future Resolution:
 - Automate versioning via CI (commit-based or tag-based)
+
+---
+
+## Post-Demo Expansion Phase Technical Debt (CC-ERATE-000056)
+
+Following completion of the demo-ready POC phase, the system has reached scale and capability limits that require architectural evolution. The following items define the next phase of work.
+
+---
+
+### TD-023 — Test Suite Hygiene and Reliability
+
+**What:**
+The test suite (~400+ tests) includes:
+- tautological tests (asserting mocked behavior rather than system behavior)
+- redundant coverage across similar scenarios
+- brittle tests tied to implementation details
+
+A failing idempotency test (`ConsultantFrnStatusImport_IsIdempotent_OnRerun`) indicates potential mismatch between test assumptions and actual ETL behavior.
+
+**Why accepted:**
+Rapid AI-assisted development prioritized coverage over test quality.
+
+**Risk:**
+Medium.
+- False positives reduce trust in test suite
+- CI instability worsened by unnecessary test volume
+- Slows development iteration
+
+**Recommended resolution:**
+- Execute CC-ERATE-TEST-AUDIT-001 cleanup plan:
+  - Remove low-value / tautological tests
+  - Consolidate overlapping tests
+  - Focus on:
+    - ETL correctness
+    - aggregation integrity
+    - API contract validation
+- Treat remaining tests as **high-signal validation suite**, not coverage metric
+
+---
+
+### TD-024 — SQLite Scalability Limits Reached
+
+**What:**
+Recent imports show:
+- Funding commitments: ~1.6M rows
+- Disbursements: ~3.1M rows
+- Import durations: 45–60+ minutes
+- Observed SQLite connection failures during long-running jobs
+
+**Why accepted:**
+SQLite was appropriate for early-stage POC simplicity.
+
+**Risk:**
+High (now active constraint).
+- Import instability under load
+- Limited concurrency
+- Inefficient large aggregations
+- Blocking further dataset growth
+
+**Recommended resolution:**
+- Migrate to PostgreSQL (planned in CC-ERATE-000056)
+- Replace:
+  - in-memory joins
+  - text-based numeric casting
+- Enable:
+  - proper indexing
+  - native numeric aggregation
+  - concurrent workloads
+
+---
+
+### TD-025 — Form 471 Schema Drift (Breaking Change)
+
+**What:**
+USAC changed CSV headers from `snake_case` → `Title Case`, breaking:
+- `Form471CsvRow` mapping
+- ingestion pipeline for Form 471
+
+**Why accepted:**
+External dependency; schema not controlled locally.
+
+**Risk:**
+Medium-High.
+- Blocks future Form 471 refreshes
+- Breaks incremental ingestion strategy
+
+**Recommended resolution:**
+- Implement header normalization layer:
+  - case-insensitive mapping
+  - alias mapping (snake_case ↔ Title Case)
+- Add schema validation logging on import start
+
+---
+
+### TD-026 — CI Pipeline Test Execution Hang
+
+**What:**
+GitHub Actions:
+- tests execute successfully
+- job never completes
+- downstream pipeline stages blocked
+
+Local execution:
+- clean and fast
+
+**Why accepted:**
+Manual QA used during Release QA phase.
+
+**Risk:**
+Medium.
+- CI cannot be trusted for release gating
+- Requires manual intervention
+
+**Recommended resolution:**
+- Investigate testhost lifecycle / async completion issues
+- Add:
+  - explicit test timeouts
+  - diagnostic logging at test runner boundary
+- Potentially split:
+  - unit tests
+  - UI tests
+  into separate workflows
+
+---
+
+### TD-027 — Data Refresh Process is Manual and Opaque
+
+**What:**
+Data refresh (CC-ERATE-000054):
+- manually triggered
+- monitored via logs / polling
+- partial failures require manual interpretation
+
+**Why accepted:**
+POC phase prioritized correctness over automation.
+
+**Risk:**
+Medium.
+- Operational friction
+- Hard to validate completeness
+- Not repeatable or observable
+
+**Recommended resolution:**
+- Introduce:
+  - structured job progress tracking
+  - per-dataset status reporting
+  - optional scheduled refresh
+- Add import summary endpoint or dashboard
+
+---
+
+### TD-028 — Lack of Security Scanning (OWASP / SAST / Dependency Analysis)
+
+**What:**
+Current pipeline includes:
+- dependency scanning (Dependabot)
+- secrets scanning (gitleaks)
+
+But lacks:
+- OWASP dependency vulnerability scanning (full)
+- static application security testing (SAST)
+
+**Why accepted:**
+Out of scope for initial POC.
+
+**Risk:**
+Medium.
+- Unknown vulnerabilities in dependencies or code paths
+
+**Recommended resolution:**
+- Add OWASP Dependency Check or equivalent to CI
+- Evaluate lightweight SAST options compatible with .NET
+- Integrate into non-blocking pipeline stage initially
+
+---
+
+### TD-029 — Platform Portability and Environment Standardization
+
+**What:**
+System currently runs:
+- locally (WSL)
+- partially in CI
+- not yet standardized across environments
+
+New MCP infrastructure (dude-mcp-01) introduces:
+- dedicated Postgres
+- remote execution environment
+- multi-node future architecture
+
+**Why accepted:**
+Infrastructure evolved after application maturity.
+
+**Risk:**
+Medium.
+- Environment drift
+- inconsistent behavior across nodes
+
+**Recommended resolution:**
+- Standardize runtime environment on MCP node
+- Define:
+  - canonical deployment model
+  - environment configuration strategy
+- Capture as part of CC-ERATE-000056
+
+---
+
+### TD-030 — Architecture Transition Required (POC → Platform)
+
+**What:**
+The system has evolved from:
+- single-node SQLite POC  
+to:
+- multi-dataset analytics platform candidate
+
+**Why accepted:**
+Natural evolution of successful POC.
+
+**Risk:**
+Strategic.
+- current architecture will limit further growth
+
+**Recommended resolution:**
+- Transition to:
+  - Postgres-backed data layer
+  - MCP-based execution model
+- Formalize architecture for reuse in future projects
+
+---
