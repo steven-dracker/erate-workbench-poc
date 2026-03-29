@@ -29,11 +29,23 @@ builder.Services.AddSwaggerGen(options =>
         includeControllerXmlComments: true);
 });
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? "Data Source=erate-workbench.db";
+var dbProvider = builder.Configuration["DatabaseProvider"] ?? "Sqlite";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(connectionString));
+{
+    if (dbProvider.Equals("Postgres", StringComparison.OrdinalIgnoreCase))
+    {
+        var pgConn = builder.Configuration.GetConnectionString("Postgres")
+            ?? throw new InvalidOperationException("ConnectionStrings:Postgres is required when DatabaseProvider=Postgres");
+        options.UseNpgsql(pgConn);
+    }
+    else
+    {
+        var sqliteConn = builder.Configuration.GetConnectionString("DefaultConnection")
+            ?? "Data Source=erate-workbench.db";
+        options.UseSqlite(sqliteConn);
+    }
+});
 
 builder.Services.AddHttpClient<UsacCsvClient>();
 builder.Services.AddScoped<ApplicantCsvParser>();
@@ -91,11 +103,17 @@ app.MapRazorPages();
 
 app.UseHttpsRedirection();
 
-// Apply migrations on startup
+// Apply migrations on startup (SQLite) or create schema (Postgres)
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.Migrate();
+    var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
+    startupLogger.LogInformation("Database provider: {Provider}", dbProvider);
+
+    if (dbProvider.Equals("Postgres", StringComparison.OrdinalIgnoreCase))
+        dbContext.Database.EnsureCreated();
+    else
+        dbContext.Database.Migrate();
 }
 
 // --- Health ---
