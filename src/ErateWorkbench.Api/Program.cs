@@ -103,17 +103,15 @@ app.MapRazorPages();
 
 app.UseHttpsRedirection();
 
-// Apply migrations on startup (SQLite) or create schema (Postgres)
+// Apply migrations on startup — works for both SQLite and Postgres.
+// SQLite-specific SQL (PRAGMA journal_mode=WAL) is guarded by ActiveProvider
+// in migration 20260315000001_AddFundingCommitmentIndexesAndWal.
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var startupLogger = scope.ServiceProvider.GetRequiredService<ILogger<AppDbContext>>();
-    startupLogger.LogInformation("Database provider: {Provider}", dbProvider);
-
-    if (dbProvider.Equals("Postgres", StringComparison.OrdinalIgnoreCase))
-        dbContext.Database.EnsureCreated();
-    else
-        dbContext.Database.Migrate();
+    startupLogger.LogInformation("Database provider: {Provider} — applying migrations", dbProvider);
+    dbContext.Database.Migrate();
 }
 
 // --- Health ---
