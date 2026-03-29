@@ -99,7 +99,7 @@ export ConnectionStrings__Postgres="$PG_CONN"
 export ASPNETCORE_URLS="http://localhost:${APP_PORT}"
 export ASPNETCORE_ENVIRONMENT=Development
 
-dotnet run --project src/ErateWorkbench.Api -c Release --no-build \
+dotnet run --project src/ErateWorkbench.Api -c Release --no-build --no-launch-profile \
   > /tmp/erate-pg-app.log 2>&1 &
 APP_PID=$!
 info "App PID: $APP_PID"
