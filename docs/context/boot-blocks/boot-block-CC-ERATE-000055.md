@@ -1,5 +1,5 @@
 ## BOOT BLOCK
-— # Last updated: 2026-03-29 | Boot Block: CC-ERATE-000056
+— # Last updated: 2026-03-25 | Boot Block: CC-ERATE-000055
 
 
 ### PROJECT IDENTITY
@@ -28,18 +28,15 @@ These are immutable. Never violate without explicit architect approval.
 - No external logging stack — use built-in `Microsoft.Extensions.Logging` only (ADR-020)
 - No frontend framework — Razor Pages only, no React/Vue/Angular (ADR-001)
 
-### CURRENT STATE (as of CC-ERATE-000056)
+### CURRENT STATE (as of CC-ERATE-000055)
 
-- **Last completed:** CC-ERATE-000055 — Entity type badge color enhancement on School & Library Search (PR #48, merged)
-- **Branch:** main — clean, up to date; no open feature branches; PR #48 merged
-- **Active task / next prompt:** CC-ERATE-000056 — MCP Hub integration and platform expansion
-
+- **Next Phase:** CC-ERATE-000056 — MCP Hub integration and platform expansion
 - **Infrastructure:** dude-mcp-01 provisioned (Postgres + Claude Code + MCP server)
 
-**Project State:**
-The ERATE Workbench is **feature-complete and demo-ready**.
-Core functionality is stable and validated through manual QA.
-Data has been refreshed to the extent safely supported by upstream sources.
+**Project State:**  
+The ERATE Workbench is **feature-complete and demo-ready**.  
+Core functionality is stable and validated through manual QA.  
+Data has been refreshed to the extent safely supported by upstream sources.  
 
 ⚠️ Known follow-up work remains:
 - Test suite cleanup (CC-ERATE-TEST-AUDIT-001 — audit complete, cleanup pending)
@@ -47,7 +44,8 @@ Data has been refreshed to the extent safely supported by upstream sources.
 - CI reliability issues (GitHub Actions hang behavior)
 
 🚀 The project is now transitioning into a new phase:
-- CC-ERATE-000056 — MCP hub integration and platform expansion (active)
+- CC-ERATE-000055 — final UI enhancement (next task)
+- CC-ERATE-000056 — MCP hub integration and platform expansion
 
 - **Works (verified stable):**
   - Full CI pipeline: build → test → ui-smoke → security → secrets-scan → publish
@@ -71,7 +69,29 @@ Data has been refreshed to the extent safely supported by upstream sources.
     - Year trends, state distribution, service type breakdown
     - Aggregation-safe analytics via ConsultantAnalyticsService
     - Chart.js visualizations
-  - School & Library Search entity type badges — color-coded by type (School, Library, SchoolDistrict, LibrarySystem, Consortium, NonInstructionalFacility, Unknown)
+
+ ## CURRENT TASK — CC-ERATE-000055
+
+Enhance School & Library Search UI with color-coded entity type badges.
+
+### Requirements
+
+Map entity types to distinct colors:
+
+- School → medium green  
+- Library → medium blue  
+- SchoolDistrict → darker green  
+- LibrarySystem → dark blue  
+- Consortium → dark orange  
+- NonInstructionalFacility → medium orange  
+- Unknown → unchanged  
+
+### Constraints
+
+- Modify existing badge rendering only  
+- No backend or data changes  
+- Use Bootstrap classes or minimal CSS  
+- Maintain readability and layout stability     
 
 ### Data Caveats (Quality, Coverage, and Scale)
 
@@ -161,7 +181,8 @@ Data has been refreshed to the extent safely supported by upstream sources.
   - All cross-dataset logic is applied post-aggregation to ensure correctness 
 
 ### ACTIVE TASK
-- CC-ERATE-000056 — MCP Hub integration and platform expansion (SQLite → Postgres migration, deploy to dude-mcp-01)
+- CC-ERATE-000055 — Entity type badge color enhancement (next)
+- CC-ERATE-000056 — MCP hub integration (follows 000055)
 
 ### CURRENT MODE
 - Release QA complete → Demo-ready state  
