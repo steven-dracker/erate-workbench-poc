@@ -154,13 +154,34 @@ info "=== Step 4: EPC Entity import (dataset 7i5i-83qf) ==="
 info "This is the USAC Supplemental Entity Information dataset (~50–100k rows)"
 
 IMPORT_START=$(date +%s)
-IMPORT_RESULT=$(curl -sf -X POST "${BASE_URL}/import/usac" \
+# --max-time 600: EPC entity import downloads ~100k rows; allow up to 10 minutes.
+# Separate -o (body) and -w (status) so we always see the response regardless of HTTP status.
+IMPORT_HTTP_STATUS=$(curl -s -o /tmp/erate-import-result.json -w "%{http_code}" \
+  --max-time 600 \
+  -X POST "${BASE_URL}/import/usac" \
   -H "Content-Type: application/json" \
-  -d '{}' 2>&1) || { fail "Import request failed"; exit 1; }
+  -d '{}')
+CURL_EXIT=$?
+IMPORT_RESULT=$(cat /tmp/erate-import-result.json 2>/dev/null || echo "")
 IMPORT_END=$(date +%s)
 DURATION=$((IMPORT_END - IMPORT_START))
 
+info "Import HTTP status: $IMPORT_HTTP_STATUS (curl exit: $CURL_EXIT, duration: ${DURATION}s)"
 echo "Result: $IMPORT_RESULT"
+
+if [[ $CURL_EXIT -ne 0 ]]; then
+  fail "curl failed (exit $CURL_EXIT) — possible timeout or connection error"
+  echo "--- app log tail ---"
+  tail -20 /tmp/erate-pg-app.log
+  exit 1
+fi
+
+if [[ "$IMPORT_HTTP_STATUS" != "200" ]]; then
+  fail "Import endpoint returned HTTP $IMPORT_HTTP_STATUS"
+  echo "--- app log tail ---"
+  tail -20 /tmp/erate-pg-app.log
+  exit 1
+fi
 
 # ImportJob response: { id, status (int: 0=Pending,1=Running,2=Succeeded,3=Failed),
 #                       recordsProcessed, recordsFailed, startedAt, completedAt, ... }
@@ -192,10 +213,14 @@ info "EpcEntities row count after run 1: $COUNT_AFTER_RUN1"
 echo
 info "=== Step 5: Idempotency rerun ==="
 
-RERUN_RESULT=$(curl -sf -X POST "${BASE_URL}/import/usac" \
+RERUN_HTTP_STATUS=$(curl -s -o /tmp/erate-rerun-result.json -w "%{http_code}" \
+  --max-time 600 \
+  -X POST "${BASE_URL}/import/usac" \
   -H "Content-Type: application/json" \
-  -d '{}' 2>&1) || { fail "Rerun request failed"; exit 1; }
+  -d '{}')
+RERUN_RESULT=$(cat /tmp/erate-rerun-result.json 2>/dev/null || echo "")
 
+info "Rerun HTTP status: $RERUN_HTTP_STATUS"
 echo "Rerun result: $RERUN_RESULT"
 
 RERUN_PROCESSED=$(echo "$RERUN_RESULT" | grep -oP '"recordsProcessed":\K[0-9]+' || echo "?")
