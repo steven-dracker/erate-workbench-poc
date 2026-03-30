@@ -92,6 +92,18 @@ ok "Build complete"
 # ── 4. Start app against Postgres ────────────────────────────────────────────
 echo
 info "=== Step 3: App startup (Postgres) ==="
+
+# Stop any leftover process on APP_PORT before starting fresh.
+STALE_PID=$(lsof -ti :"$APP_PORT" 2>/dev/null || true)
+if [[ -n "$STALE_PID" ]]; then
+  info "Stopping stale process on port $APP_PORT (PID $STALE_PID)…"
+  kill "$STALE_PID" 2>/dev/null || true
+  sleep 2
+fi
+
+# Clear log so provider check reads only from this run.
+> /tmp/erate-pg-app.log
+
 info "Forcing ASPNETCORE_URLS=http://127.0.0.1:${APP_PORT}"
 
 # Inline env vars on the dotnet invocation — avoids any inherited-env override.
