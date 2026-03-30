@@ -94,11 +94,18 @@ echo
 info "=== Step 3: App startup (Postgres) ==="
 
 # Stop any leftover process on APP_PORT before starting fresh.
-STALE_PID=$(lsof -ti :"$APP_PORT" 2>/dev/null || true)
-if [[ -n "$STALE_PID" ]]; then
-  info "Stopping stale process on port $APP_PORT (PID $STALE_PID)…"
-  kill "$STALE_PID" 2>/dev/null || true
-  sleep 2
+# lsof may return multiple PIDs; use xargs to handle each one.
+STALE_PIDS=$(lsof -ti :"$APP_PORT" 2>/dev/null || true)
+if [[ -n "$STALE_PIDS" ]]; then
+  info "Stopping stale process(es) on port $APP_PORT: $(echo $STALE_PIDS | tr '\n' ' ')"
+  echo "$STALE_PIDS" | xargs kill -TERM 2>/dev/null || true
+  # Poll until the port is actually free (up to 10s)
+  for i in $(seq 1 10); do
+    sleep 1
+    lsof -ti :"$APP_PORT" >/dev/null 2>&1 || break
+    [[ $i -eq 10 ]] && { echo "$STALE_PIDS" | xargs kill -KILL 2>/dev/null || true; sleep 1; }
+  done
+  info "Port $APP_PORT is free"
 fi
 
 # Clear log so provider check reads only from this run.
