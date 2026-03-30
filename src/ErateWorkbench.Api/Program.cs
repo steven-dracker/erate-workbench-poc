@@ -47,7 +47,12 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     }
 });
 
-builder.Services.AddHttpClient<UsacCsvClient>();
+builder.Services.AddHttpClient<UsacCsvClient>(client =>
+{
+    // Large USAC CSV downloads can exceed the 100s default.
+    // 30 minutes covers even the largest full-dataset imports.
+    client.Timeout = TimeSpan.FromMinutes(30);
+});
 builder.Services.AddScoped<ApplicantCsvParser>();
 builder.Services.AddScoped<ApplicantRepository>();
 builder.Services.AddScoped<ImportJobService>();
