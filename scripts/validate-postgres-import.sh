@@ -21,7 +21,7 @@
 set -euo pipefail
 
 APP_PORT=5080
-BASE_URL="http://localhost:${APP_PORT}"
+BASE_URL="http://127.0.0.1:${APP_PORT}"
 APP_PID=""
 PASS=""
 
@@ -92,22 +92,23 @@ ok "Build complete"
 # ── 4. Start app against Postgres ────────────────────────────────────────────
 echo
 info "=== Step 3: App startup (Postgres) ==="
-info "Starting on port $APP_PORT…"
+info "Forcing ASPNETCORE_URLS=http://127.0.0.1:${APP_PORT}"
 
-export DatabaseProvider=Postgres
-export ConnectionStrings__Postgres="$PG_CONN"
-export ASPNETCORE_URLS="http://localhost:${APP_PORT}"
-export ASPNETCORE_ENVIRONMENT=Development
-
-dotnet run --project src/ErateWorkbench.Api -c Release --no-build --no-launch-profile \
+# Inline env vars on the dotnet invocation — avoids any inherited-env override.
+# --no-launch-profile prevents launchSettings.json from overriding ASPNETCORE_URLS.
+DatabaseProvider=Postgres \
+ConnectionStrings__Postgres="$PG_CONN" \
+ASPNETCORE_URLS="http://127.0.0.1:${APP_PORT}" \
+ASPNETCORE_ENVIRONMENT=Development \
+  dotnet run --project src/ErateWorkbench.Api -c Release --no-build --no-launch-profile \
   > /tmp/erate-pg-app.log 2>&1 &
 APP_PID=$!
 info "App PID: $APP_PID"
 
-# Wait for /health
+# Wait for /health on the same address the app was told to bind
 MAX_WAIT=30
 WAITED=0
-until curl -sf "${BASE_URL}/health" >/dev/null 2>&1; do
+until curl -sf "http://127.0.0.1:${APP_PORT}/health" >/dev/null 2>&1; do
   sleep 1
   WAITED=$((WAITED + 1))
   if [[ $WAITED -ge $MAX_WAIT ]]; then
