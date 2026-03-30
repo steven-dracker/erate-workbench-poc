@@ -1,3 +1,4 @@
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
@@ -16,7 +17,8 @@ namespace ErateWorkbench.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
+                        .Annotation("Sqlite:Autoincrement", true)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     RawSourceKey = table.Column<string>(type: "TEXT", maxLength: 120, nullable: false),
                     FundingRequestNumber = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
                     InvoiceId = table.Column<string>(type: "TEXT", maxLength: 30, nullable: true),
