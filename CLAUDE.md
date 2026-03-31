@@ -250,7 +250,7 @@ Data has been refreshed to the extent safely supported by upstream sources.
 
 ### Fleet Naming Convention
 - dude-mcp-01 — MCP hub, dedicated database (Running)
-- dude-ops-02 — Always-on services, OpenClaw, monitoring (Running)
+- dude-ops-01 — Always-on services, OpenClaw, monitoring (Running)
 - dude-ci-01 — dedicated CI (future)
 - dude-mon-01 — other (future)
 
