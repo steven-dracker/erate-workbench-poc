@@ -5,6 +5,7 @@ ERATE Workbench is a proof-of-concept analytics platform for exploring USAC E-Ra
 > [!IMPORTANT]
 > This repository is a proof of concept and is **not** an official USAC or FCC product.
 > It is intended for exploration, prototyping, and engineering discussion.
+> **Current State: Project is paused while working on Home MCP platform/control plane project.**
 
 ---
 ## Quick start
