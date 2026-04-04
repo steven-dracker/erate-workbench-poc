@@ -1,3 +1,4 @@
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
@@ -16,7 +17,8 @@ namespace ErateWorkbench.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
+                        .Annotation("Sqlite:Autoincrement", true)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Ben = table.Column<string>(type: "TEXT", maxLength: 20, nullable: false),
                     Name = table.Column<string>(type: "TEXT", maxLength: 255, nullable: false),
                     EntityType = table.Column<int>(type: "INTEGER", nullable: false),
@@ -38,7 +40,8 @@ namespace ErateWorkbench.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
+                        .Annotation("Sqlite:Autoincrement", true)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     DatasetName = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
                     Status = table.Column<int>(type: "INTEGER", nullable: false),
                     StartedAt = table.Column<DateTime>(type: "TEXT", nullable: false),

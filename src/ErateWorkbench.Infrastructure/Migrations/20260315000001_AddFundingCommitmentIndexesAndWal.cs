@@ -12,7 +12,11 @@ namespace ErateWorkbench.Infrastructure.Migrations
         {
             // Enable WAL mode for better read/write concurrency. This setting is
             // persisted in the database file header, so it only needs to be applied once.
-            migrationBuilder.Sql("PRAGMA journal_mode=WAL;");
+            // Guarded: PRAGMA is SQLite-only and must not execute against Postgres.
+            if (migrationBuilder.ActiveProvider.Contains("Sqlite"))
+            {
+                migrationBuilder.Sql("PRAGMA journal_mode=WAL;");
+            }
 
             migrationBuilder.CreateIndex(
                 name: "IX_FundingCommitments_FundingYear",

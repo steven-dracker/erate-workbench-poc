@@ -1,6 +1,7 @@
 # ChatGPT Architecture Session Primer
 # Paste this file contents at the start of a new ChatGPT chat to restore full context.
-# Last updated: 2026-03-28 | CC-ERATE-000054 complete | CC-ERATE-000055 pending
+# Last updated: 2026-03-31 | CC-ERATE-000056B partial | PROJECT ON LONG PAUSE — resuming with MCP Home Lab
+
 # Update CURRENT STATE after each Claude Code session using /handoff output.
 
 ---
@@ -1054,3 +1055,26 @@ Does NOT apply to:
 - No partial or split output
 
 Failure to follow this rule invalidates the prompt.
+
+## SESSION HANDOFF — CC-ERATE-000056B — 2026-03-31
+
+### COMPLETED THIS SESSION
+- CC-ERATE-000055: Entity type badge color enhancement on School & Library Search (PR #48, merged)
+- CC-ERATE-000056 Phase 1: Dual-provider Postgres/SQLite config, Npgsql 8.0.11 added (PR #49)
+- CC-ERATE-000056A: PRAGMA WAL guard, Npgsql identity annotations on all 13 migration Id columns, unified Migrate() (PR #50)
+- CC-ERATE-000056B: Created scripts/validate-postgres-import.sh; fixed port binding, multi-PID stale kill, curl visibility, import response parsing, HttpClient 30-min timeout (TD-001 resolved) (PR #52)
+- Discovered root blocking issue: all EF Core migrations use SQLite type literals (`type: "TEXT"`) — Postgres creates wrong column types, causing `InvalidCastException` on DateTime/Decimal reads
+
+### CURRENT STATE
+- Works end-to-end: SQLite path fully functional; all prior features stable; main is clean
+- Partial / incomplete: CC-ERATE-000056B — Postgres import blocked on column type mismatch. `Program.cs` has an uncommitted local edit (EnsureCreated() revert for Postgres). `eratedb` on dude-mcp-01 has a bad schema from last Migrate() run.
+- Tests passing: Partial — 16 unit tests pass; `ConsultantFrnStatusImport_IsIdempotent_OnRerun` known failing (pre-existing)
+- Branch status: `feature/fix-postgres-validation-port-binding` — PR #52 open, not merged. Last pushed commit `e55be9c`.
+
+### PROJECT STATUS — LONG PAUSE
+**ERATE Workbench is on a long-term pause as of 2026-03-31.**
+Owner has shifted focus to a new, separate project: **MCP Home Lab**.
+Resume point: CC-ERATE-000056B-RESUME (see `docs/context/boot-blocks/CC-ERATE-000056b-handoff.md` for full context).
+
+### DECISIONS NEEDING ARCHITECT REVIEW ON RESUME
+- **EnsureCreated() vs Migrate() for Postgres** — uncommitted Program.cs edit chose EnsureCreated() (correct Npgsql types, no migration history). Alternative: rewrite migration column type declarations to be provider-agnostic. Architect must choose before continuing.
